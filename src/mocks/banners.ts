@@ -1,0 +1,80 @@
+export interface Banner {
+  id: string;
+  title: string;
+  imageUrl: string;
+  linkUrl: string;
+  position: 'hero' | 'sidebar' | 'footer' | 'popup';
+  status: 'active' | 'inactive';
+  order: number;
+  startDate?: string;
+  endDate?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string;
+}
+
+export const mockBanners: Banner[] = [
+  {
+    id: 'b1',
+    title: 'Banner Tuyển dụng mùa hè 2026',
+    imageUrl: 'https://readdy.ai/api/search-image?query=Modern%20recruitment%20banner%20with%20abstract%20geometric%20shapes%2C%20warm%20orange%20and%20coral%20gradient%2C%20clean%20minimalist%20design%2C%20professional%20job%20fair%20promotion%20visual%2C%20light%20background%20with%20subtle%20pattern&width=1200&height=400&seq=banner-1&orientation=landscape',
+    linkUrl: '/jobs',
+    position: 'hero',
+    status: 'active',
+    order: 1,
+    startDate: '2026-07-01',
+    endDate: '2026-09-30',
+    createdAt: '2026-06-15',
+    updatedAt: '2026-07-20',
+  },
+  {
+    id: 'b2',
+    title: 'Banner Nhà tuyển dụng hàng đầu',
+    imageUrl: 'https://readdy.ai/api/search-image?query=Corporate%20employer%20branding%20banner%20with%20modern%20office%20silhouettes%2C%20teal%20and%20mint%20green%20gradient%2C%20clean%20minimalist%20business%20promotion%20design%2C%20professional%20corporate%20identity&width=1200&height=400&seq=banner-2&orientation=landscape',
+    linkUrl: '/companies',
+    position: 'hero',
+    status: 'active',
+    order: 2,
+    startDate: '2026-07-01',
+    endDate: '2026-12-31',
+    createdAt: '2026-06-20',
+    updatedAt: '2026-07-18',
+  },
+  {
+    id: 'b3',
+    title: 'Banner Đăng tin miễn phí',
+    imageUrl: 'https://readdy.ai/api/search-image?query=Promotional%20banner%20with%20free%20tag%20and%20sparkle%20elements%2C%20warm%20yellow%20and%20gold%20gradient%2C%20clean%20minimalist%20promotion%20design%2C%20celebration%20visual%20with%20subtle%20geometric%20background&width=600&height=300&seq=banner-3&orientation=landscape',
+    linkUrl: '/post-job',
+    position: 'sidebar',
+    status: 'active',
+    order: 1,
+    startDate: '2026-07-15',
+    endDate: '2026-08-15',
+    createdAt: '2026-07-10',
+    updatedAt: '2026-07-10',
+  },
+  {
+    id: 'b4',
+    title: 'Banner Việc làm IT hot',
+    imageUrl: 'https://readdy.ai/api/search-image?query=Tech%20industry%20recruitment%20banner%20with%20code%20elements%20and%20circuit%20patterns%2C%20dark%20navy%20and%20electric%20blue%20gradient%2C%20modern%20futuristic%20design%2C%20software%20developer%20hiring%20promotion&width=1200&height=400&seq=banner-4&orientation=landscape',
+    linkUrl: '/jobs?category=C%C3%B4ng%20ngh%E1%BB%87%20th%C3%B4ng%20tin',
+    position: 'hero',
+    status: 'inactive',
+    order: 3,
+    startDate: '2026-08-01',
+    endDate: '2026-10-31',
+    createdAt: '2026-07-12',
+    updatedAt: '2026-07-12',
+  },
+  {
+    id: 'b5',
+    title: 'Banner Footer Cộng đồng',
+    imageUrl: 'https://readdy.ai/api/search-image?query=Community%20banner%20with%20connected%20people%20icons%20and%20network%20lines%2C%20soft%20green%20and%20sage%20gradient%2C%20warm%20friendly%20minimalist%20design%2C%20social%20network%20promotion%20visual&width=800&height=200&seq=banner-5&orientation=landscape',
+    linkUrl: '/contact',
+    position: 'footer',
+    status: 'active',
+    order: 1,
+    createdAt: '2026-06-25',
+    updatedAt: '2026-07-05',
+  },
+];
