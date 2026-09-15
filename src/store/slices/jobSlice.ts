@@ -1,42 +1,14 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import { env } from '@/config/env';
+import {
+  mockJobs,
+  mockCategories,
+  mockEducationLevels,
+  mockLocations,
+} from '@/mocks/jobs';
+import type { Job, CategoryItem, EducationLevelItem } from '@/types/job';
 
-export interface Job {
-  id: string;
-  title: string;
-  company: string;
-  companyId: string;
-  companyLogo: string;
-  location: string;
-  salary: string;
-  category: string;
-  educationLevel: string;
-  type: string;
-  experience: string;
-  description: string;
-  requirements: string[];
-  benefits: string[];
-  deadline: string;
-  createdAt: string;
-  featured: boolean;
-  status: 'pending' | 'approved' | 'rejected';
-  isActive?: boolean;
-  deletedAt?: string;
-}
-
-export interface CategoryItem {
-  name: string;
-  image?: string;
-  isActive?: boolean;
-  createdAt?: string;
-  deletedAt?: string;
-}
-
-export interface EducationLevelItem {
-  name: string;
-  isActive?: boolean;
-  createdAt?: string;
-  deletedAt?: string;
-}
+export type { Job, CategoryItem, EducationLevelItem } from '@/types/job';
 
 interface JobsState {
   items: Job[];
@@ -49,16 +21,27 @@ interface JobsState {
   error: string | null;
 }
 
-const initialState: JobsState = {
-  items: [],
-  categories: [],
-  educationLevels: [],
-  locations: [],
-  deletedCategories: [],
-  deletedEducationLevels: [],
-  loading: true,
-  error: null,
-};
+const initialState: JobsState = env.useMock
+  ? {
+      items: mockJobs,
+      categories: mockCategories,
+      educationLevels: mockEducationLevels,
+      locations: mockLocations,
+      deletedCategories: [],
+      deletedEducationLevels: [],
+      loading: false,
+      error: null,
+    }
+  : {
+      items: [],
+      categories: [],
+      educationLevels: [],
+      locations: [],
+      deletedCategories: [],
+      deletedEducationLevels: [],
+      loading: true,
+      error: null,
+    };
 
 const jobSlice = createSlice({
   name: 'jobs',

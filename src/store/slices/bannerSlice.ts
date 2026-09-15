@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { Banner } from '@/mocks/banners';
+import type { Banner } from '@/types/banner';
 import { mockBanners } from '@/mocks/banners';
 
 interface BannerState {

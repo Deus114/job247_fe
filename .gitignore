@@ -68,3 +68,6 @@ Desktop.ini
 *.cert
 .vercel
 .netlify
+
+# Local agent guidance (optional; keep out of remote if desired)
+AGENTS.md

@@ -1,26 +1,30 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import { readJson } from '@/lib/storage';
+import { env } from '@/config/env';
+import { mockApplications } from '@/mocks/applications';
+import type { Application } from '@/types/application';
 
-export interface Application {
-  id: string;
-  jobId: string;
-  jobTitle: string;
-  companyName: string;
-  companyLogo: string;
-  fullName: string;
-  email: string;
-  phone: string;
-  coverLetter: string;
-  cvFileName: string;
-  status: 'pending' | 'reviewing' | 'accepted' | 'rejected';
-  appliedAt: string;
-}
+export type { Application } from '@/types/application';
 
 interface ApplicationsState {
   items: Application[];
 }
 
+function loadInitialApplications(): Application[] {
+  const stored = readJson<ApplicationsState>('redux_applications');
+  if (Array.isArray(stored?.items) && stored.items.length > 0) {
+    const seen = new Set<string>();
+    return stored.items.filter((app) => {
+      if (!app?.id || seen.has(app.id)) return false;
+      seen.add(app.id);
+      return true;
+    });
+  }
+  return env.useMock ? mockApplications : [];
+}
+
 const initialState: ApplicationsState = {
-  items: [],
+  items: loadInitialApplications(),
 };
 
 const applicationsSlice = createSlice({
@@ -45,7 +49,7 @@ const applicationsSlice = createSlice({
     },
     updateApplicationStatus(
       state,
-      action: PayloadAction<{ id: string; status: Application['status'] }>
+      action: PayloadAction<{ id: string; status: Application['status'] }>,
     ) {
       const app = state.items.find((i) => i.id === action.payload.id);
       if (app) {
@@ -64,6 +68,12 @@ const applicationsSlice = createSlice({
   },
 });
 
-export const { setApplications, addApplication, removeApplication, updateApplicationStatus, updateApplication, clearApplications } =
-  applicationsSlice.actions;
+export const {
+  setApplications,
+  addApplication,
+  removeApplication,
+  updateApplicationStatus,
+  updateApplication,
+  clearApplications,
+} = applicationsSlice.actions;
 export default applicationsSlice.reducer;

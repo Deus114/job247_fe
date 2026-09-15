@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { BusinessConfig } from '@/mocks/businessConfig';
+import type { BusinessConfig } from '@/types/businessConfig';
 import { mockBusinessConfig } from '@/mocks/businessConfig';
 
 interface BusinessConfigState {

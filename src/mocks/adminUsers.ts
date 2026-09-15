@@ -1,16 +1,6 @@
-export interface AdminUser {
-  id: string;
-  fullName: string;
-  email: string;
-  password: string;
-  roleIds: string[];
-  status: 'active' | 'inactive';
-  avatar?: string;
-  phone?: string;
-  createdAt: string;
-  lastLogin?: string;
-  deletedAt?: string;
-}
+import type { AdminUser } from '@/types/adminUser';
+
+export type { AdminUser };
 
 /* Admin users — separate from project users (different database table).
    Each admin user can have multiple roles. */

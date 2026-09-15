@@ -1,16 +1,25 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useAppSelector } from '@/store/hooks';
-import LoadingSpinner from '@/components/base/LoadingSpinner';
+import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/features/auth';
+import { useCompanies } from '@/features/companies';
+import { useJobs } from '@/features/jobs';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 export default function CompanyDetailPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const companies = useAppSelector((state) => state.companies.items);
-  const loading = useAppSelector((state) => state.companies.loading);
-  const jobs = useAppSelector((state) => state.jobs.items);
-  const { user } = useAppSelector((state) => state.auth);
+  const { user } = useAuth();
+  const { companies, loading } = useCompanies();
+  const { jobs } = useJobs();
 
-  const company = companies.find((c) => c.id === id && c.isActive !== false);
+  const company = companies.find((c) => {
+    if (c.id !== id || c.isActive === false) return false;
+    const isOwner = user?.id === c.createdBy;
+    const isAdmin = user?.role === 'admin';
+    if (isOwner || isAdmin) return true;
+    return c.status === 'approved';
+  });
 
   if (loading) {
     return (
@@ -27,10 +36,10 @@ export default function CompanyDetailPage() {
           <div className="w-20 h-20 mx-auto rounded-full bg-background-200 flex items-center justify-center mb-5">
             <i className="ri-building-line text-3xl text-foreground-400"></i>
           </div>
-          <h2 className="text-xl font-heading font-bold text-foreground-950 mb-2">Không tìm thấy công ty</h2>
-          <p className="text-sm text-foreground-600 mb-6">Công ty này không tồn tại hoặc đã bị xóa.</p>
+          <h2 className="text-xl font-heading font-bold text-foreground-950 mb-2">{t('company.notFound')}</h2>
+          <p className="text-sm text-foreground-600 mb-6">{t('company.notFoundDesc')}</p>
           <button onClick={() => navigate('/companies')} className="px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap">
-            Quay lại danh sách
+            {t('company.backToList')}
           </button>
         </div>
       </div>
@@ -42,10 +51,10 @@ export default function CompanyDetailPage() {
   const isAdmin = user?.role === 'admin';
 
   const statusConfig: Record<string, { label: string; color: string; icon: string }> = {
-    pending: { label: 'Chờ duyệt', color: 'bg-yellow-100 text-yellow-700', icon: 'ri-time-line' },
-    approved: { label: 'Đã duyệt', color: 'bg-accent-100 text-accent-600', icon: 'ri-check-double-line' },
-    rejected: { label: 'Từ chối', color: 'bg-red-100 text-red-600', icon: 'ri-close-circle-line' },
-    needs_revision: { label: 'Cần chỉnh sửa', color: 'bg-orange-100 text-orange-700', icon: 'ri-edit-line' },
+    pending: { label: t('company.statuses.pending'), color: 'bg-yellow-100 text-yellow-700', icon: 'ri-time-line' },
+    approved: { label: t('company.statuses.approved'), color: 'bg-accent-100 text-accent-600', icon: 'ri-check-double-line' },
+    rejected: { label: t('company.statuses.rejected'), color: 'bg-red-100 text-red-600', icon: 'ri-close-circle-line' },
+    needs_revision: { label: t('company.statuses.needs_revision'), color: 'bg-orange-100 text-orange-700', icon: 'ri-edit-line' },
   };
 
   return (
@@ -77,14 +86,14 @@ export default function CompanyDetailPage() {
                   <i className="ri-price-tag-3-line"></i> {company.industry}
                 </span>
                 <span className="flex items-center gap-1">
-                  <i className="ri-group-line"></i> {company.size} nhân viên
+                  <i className="ri-group-line"></i> {company.size} {t('common.employees')}
                 </span>
                 <span className="flex items-center gap-1">
                   <i className="ri-map-pin-line"></i> {company.location}
                 </span>
                 {company.website && (
                   <a href={company.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary-500 hover:text-primary-600 transition-colors">
-                    <i className="ri-link"></i> Website
+                    <i className="ri-link"></i> {t('company.website')}
                   </a>
                 )}
               </div>
@@ -98,14 +107,14 @@ export default function CompanyDetailPage() {
                 to={`/post-job?companyId=${company.id}`}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
               >
-                <i className="ri-add-line"></i> Đăng tin tuyển dụng cho công ty này
+                <i className="ri-add-line"></i> {t('company.postJobForCompany')}
               </Link>
               {isOwner && (
                 <Link
                   to={`/companies/edit/${company.id}`}
                   className="inline-flex items-center gap-2 px-5 py-2.5 border border-background-300 text-foreground-700 rounded-full text-sm font-medium hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap"
                 >
-                  <i className="ri-edit-line"></i> Chỉnh sửa thông tin
+                  <i className="ri-edit-line"></i> {t('company.editInfo')}
                 </Link>
               )}
             </div>
@@ -117,7 +126,7 @@ export default function CompanyDetailPage() {
                 to={`/companies/edit/${company.id}`}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
               >
-                <i className="ri-edit-line"></i> Chỉnh sửa thông tin
+                <i className="ri-edit-line"></i> {t('company.editInfo')}
               </Link>
             </div>
           )}
@@ -129,7 +138,7 @@ export default function CompanyDetailPage() {
                   <i className="ri-error-warning-line text-orange-600"></i>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-orange-800 mb-1">Ghi chú từ Admin</p>
+                  <p className="text-sm font-semibold text-orange-800 mb-1">{t('company.adminNote')}</p>
                   <p className="text-sm text-orange-700">{company.adminNote}</p>
                 </div>
               </div>
@@ -140,7 +149,7 @@ export default function CompanyDetailPage() {
         {companyJobs.length > 0 && (
           <div className="mt-8">
             <h2 className="text-lg font-heading font-bold text-foreground-950 mb-4">
-              Tin tuyển dụng ({companyJobs.length})
+              {t('company.activeJobs')} ({companyJobs.length})
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {companyJobs.map((job) => (
@@ -161,10 +170,10 @@ export default function CompanyDetailPage() {
                   </div>
                   <div className="mt-3 flex items-center justify-between">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${new Date(job.deadline) < new Date() ? 'bg-red-100 text-red-600' : 'bg-accent-100 text-accent-600'}`}>
-                      {new Date(job.deadline) < new Date() ? 'Hết hạn' : 'Đang tuyển'}
+                      {new Date(job.deadline) < new Date() ? t('dashboard.statuses.expired') : t('dashboard.statuses.active')}
                     </span>
                     <span className="flex items-center gap-1 text-xs text-primary-500 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                      Xem chi tiết <i className="ri-arrow-right-line"></i>
+                      {t('company.viewDetails')} <i className="ri-arrow-right-line"></i>
                     </span>
                   </div>
                 </Link>
@@ -174,14 +183,14 @@ export default function CompanyDetailPage() {
         )}
 
         <div className="mt-8 bg-background-50 border border-background-200/70 rounded-2xl p-6 md:p-8">
-          <h2 className="text-lg font-heading font-bold text-foreground-950 mb-4">Thông tin liên hệ</h2>
+          <h2 className="text-lg font-heading font-bold text-foreground-950 mb-4">{t('company.contactInfo')}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-lg bg-background-100 flex items-center justify-center flex-shrink-0">
                 <i className="ri-map-pin-2-line text-foreground-500"></i>
               </div>
               <div>
-                <p className="text-xs text-foreground-500 mb-0.5">Địa chỉ</p>
+                <p className="text-xs text-foreground-500 mb-0.5">{t('company.address')}</p>
                 <p className="text-sm text-foreground-800">{company.address}</p>
               </div>
             </div>
@@ -190,7 +199,7 @@ export default function CompanyDetailPage() {
                 <i className="ri-mail-line text-foreground-500"></i>
               </div>
               <div>
-                <p className="text-xs text-foreground-500 mb-0.5">Email</p>
+                <p className="text-xs text-foreground-500 mb-0.5">{t('auth.email')}</p>
                 <p className="text-sm text-foreground-800">{company.contactEmail}</p>
               </div>
             </div>
@@ -199,7 +208,7 @@ export default function CompanyDetailPage() {
                 <i className="ri-phone-line text-foreground-500"></i>
               </div>
               <div>
-                <p className="text-xs text-foreground-500 mb-0.5">Điện thoại</p>
+                <p className="text-xs text-foreground-500 mb-0.5">{t('contact.phone')}</p>
                 <p className="text-sm text-foreground-800">{company.contactPhone}</p>
               </div>
             </div>
@@ -208,7 +217,7 @@ export default function CompanyDetailPage() {
                 <i className="ri-file-text-line text-foreground-500"></i>
               </div>
               <div>
-                <p className="text-xs text-foreground-500 mb-0.5">Mã số thuế</p>
+                <p className="text-xs text-foreground-500 mb-0.5">{t('company.taxCode')}</p>
                 <p className="text-sm text-foreground-800">{company.taxCode}</p>
               </div>
             </div>
@@ -217,7 +226,7 @@ export default function CompanyDetailPage() {
                 <i className="ri-calendar-line text-foreground-500"></i>
               </div>
               <div>
-                <p className="text-xs text-foreground-500 mb-0.5">Ngày tạo</p>
+                <p className="text-xs text-foreground-500 mb-0.5">{t('company.createdDate')}</p>
                 <p className="text-sm text-foreground-800">{company.createdAt}</p>
               </div>
             </div>
@@ -226,7 +235,7 @@ export default function CompanyDetailPage() {
                 <i className="ri-refresh-line text-foreground-500"></i>
               </div>
               <div>
-                <p className="text-xs text-foreground-500 mb-0.5">Cập nhật</p>
+                <p className="text-xs text-foreground-500 mb-0.5">{t('company.updatedDate')}</p>
                 <p className="text-sm text-foreground-800">{company.updatedAt}</p>
               </div>
             </div>

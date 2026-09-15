@@ -1,4 +1,4 @@
-import type { Application } from '@/store/slices/applicationsSlice';
+import type { Application } from '@/types/application';
 
 export const mockApplications: Application[] = [
   {
@@ -7,11 +7,12 @@ export const mockApplications: Application[] = [
     jobTitle: 'Senior Frontend Developer',
     companyName: 'FPT Software',
     companyLogo: 'https://readdy.ai/api/search-image?query=Modern%20minimalist%20tech%20company%20logo%20with%20clean%20geometric%20shapes%2C%20orange%20and%20white%20color%20palette%2C%20flat%20design%20style%2C%20simple%20icon%20mark&width=120&height=120&seq=logo-fpt&orientation=squarish',
-    fullName: 'Nguyễn Văn Minh',
-    email: 'minh.nguyen@gmail.com',
+    userId: 'user-1',
+    fullName: 'Người dùng Demo',
+    email: 'user@jobs247.vn',
     phone: '0901122334',
     coverLetter: 'Tôi có 4 năm kinh nghiệm Frontend với React và TypeScript. Tôi rất mong muốn được làm việc tại FPT Software để phát triển sự nghiệp.',
-    cvFileName: 'CV_NguyenVanMinh_Frontend.pdf',
+    cvFileName: 'CV_NguoiDungDemo_Frontend.pdf',
     status: 'pending',
     appliedAt: '2026-07-15T08:30:00Z',
   },
@@ -49,11 +50,12 @@ export const mockApplications: Application[] = [
     jobTitle: 'UX/UI Designer',
     companyName: 'MoMo',
     companyLogo: 'https://readdy.ai/api/search-image?query=Fintech%20app%20logo%20design%20with%20playful%20modern%20style%2C%20pink%20and%20white%20gradient%2C%20minimalist%20rounded%20icon%20mark&width=120&height=120&seq=logo-momo&orientation=squarish',
-    fullName: 'Phạm Thanh Tùng',
-    email: 'tung.pham@designer.vn',
+    userId: 'user-1',
+    fullName: 'Người dùng Demo',
+    email: 'user@jobs247.vn',
     phone: '0978654321',
     coverLetter: 'UX/UI designer với 3 năm kinh nghiệm thiết kế ứng dụng fintech. Tôi có portfolio các dự án mobile app đã thực hiện.',
-    cvFileName: 'CV_PhamThanhTung_UXUI.pdf',
+    cvFileName: 'CV_NguoiDungDemo_UXUI.pdf',
     status: 'pending',
     appliedAt: '2026-07-20T11:45:00Z',
   },

@@ -1,39 +1,6 @@
-export interface BusinessConfig {
-  id: string;
-  // Basic info
-  name: string;
-  tagline: string;
-  email: string;
-  phone: string;
-  address: string;
-  taxCode: string;
-  // Brand assets
-  logoUrl: string;
-  faviconUrl: string;
-  loginBgUrl: string;
-  adminLoginBgUrl: string;
-  // SEO / Meta
-  metaTitle: string;
-  metaDescription: string;
-  metaKeywords: string;
-  // Footer
-  footerAboutDesc: string;
-  footerCopyright: string;
-  footerAddress: string;
-  footerPhone: string;
-  footerEmail: string;
-  // Social links
-  socialFacebook: string;
-  socialLinkedin: string;
-  socialTwitter: string;
-  socialYoutube: string;
-  // Privacy / Terms
-  privacyPolicyUrl: string;
-  termsOfServiceUrl: string;
-  // Timestamps
-  createdAt: string;
-  updatedAt: string;
-}
+import type { BusinessConfig } from '@/types/businessConfig';
+
+export type { BusinessConfig };
 
 export const mockBusinessConfig: BusinessConfig = {
   id: 'config-001',

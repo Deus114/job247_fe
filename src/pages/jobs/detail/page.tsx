@@ -1,11 +1,9 @@
 import { useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { saveJob, removeSavedJob } from '@/store/slices/savedJobsSlice';
-import LoadingSpinner from '@/components/base/LoadingSpinner';
-import JobCard from '../components/JobCard';
-import ApplyModal from './components/ApplyModal';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { JobCard, ApplyModal, useJobs, useSavedJobs } from '@/features/jobs';
+import { useAuth } from '@/features/auth';
 
 function buildFilterUrl(job: { category: string; location: string; educationLevel: string; type: string }): string {
   const params = new URLSearchParams();
@@ -20,13 +18,10 @@ export default function JobDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
-  const jobs = useAppSelector((state) => state.jobs.items);
-  const loading = useAppSelector((state) => state.jobs.loading);
-  const savedItems = useAppSelector((state) => state.savedJobs.items);
-  const { user } = useAppSelector((state) => state.auth);
-  const isEmployer = user?.role === 'employer';
-  const isSaved = savedItems.some((s) => s.jobId === id);
+  const { jobs, loading } = useJobs();
+  const { isAuthenticated, isEmployer } = useAuth();
+  const { isSaved: checkSaved, saveJob, removeSavedJob } = useSavedJobs();
+  const isSaved = id ? checkSaved(id) : false;
   const [applyOpen, setApplyOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'description' | 'requirements' | 'benefits'>('description');
 
@@ -43,13 +38,27 @@ export default function JobDetailPage() {
     return combined.slice(0, 6);
   }, [jobs, job]);
 
+  const requireAuth = (next: () => void) => {
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: `/jobs/${id}` } });
+      return;
+    }
+    next();
+  };
+
   const toggleSave = () => {
     if (!job) return;
-    if (isSaved) {
-      dispatch(removeSavedJob(job.id));
-    } else {
-      dispatch(saveJob(job.id));
-    }
+    requireAuth(() => {
+      if (isSaved) {
+        removeSavedJob(job.id);
+      } else {
+        saveJob(job.id);
+      }
+    });
+  };
+
+  const openApply = () => {
+    requireAuth(() => setApplyOpen(true));
   };
 
   if (loading) {
@@ -67,8 +76,8 @@ export default function JobDetailPage() {
           <div className="w-20 h-20 mx-auto rounded-full bg-background-100 flex items-center justify-center mb-5">
             <i className="ri-file-unknow-line text-3xl text-foreground-400"></i>
           </div>
-          <h3 className="text-lg font-heading font-semibold text-foreground-950 mb-2">Không tìm thấy công việc</h3>
-          <p className="text-sm text-foreground-500 mb-6">Công việc này có thể đã hết hạn hoặc không tồn tại</p>
+          <h3 className="text-lg font-heading font-semibold text-foreground-950 mb-2">{t('job.notFound')}</h3>
+          <p className="text-sm text-foreground-500 mb-6">{t('job.notFoundDesc')}</p>
           <button onClick={() => navigate('/jobs')} className="px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap">
             <i className="ri-arrow-left-line mr-1.5"></i>{t('common.back')}
           </button>
@@ -114,11 +123,11 @@ export default function JobDetailPage() {
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary-100 text-primary-700 text-xs font-medium rounded-full whitespace-nowrap">
                       <i className="ri-price-tag-3-line"></i> {job.category}
                     </span>
-                    {job.educationLevel.split(', ').map((level, i) => (
+                    {(job.educationLevel || '').split(', ').filter(Boolean).map((level, i) => (
                     <span key={`edu-${i}`} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-accent-100 text-accent-700 text-xs font-medium rounded-full whitespace-nowrap">
                       <i className="ri-graduation-cap-line"></i> {level}
                     </span>
-                  ))}
+                    ))}
                     {job.type.split(', ').map((tp, i) => (
                     <span key={`type-${i}`} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-secondary-100 text-secondary-700 text-xs font-medium rounded-full whitespace-nowrap">
                       <i className="ri-briefcase-line"></i> {tp}
@@ -136,7 +145,7 @@ export default function JobDetailPage() {
                       <i className="ri-map-pin-line"></i> {job.location}
                     </span>
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs text-foreground-500 whitespace-nowrap">
-                      <i className="ri-calendar-check-line"></i> Hạn nộp: {job.deadline}
+                      <i className="ri-calendar-check-line"></i> {t('job.deadlineWithDate', { date: job.deadline })}
                     </span>
                   </div>
                 </div>
@@ -177,7 +186,7 @@ export default function JobDetailPage() {
 
                 {activeTab === 'requirements' && (
                   <ul className="space-y-3">
-                    {job.requirements.map((req, i) => (
+                    {(job.requirements || []).map((req, i) => (
                       <li key={i} className="flex items-start gap-3 text-sm text-foreground-700">
                         <div className="w-5 h-5 rounded-full bg-accent-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                           <i className="ri-check-line text-[10px] text-accent-600"></i>
@@ -190,7 +199,7 @@ export default function JobDetailPage() {
 
                 {activeTab === 'benefits' && (
                   <ul className="space-y-3">
-                    {job.benefits.map((benefit, i) => (
+                    {(job.benefits || []).map((benefit, i) => (
                       <li key={i} className="flex items-start gap-3 text-sm text-foreground-700">
                         <div className="w-5 h-5 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                           <i className="ri-star-fill text-[10px] text-primary-500"></i>
@@ -212,7 +221,7 @@ export default function JobDetailPage() {
                     to={buildFilterUrl(job)}
                     className="text-sm font-medium text-primary-500 hover:text-primary-600 transition-colors cursor-pointer whitespace-nowrap"
                   >
-                    Xem tất cả <i className="ri-arrow-right-line"></i>
+                    {t('home.viewAll')} <i className="ri-arrow-right-line"></i>
                   </Link>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" data-product-shop="">
@@ -229,7 +238,7 @@ export default function JobDetailPage() {
             {!isEmployer && (
             <div className="bg-background-50 border border-background-200/70 rounded-xl p-5 sticky top-[90px]">
               <button
-                onClick={() => setApplyOpen(true)}
+                onClick={openApply}
                 className="w-full py-3 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap flex items-center justify-center gap-2 shadow-lg shadow-primary-500/15"
               >
                 <i className="ri-send-plane-fill"></i> {t('job.applyNow')}
@@ -239,7 +248,7 @@ export default function JobDetailPage() {
                 className={`w-full py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer whitespace-nowrap flex items-center justify-center gap-2 border mt-3 ${isSaved ? 'bg-primary-50 border-primary-300 text-primary-600' : 'border-background-200/70 text-foreground-600 hover:bg-background-100'}`}
               >
                 <i className={`${isSaved ? 'ri-bookmark-fill' : 'ri-bookmark-line'}`}></i>
-                {isSaved ? 'Đã lưu' : t('job.saveJob')}
+                {isSaved ? t('job.saved') : t('job.saveJob')}
               </button>
             </div>
             )}
@@ -258,7 +267,7 @@ export default function JobDetailPage() {
               <div className="space-y-3 mb-5">
                 <div className="flex items-center gap-2 text-xs text-foreground-600">
                   <i className="ri-building-line text-primary-400"></i>
-                  <span>Lĩnh vực {job.category}</span>
+                  <span>{t('job.fieldWithCategory', { category: job.category })}</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-foreground-600">
                   <i className="ri-map-pin-line text-accent-400"></i>
@@ -271,7 +280,7 @@ export default function JobDetailPage() {
               </div>
 
               <p className="text-xs text-foreground-600 leading-relaxed mb-5">
-                {job.company} là một trong những công ty hàng đầu trong lĩnh vực {job.category.toLowerCase()}, với môi trường làm việc chuyên nghiệp và cơ hội phát triển sự nghiệp.
+                {t('job.companyBlurb', { company: job.company, category: job.category.toLowerCase() })}
               </p>
 
               <Link
@@ -279,7 +288,7 @@ export default function JobDetailPage() {
                 className="block w-full py-2.5 text-center text-sm font-medium text-primary-600 bg-primary-50 border border-primary-200/50 rounded-xl hover:bg-primary-100 transition-colors cursor-pointer whitespace-nowrap"
               >
                 <i className="ri-building-4-line mr-1.5"></i>
-                Xem trang công ty
+                {t('job.viewCompanyPage')}
               </Link>
             </div>
           </div>

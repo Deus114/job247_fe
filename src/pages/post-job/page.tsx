@@ -1,38 +1,53 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, type SubmitEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { addJob } from '@/store/slices/jobSlice';
-import CustomSelect from '@/components/base/CustomSelect';
-import MultiSelect from '@/components/base/MultiSelect';
-import type { Job } from '@/store/slices/jobSlice';
-
-const experienceOptions = [
-  { value: 'Không yêu cầu', label: 'Không yêu cầu' },
-  { value: 'Intern', label: 'Intern (Thực tập sinh)' },
-  { value: 'Junior (dưới 1 năm)', label: 'Junior (dưới 1 năm)' },
-  { value: 'Junior (1-2 năm)', label: 'Junior (1-2 năm)' },
-  { value: 'Middle (2-3 năm)', label: 'Middle (2-3 năm)' },
-  { value: 'Middle (3-5 năm)', label: 'Middle (3-5 năm)' },
-  { value: 'Senior (5+ năm)', label: 'Senior (5+ năm)' },
-  { value: 'Lead/Manager', label: 'Lead/Manager' },
-];
+import { useAuth } from '@/features/auth';
+import { useJobs } from '@/features/jobs';
+import { useCompanies } from '@/features/companies';
+import CustomSelect from '@/components/ui/CustomSelect';
+import MultiSelect from '@/components/ui/MultiSelect';
+import type { Job } from '@/types/job';
 
 export default function PostJobPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
   const [searchParams] = useSearchParams();
   const preselectCompanyId = searchParams.get('companyId');
 
-  const { user } = useAppSelector((state) => state.auth);
-  const categories = useAppSelector((state) => (state.jobs?.categories || []).map((c: { name: string }) => c.name));
-  const educationLevels = useAppSelector((state) => (state.jobs?.educationLevels || []).map((e: { name: string }) => e.name));
-  const locations = useAppSelector((state) => state.jobs?.locations || []);
-  const companies = useAppSelector((state) => state.companies?.items || []);
+  const { user } = useAuth();
+  const { categories: rawCategories, educationLevels: rawEducationLevels, locations, addJob } = useJobs();
+  const { companies } = useCompanies();
+  
+  const categories = (rawCategories || []).map((c: { name: string }) => c.name);
+  const educationLevels = (rawEducationLevels || []).map((e: { name: string }) => e.name);
 
   const myApprovedCompanies = companies.filter(
     (c) => c.createdBy === user?.id && c.status === 'approved'
+  );
+
+  const experienceOptions = useMemo(
+    () => [
+      { value: 'Không yêu cầu', label: t('postJob.expOptions.none') },
+      { value: 'Intern', label: t('postJob.expOptions.intern') },
+      { value: 'Junior (dưới 1 năm)', label: t('postJob.expOptions.junior0') },
+      { value: 'Junior (1-2 năm)', label: t('postJob.expOptions.junior1') },
+      { value: 'Middle (2-3 năm)', label: t('postJob.expOptions.middle2') },
+      { value: 'Middle (3-5 năm)', label: t('postJob.expOptions.middle3') },
+      { value: 'Senior (5+ năm)', label: t('postJob.expOptions.senior') },
+      { value: 'Lead/Manager', label: t('postJob.expOptions.lead') },
+    ],
+    [t],
+  );
+
+  const workTypeOptions = useMemo(
+    () => [
+      { value: 'Toàn thời gian', label: t('postJob.workTypeOptions.fulltime') },
+      { value: 'Bán thời gian', label: t('postJob.workTypeOptions.parttime') },
+      { value: 'Freelance', label: t('postJob.workTypeOptions.freelance') },
+      { value: 'Thực tập', label: t('postJob.workTypeOptions.internship') },
+      { value: 'Remote', label: t('postJob.workTypeOptions.remote') },
+    ],
+    [t],
   );
 
   const [formData, setFormData] = useState({
@@ -44,8 +59,10 @@ export default function PostJobPage() {
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
-    if (preselectCompanyId && !formData.companyId) {
-      setFormData((prev) => ({ ...prev, companyId: preselectCompanyId }));
+    if (preselectCompanyId) {
+      setFormData((prev) =>
+        prev.companyId ? prev : { ...prev, companyId: preselectCompanyId },
+      );
     }
   }, [preselectCompanyId]);
 
@@ -59,7 +76,7 @@ export default function PostJobPage() {
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!formData.title || !formData.companyId || !formData.category) return;
 
@@ -84,10 +101,10 @@ export default function PostJobPage() {
       deadline: formData.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       createdAt: new Date().toISOString().split('T')[0],
       featured: false,
-      status: 'approved',
+      status: 'pending',
     };
 
-    dispatch(addJob(newJob));
+    addJob(newJob);
     setSubmitted(true);
   };
 
@@ -99,13 +116,13 @@ export default function PostJobPage() {
             <i className="ri-check-line text-4xl text-accent-500"></i>
           </div>
           <h2 className="text-2xl font-heading font-bold text-foreground-950 mb-3">{t('postJob.success')}</h2>
-          <p className="text-sm text-foreground-600 mb-8">Tin tuyển dụng của bạn đã được đăng thành công và sẽ sớm hiển thị trên trang web.</p>
+          <p className="text-sm text-foreground-600 mb-8">{t('postJob.pendingApprovalDesc')}</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button onClick={() => navigate('/jobs')} className="px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap">
-              Xem danh sách việc làm
+            <button onClick={() => navigate('/dashboard')} className="px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap">
+              {t('postJob.goToDashboard')}
             </button>
             <button onClick={() => { setSubmitted(false); setFormData({ companyId: '', title: '', category: '', location: '', salary: '', educationLevel: [], type: [], experience: '', description: '', requirements: '', benefits: '', deadline: '' }); }} className="px-6 py-2.5 border border-background-300 text-foreground-700 rounded-full text-sm font-medium hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap">
-              Đăng tin khác
+              {t('postJob.postAnother')}
             </button>
           </div>
         </div>
@@ -120,24 +137,24 @@ export default function PostJobPage() {
           <div className="w-20 h-20 mx-auto rounded-full bg-yellow-100 flex items-center justify-center mb-5">
             <i className="ri-building-4-line text-3xl text-yellow-600"></i>
           </div>
-          <h2 className="text-xl font-heading font-bold text-foreground-950 mb-2">Chưa có công ty được duyệt</h2>
+          <h2 className="text-xl font-heading font-bold text-foreground-950 mb-2">{t('postJob.noApprovedCompany')}</h2>
           <p className="text-sm text-foreground-600 mb-4">
-            Bạn cần có ít nhất một công ty đã được <strong>admin duyệt</strong> để đăng tin tuyển dụng.
+            {t('postJob.noApprovedCompanyDesc')}
           </p>
           <div className="bg-background-50 border border-background-200/70 rounded-xl p-4 mb-6 text-left">
-            <p className="text-sm font-medium text-foreground-800 mb-2">Các bước để đăng tin:</p>
+            <p className="text-sm font-medium text-foreground-800 mb-2">{t('postJob.stepsTitle')}</p>
             <ol className="text-xs text-foreground-600 space-y-2 list-decimal list-inside">
-              <li>Tạo hồ sơ công ty với đầy đủ thông tin</li>
-              <li>Admin xét duyệt hồ sơ (trong vòng 24h)</li>
-              <li>Sau khi được duyệt, bạn có thể đăng tin tuyển dụng</li>
+              <li>{t('postJob.step1')}</li>
+              <li>{t('postJob.step2')}</li>
+              <li>{t('postJob.step3')}</li>
             </ol>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button onClick={() => navigate('/companies/create')} className="px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap">
-              <i className="ri-add-line mr-1.5"></i> Tạo công ty mới
+              <i className="ri-add-line mr-1.5"></i> {t('postJob.createCompanyFirst')}
             </button>
             <button onClick={() => navigate('/companies/manage')} className="px-6 py-2.5 border border-background-300 text-foreground-700 rounded-full text-sm font-medium hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap">
-              <i className="ri-building-line mr-1.5"></i> Xem công ty của tôi
+              <i className="ri-building-line mr-1.5"></i> {t('postJob.viewMyCompanies')}
             </button>
           </div>
         </div>
@@ -156,15 +173,15 @@ export default function PostJobPage() {
 
           <form onSubmit={handleSubmit} className="bg-background-50 border border-background-200/70 rounded-2xl p-6 md:p-8 space-y-6">
             <div>
-              <label className="block text-sm font-medium text-foreground-700 mb-1.5">Chọn công ty đăng tuyển *</label>
+              <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('postJob.selectCompanyLabel')} *</label>
               <CustomSelect
                 value={formData.companyId}
                 onChange={(v) => handleSelectChange('companyId', v)}
                 options={[
-                  { value: '', label: '-- Chọn công ty --' },
+                  { value: '', label: t('postJob.selectCompanyPlaceholder') },
                   ...myApprovedCompanies.map((c) => ({ value: c.id, label: c.name })),
                 ]}
-                placeholder="-- Chọn công ty --"
+                placeholder={t('postJob.selectCompanyPlaceholder')}
                 required
               />
               {selectedCompany && (
@@ -172,7 +189,7 @@ export default function PostJobPage() {
                   <img src={selectedCompany.logo} alt={selectedCompany.name} className="w-8 h-8 rounded object-contain" />
                   <div>
                     <p className="text-sm font-medium text-foreground-800">{selectedCompany.name}</p>
-                    <p className="text-xs text-foreground-500">{selectedCompany.industry} · {selectedCompany.location} · {selectedCompany.size} nhân viên</p>
+                    <p className="text-xs text-foreground-500">{selectedCompany.industry} · {selectedCompany.location} · {selectedCompany.size} {t('common.employees')}</p>
                   </div>
                 </div>
               )}
@@ -183,7 +200,7 @@ export default function PostJobPage() {
                 <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('postJob.jobTitle')} *</label>
                 <input type="text" name="title" value={formData.title} onChange={handleChange} required
                   className="w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors"
-                  placeholder="VD: Senior Frontend Developer" />
+                  placeholder={t('postJob.titlePlaceholder')} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('postJob.category')} *</label>
@@ -191,10 +208,10 @@ export default function PostJobPage() {
                   value={formData.category}
                   onChange={(v) => handleSelectChange('category', v)}
                   options={[
-                    { value: '', label: 'Chọn ngành nghề' },
+                    { value: '', label: t('postJob.selectCategory') },
                     ...categories.map((cat) => ({ value: cat, label: cat })),
                   ]}
-                  placeholder="Chọn ngành nghề"
+                  placeholder={t('postJob.selectCategory')}
                   required
                 />
               </div>
@@ -204,17 +221,17 @@ export default function PostJobPage() {
                   value={formData.location}
                   onChange={(v) => handleSelectChange('location', v)}
                   options={[
-                    { value: '', label: 'Chọn địa điểm' },
+                    { value: '', label: t('postJob.selectLocation') },
                     ...locations.map((loc) => ({ value: loc, label: loc })),
                   ]}
-                  placeholder="Chọn địa điểm"
+                  placeholder={t('postJob.selectLocation')}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('postJob.salary')}</label>
                 <input type="text" name="salary" value={formData.salary} onChange={handleChange}
                   className="w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors"
-                  placeholder="VD: 15 - 25 triệu" />
+                  placeholder={t('postJob.salaryPlaceholder')} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('postJob.education')}</label>
@@ -222,34 +239,28 @@ export default function PostJobPage() {
                   values={formData.educationLevel}
                   onChange={(v) => handleSelectChange('educationLevel', v)}
                   options={educationLevels.map((lvl) => ({ value: lvl, label: lvl }))}
-                  placeholder="Chọn trình độ"
+                  placeholder={t('postJob.selectEducation')}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground-700 mb-1.5">Hình thức làm việc</label>
+                <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('postJob.workType')}</label>
                 <MultiSelect
                   values={formData.type}
                   onChange={(v) => handleSelectChange('type', v)}
-                  options={[
-                    { value: 'Toàn thời gian', label: 'Toàn thời gian' },
-                    { value: 'Bán thời gian', label: 'Bán thời gian' },
-                    { value: 'Freelance', label: 'Freelance' },
-                    { value: 'Thực tập', label: 'Thực tập' },
-                    { value: 'Remote', label: 'Remote' },
-                  ]}
-                  placeholder="Chọn hình thức"
+                  options={workTypeOptions}
+                  placeholder={t('postJob.selectWorkType')}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground-700 mb-1.5">Kinh nghiệm làm việc</label>
+                <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('postJob.experience')}</label>
                 <CustomSelect
                   value={formData.experience}
                   onChange={(v) => handleSelectChange('experience', v)}
                   options={[
-                    { value: '', label: 'Chọn kinh nghiệm' },
+                    { value: '', label: t('postJob.selectExperience') },
                     ...experienceOptions,
                   ]}
-                  placeholder="Chọn kinh nghiệm"
+                  placeholder={t('postJob.selectExperience')}
                 />
               </div>
               <div>
@@ -263,7 +274,7 @@ export default function PostJobPage() {
               <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('postJob.description')} *</label>
               <textarea name="description" value={formData.description} onChange={handleChange} required rows={5}
                 className="w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors resize-none"
-                placeholder="Mô tả chi tiết về công việc, trách nhiệm chính..." maxLength={500}></textarea>
+                placeholder={t('postJob.descPlaceholder')} maxLength={500}></textarea>
               <p className="text-xs text-foreground-400 mt-1 text-right">{formData.description.length}/500</p>
             </div>
 
@@ -271,16 +282,16 @@ export default function PostJobPage() {
               <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('postJob.requirements')}</label>
               <textarea name="requirements" value={formData.requirements} onChange={handleChange} rows={4}
                 className="w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors resize-none"
-                placeholder="Mỗi dòng là một yêu cầu...&#10;- Tối thiểu 2 năm kinh nghiệm&#10;- Thành thạo React, TypeScript"></textarea>
-              <p className="text-xs text-foreground-400 mt-1">Mỗi yêu cầu viết trên một dòng riêng</p>
+                placeholder={t('postJob.reqPlaceholder')}></textarea>
+              <p className="text-xs text-foreground-400 mt-1">{t('postJob.onePerLineReq')}</p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('postJob.benefits')}</label>
               <textarea name="benefits" value={formData.benefits} onChange={handleChange} rows={4}
                 className="w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors resize-none"
-                placeholder="Mỗi dòng là một phúc lợi...&#10;- Lương thưởng cạnh tranh&#10;- Bảo hiểm đầy đủ"></textarea>
-              <p className="text-xs text-foreground-400 mt-1">Mỗi phúc lợi viết trên một dòng riêng</p>
+                placeholder={t('postJob.benefitPlaceholder')}></textarea>
+              <p className="text-xs text-foreground-400 mt-1">{t('postJob.onePerLineBenefit')}</p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-4">

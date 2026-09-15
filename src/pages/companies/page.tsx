@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAppSelector } from '@/store/hooks';
+import { useAuth } from '@/features/auth';
+import { useCompanies } from '@/features/companies';
 
 export default function CompaniesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user } = useAppSelector((state) => state.auth);
-  const companies = useAppSelector((state) => state.companies.items);
+  const { user } = useAuth();
+  const { companies } = useCompanies();
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'needs_revision'>('all');
 
   const myCompanies = companies.filter((c) => c.createdBy === user?.id);
@@ -15,12 +16,12 @@ export default function CompaniesPage() {
     ? myCompanies
     : myCompanies.filter((c) => c.status === filter);
 
-  const statusConfig: Record<string, { label: string; color: string; icon: string }> = {
-    pending: { label: 'Chờ duyệt', color: 'bg-yellow-100 text-yellow-700', icon: 'ri-time-line' },
-    approved: { label: 'Đã duyệt', color: 'bg-accent-100 text-accent-600', icon: 'ri-check-double-line' },
-    rejected: { label: 'Từ chối', color: 'bg-red-100 text-red-600', icon: 'ri-close-circle-line' },
-    needs_revision: { label: 'Cần chỉnh sửa', color: 'bg-orange-100 text-orange-700', icon: 'ri-edit-line' },
-  };
+  const statusConfig = {
+    pending: { color: 'bg-yellow-100 text-yellow-700', icon: 'ri-time-line' },
+    approved: { color: 'bg-accent-100 text-accent-600', icon: 'ri-check-double-line' },
+    rejected: { color: 'bg-red-100 text-red-600', icon: 'ri-close-circle-line' },
+    needs_revision: { color: 'bg-orange-100 text-orange-700', icon: 'ri-edit-line' },
+  } as const;
 
   if (!user || user.role === 'user') {
     return (
@@ -29,10 +30,10 @@ export default function CompaniesPage() {
           <div className="w-20 h-20 mx-auto rounded-full bg-background-200 flex items-center justify-center mb-5">
             <i className="ri-building-line text-3xl text-foreground-400"></i>
           </div>
-          <h2 className="text-xl font-heading font-bold text-foreground-950 mb-2">Truy cập bị từ chối</h2>
-          <p className="text-sm text-foreground-600 mb-6">Chỉ nhà tuyển dụng mới có thể quản lý công ty. Vui lòng đăng nhập với tài khoản Nhà tuyển dụng.</p>
+          <h2 className="text-xl font-heading font-bold text-foreground-950 mb-2">{t('common.accessDenied')}</h2>
+          <p className="text-sm text-foreground-600 mb-6">{t('company.employerOnlyDesc', 'Chỉ nhà tuyển dụng mới có thể quản lý công ty. Vui lòng đăng nhập với tài khoản Nhà tuyển dụng.')}</p>
           <button onClick={() => navigate('/login')} className="px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap">
-            Đăng nhập
+            {t('auth.loginButton')}
           </button>
         </div>
       </div>
@@ -44,14 +45,14 @@ export default function CompaniesPage() {
       <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground-950">Công ty của tôi</h1>
-            <p className="text-sm text-foreground-600 mt-1">Quản lý hồ sơ công ty và trạng thái xét duyệt</p>
+            <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground-950">{t('company.myCompanies')}</h1>
+            <p className="text-sm text-foreground-600 mt-1">{t('company.manageDesc', 'Quản lý hồ sơ công ty và trạng thái xét duyệt')}</p>
           </div>
           <Link
             to="/companies/create"
             className="px-5 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap flex items-center gap-2"
           >
-            <i className="ri-add-line"></i> Tạo công ty mới
+            <i className="ri-add-line"></i> {t('company.create')}
           </Link>
         </div>
 
@@ -66,7 +67,7 @@ export default function CompaniesPage() {
                   : 'bg-background-50 border border-background-200 text-foreground-600 hover:bg-background-100'
               }`}
             >
-              {f === 'all' ? 'Tất cả' : statusConfig[f].label}
+              {f === 'all' ? t('common.all') : t(`company.statuses.${f}`)}
               {f === 'all' && <span className="ml-1 opacity-70">({myCompanies.length})</span>}
             </button>
           ))}
@@ -78,16 +79,16 @@ export default function CompaniesPage() {
               <i className="ri-building-4-line text-2xl text-foreground-400"></i>
             </div>
             <h3 className="text-lg font-heading font-semibold text-foreground-950 mb-2">
-              {myCompanies.length === 0 ? 'Bạn chưa có công ty nào' : 'Không có công ty nào ở trạng thái này'}
+              {myCompanies.length === 0 ? t('company.empty') : t('company.emptyFilterDesc', 'Không có công ty nào ở trạng thái này')}
             </h3>
             <p className="text-sm text-foreground-500 mb-6">
               {myCompanies.length === 0
-                ? 'Tạo hồ sơ công ty để bắt đầu đăng tin tuyển dụng. Công ty của bạn sẽ được admin xét duyệt trước khi hiển thị.'
-                : 'Thử chọn bộ lọc khác để xem các công ty.'}
+                ? t('company.emptyDesc')
+                : t('company.tryOtherFilter', 'Thử chọn bộ lọc khác để xem các công ty.')}
             </p>
             {myCompanies.length === 0 && (
               <Link to="/companies/create" className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap">
-                <i className="ri-add-line"></i> Tạo công ty đầu tiên
+                <i className="ri-add-line"></i> {t('company.createFirst')}
               </Link>
             )}
           </div>
@@ -112,7 +113,7 @@ export default function CompaniesPage() {
                 <div className="flex items-center justify-between pt-4 border-t border-background-200/40">
                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusConfig[company.status].color}`}>
                     <i className={statusConfig[company.status].icon}></i>
-                    {statusConfig[company.status].label}
+                    {t(`company.statuses.${company.status}`)}
                   </span>
                   <div className="flex items-center gap-2">
                     {company.status === 'approved' && (
@@ -120,20 +121,20 @@ export default function CompaniesPage() {
                         to={`/post-job?companyId=${company.id}`}
                         className="flex items-center gap-1 px-3 py-1.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-xs font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
                       >
-                        <i className="ri-add-line text-xs"></i> Đăng tin
+                        <i className="ri-add-line text-xs"></i> {t('postJob.submit')}
                       </Link>
                     )}
                     <Link
                       to={`/companies/edit/${company.id}`}
                       className="flex items-center gap-1 px-3 py-1.5 border border-background-200 text-foreground-600 rounded-full text-xs font-medium hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap"
                     >
-                      <i className="ri-edit-line text-xs"></i> Sửa
+                      <i className="ri-edit-line text-xs"></i> {t('common.edit')}
                     </Link>
                     <Link
                       to={`/companies/${company.id}`}
                       className="flex items-center gap-1 px-3 py-1.5 border border-background-200 text-foreground-600 rounded-full text-xs font-medium hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap"
                     >
-                      <i className="ri-eye-line text-xs"></i> Xem
+                      <i className="ri-eye-line text-xs"></i> {t('applications.view')}
                     </Link>
                   </div>
                 </div>
@@ -143,7 +144,7 @@ export default function CompaniesPage() {
                     <div className="flex items-start gap-2">
                       <i className="ri-error-warning-line text-orange-500 text-sm mt-0.5"></i>
                       <div>
-                        <p className="text-xs font-medium text-orange-800 mb-0.5">Ghi chú từ Admin:</p>
+                        <p className="text-xs font-medium text-orange-800 mb-0.5">{t('company.adminNote', 'Ghi chú từ Admin')}:</p>
                         <p className="text-xs text-orange-700">{company.adminNote}</p>
                       </div>
                     </div>

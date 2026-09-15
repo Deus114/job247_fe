@@ -1,32 +1,29 @@
-import { useState } from 'react';
+import { useState, type SubmitEvent } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAppDispatch } from '@/store/hooks';
-import { login } from '@/store/slices/authSlice';
-
-const demoAccounts = [
-  { email: 'employer@jobs247.vn', password: 'employer123', fullName: 'Nhà tuyển dụng Demo', role: 'employer' as const, id: 'u2' },
-  { email: 'user@jobs247.vn', password: 'user123', fullName: 'Người dùng Demo', role: 'user' as const, id: 'user-1' },
-];
+import { useAuth } from '@/features/auth';
+import { loginRequest, mockDemoAccounts } from '@/api';
+import { env } from '@/config/env';
 
 export default function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const dispatch = useAppDispatch();
+  const { login: loginUser } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const from = (location.state as { from?: string })?.from || '/';
 
-  const handleLoginSuccess = (found: typeof demoAccounts[0]) => {
-    dispatch(login({ id: found.id, email: found.email, fullName: found.fullName, role: found.role }));
+  const handleLoginSuccess = (user: { id: string; email: string; fullName: string; role: 'user' | 'employer' | 'admin' }) => {
+    loginUser(user);
     navigate(from !== '/login' && from !== '/register' ? from : '/');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
 
@@ -35,16 +32,28 @@ export default function LoginPage() {
       return;
     }
 
-    const found = demoAccounts.find((a) => a.email === email && a.password === password);
-    if (found) {
-      handleLoginSuccess(found);
-    } else {
+    setLoading(true);
+    try {
+      const user = await loginRequest({ email, password });
+      handleLoginSuccess(user);
+    } catch {
       setError(t('auth.invalidCredentials'));
+    } finally {
+      setLoading(false);
     }
   };
 
-  const quickLogin = (acc: typeof demoAccounts[0]) => {
-    handleLoginSuccess(acc);
+  const quickLogin = async (acc: (typeof mockDemoAccounts)[number]) => {
+    setLoading(true);
+    setError('');
+    try {
+      const user = await loginRequest({ email: acc.email, password: acc.password });
+      handleLoginSuccess(user);
+    } catch {
+      setError(t('auth.invalidCredentials'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -103,36 +112,40 @@ export default function LoginPage() {
               <a href="#" className="text-xs text-primary-500 hover:underline cursor-pointer">{t('auth.forgotPassword')}</a>
             </div>
 
-            <button type="submit" className="w-full py-3 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap">
-              {t('auth.loginButton')}
+            <button type="submit" disabled={loading} className="w-full py-3 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60">
+              {loading ? t('common.loading') : t('auth.loginButton')}
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-background-200/70">
-            <p className="text-xs text-foreground-500 text-center mb-4">{t('auth.demoQuickLogin')}</p>
-            <div className="flex flex-col gap-2">
-              {demoAccounts.map((acc) => (
-                <button
-                  key={acc.email}
-                  onClick={() => quickLogin(acc)}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-background-200/70 hover:bg-background-100 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
-                      <span className="text-xs font-bold text-primary-600">{acc.fullName.charAt(0)}</span>
+          {env.useMock && (
+            <div className="mt-8 pt-6 border-t border-background-200/70">
+              <p className="text-xs text-foreground-500 text-center mb-4">{t('auth.demoQuickLogin')}</p>
+              <div className="flex flex-col gap-2">
+                {mockDemoAccounts.map((acc) => (
+                  <button
+                    key={acc.email}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => void quickLogin(acc)}
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-background-200/70 hover:bg-background-100 transition-colors cursor-pointer disabled:opacity-60"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
+                        <span className="text-xs font-bold text-primary-600">{acc.fullName.charAt(0)}</span>
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-medium text-foreground-950">{acc.fullName}</p>
+                        <p className="text-xs text-foreground-500">{acc.email}</p>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <p className="text-sm font-medium text-foreground-950">{acc.fullName}</p>
-                      <p className="text-xs text-foreground-500">{acc.email}</p>
-                    </div>
-                  </div>
-                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${acc.role === 'employer' ? 'bg-primary-100 text-primary-700' : 'bg-secondary-100 text-secondary-700'}`}>
-                    {acc.role === 'employer' ? t('auth.roleEmployer') : t('auth.roleUser')}
-                  </span>
-                </button>
-              ))}
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${acc.role === 'employer' ? 'bg-primary-100 text-primary-700' : 'bg-secondary-100 text-secondary-700'}`}>
+                      {acc.role === 'employer' ? t('auth.roleEmployer') : t('auth.roleUser')}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

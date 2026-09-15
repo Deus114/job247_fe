@@ -1,14 +1,13 @@
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 export default function StatsSection() {
   const { t } = useTranslation();
 
   const stats = [
-    { icon: 'ri-briefcase-line', value: '12,500+', label: 'Việc làm đang tuyển', color: 'text-primary-500', bgColor: 'bg-primary-100' },
-    { icon: 'ri-building-line', value: '3,200+', label: 'Công ty uy tín', color: 'text-accent-500', bgColor: 'bg-accent-100' },
-    { icon: 'ri-user-line', value: '50,000+', label: 'Ứng viên đăng ký', color: 'text-secondary-500', bgColor: 'bg-secondary-100' },
-    { icon: 'ri-check-double-line', value: '85%', label: 'Tỷ lệ tuyển dụng thành công', color: 'text-primary-500', bgColor: 'bg-primary-100' },
+    { icon: 'ri-briefcase-line', value: '12,500+', label: t('home.activeJobs', 'Việc làm đang tuyển'), color: 'text-primary-500', bgColor: 'bg-primary-100' },
+    { icon: 'ri-building-line', value: '3,200+', label: t('home.trustedCompanies', 'Công ty uy tín'), color: 'text-accent-500', bgColor: 'bg-accent-100' },
+    { icon: 'ri-user-line', value: '50,000+', label: t('home.registeredCandidates', 'Ứng viên đăng ký'), color: 'text-secondary-500', bgColor: 'bg-secondary-100' },
+    { icon: 'ri-check-double-line', value: '85%', label: t('home.successRate', 'Tỷ lệ tuyển dụng thành công'), color: 'text-primary-500', bgColor: 'bg-primary-100' },
   ];
 
   return (

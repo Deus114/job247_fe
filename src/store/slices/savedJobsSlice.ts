@@ -1,4 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import { readJson } from '@/lib/storage';
 
 export interface SavedJob {
   jobId: string;
@@ -9,8 +10,10 @@ interface SavedJobsState {
   items: SavedJob[];
 }
 
+const stored = readJson<SavedJobsState>('redux_savedJobs');
+
 const initialState: SavedJobsState = {
-  items: [],
+  items: Array.isArray(stored?.items) ? stored.items : [],
 };
 
 const savedJobsSlice = createSlice({

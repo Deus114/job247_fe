@@ -1,27 +1,24 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-
-interface User {
-  id: string;
-  email: string;
-  fullName: string;
-  role: 'user' | 'employer' | 'admin';
-}
+import type { AuthUser } from '@/types';
+import { readJson } from '@/lib/storage';
 
 interface AuthState {
-  user: User | null;
+  user: AuthUser | null;
   isAuthenticated: boolean;
 }
 
+const stored = readJson<AuthState>('redux_auth');
+
 const initialState: AuthState = {
-  user: null,
-  isAuthenticated: false,
+  user: stored?.user ?? null,
+  isAuthenticated: Boolean(stored?.user && stored?.isAuthenticated),
 };
 
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    login(state, action: PayloadAction<User>) {
+    login(state, action: PayloadAction<AuthUser>) {
       state.user = action.payload;
       state.isAuthenticated = true;
     },
@@ -29,7 +26,7 @@ const authSlice = createSlice({
       state.user = null;
       state.isAuthenticated = false;
     },
-    updateProfile(state, action: PayloadAction<Partial<User>>) {
+    updateProfile(state, action: PayloadAction<Partial<AuthUser>>) {
       if (state.user) {
         state.user = { ...state.user, ...action.payload };
       }

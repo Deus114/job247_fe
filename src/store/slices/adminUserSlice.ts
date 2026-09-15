@@ -1,5 +1,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { mockAdminUsers, type AdminUser } from '@/mocks/adminUsers';
+import { mockAdminUsers } from '@/mocks/adminUsers';
+import type { AdminUser } from '@/types/adminUser';
 
 interface AdminUsersState {
   items: AdminUser[];

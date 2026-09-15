@@ -5,6 +5,9 @@ import { useEffect } from 'react';
 import { store } from '@/store';
 import { useAppSelector } from '@/store/hooks';
 import { AppRoutes } from './router';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import ToastHost from '@/components/ui/ToastHost';
+import { env } from '@/config/env';
 import i18n from './i18n';
 
 function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -25,9 +28,12 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
 function AppContent() {
   return (
     <ThemeProvider>
-      <BrowserRouter basename={__BASE_PATH__}>
-        <AppRoutes />
-      </BrowserRouter>
+      <ErrorBoundary>
+        <BrowserRouter basename={env.basePath || __BASE_PATH__}>
+          <AppRoutes />
+          <ToastHost />
+        </BrowserRouter>
+      </ErrorBoundary>
     </ThemeProvider>
   );
 }

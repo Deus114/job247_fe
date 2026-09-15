@@ -1,4 +1,4 @@
-import type { Job, CategoryItem, EducationLevelItem } from '@/store/slices/jobSlice';
+import type { Job, CategoryItem, EducationLevelItem } from '@/types/job';
 
 export const mockJobs: Job[] = [
   {

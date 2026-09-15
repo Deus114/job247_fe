@@ -1,14 +1,13 @@
 import Hero from './components/Hero';
-import FeaturedJobs from './components/FeaturedJobs';
-import CategoryGrid from './components/CategoryGrid';
+import { FeaturedJobs, CategoryGrid } from '@/features/jobs';
 import CTASection from './components/CTASection';
 
 export default function Home() {
   return (
     <div>
       <Hero />
-      <CategoryGrid />
       <FeaturedJobs />
+      <CategoryGrid />
       <CTASection />
     </div>
   );

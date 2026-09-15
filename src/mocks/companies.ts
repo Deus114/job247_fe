@@ -1,24 +1,6 @@
-export interface Company {
-  id: string;
-  name: string;
-  nameEn: string;
-  logo: string;
-  banner: string;
-  description: string;
-  industry: string;
-  size: string;
-  location: string;
-  address: string;
-  website: string;
-  contactEmail: string;
-  contactPhone: string;
-  taxCode: string;
-  status: 'pending' | 'approved' | 'rejected' | 'needs_revision';
-  adminNote?: string;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
+﻿import type { Company } from '@/types/company';
+
+export type { Company };
 
 export const mockCompanies: Company[] = [
   {
@@ -27,7 +9,8 @@ export const mockCompanies: Company[] = [
     nameEn: 'FPT Software',
     logo: 'https://readdy.ai/api/search-image?query=Modern%20minimalist%20tech%20company%20logo%20with%20clean%20geometric%20shapes%2C%20orange%20and%20white%20color%20palette%2C%20flat%20design%20style%2C%20simple%20icon%20mark&width=120&height=120&seq=logo-fpt&orientation=squarish',
     banner: 'https://readdy.ai/api/search-image?query=Modern%20open%20office%20workspace%20with%20warm%20natural%20lighting%2C%20collaborative%20desks%20and%20plants%2C%20professional%20corporate%20atmosphere%2C%20clean%20aesthetic%20architecture&width=1200&height=400&seq=banner-fpt&orientation=landscape',
-    description: 'FPT Software là công ty thành viên của Tập đoàn FPT - tập đoàn công nghệ hàng đầu Việt Nam. Với hơn 30,000 nhân viên trên toàn cầu, chúng tôi cung cấp dịch vụ phát triển phần mềm và giải pháp công nghệ cho khách hàng tại hơn 30 quốc gia.',
+    description:
+      'FPT Software là công ty thành viên của Tập đoàn FPT - tập đoàn công nghệ hàng đầu Việt Nam. Với hơn 30,000 nhân viên trên toàn cầu, chúng tôi cung cấp dịch vụ phát triển phần mềm và giải pháp công nghệ cho khách hàng tại hơn 30 quốc gia.',
     industry: 'Công nghệ thông tin',
     size: '1000+',
     location: 'Hồ Chí Minh',
@@ -47,7 +30,8 @@ export const mockCompanies: Company[] = [
     nameEn: 'Vingroup JSC',
     logo: 'https://readdy.ai/api/search-image?query=Corporate%20minimalist%20logo%20design%20with%20clean%20typography%2C%20red%20and%20white%20color%20scheme%2C%20modern%20geometric%20mark%2C%20flat%20style&width=120&height=120&seq=logo-vingroup&orientation=squarish',
     banner: 'https://readdy.ai/api/search-image?query=Luxury%20corporate%20headquarters%20building%20exterior%20with%20modern%20glass%20architecture%2C%20blue%20sky%20reflection%2C%20professional%20business%20environment%2C%20warm%20afternoon%20light&width=1200&height=400&seq=banner-vingroup&orientation=landscape',
-    description: 'Tập đoàn Vingroup là một trong những tập đoàn kinh tế tư nhân lớn nhất Việt Nam, hoạt động đa ngành trong các lĩnh vực: bất động sản, du lịch - nghỉ dưỡng, y tế, giáo dục, công nghiệp và công nghệ.',
+    description:
+      'Tập đoàn Vingroup là một trong những tập đoàn kinh tế tư nhân lớn nhất Việt Nam, hoạt động đa ngành trong các lĩnh vực: bất động sản, du lịch - nghỉ dưỡng, y tế, giáo dục, công nghiệp và công nghệ.',
     industry: 'Bất động sản',
     size: '1000+',
     location: 'Hà Nội',
@@ -67,7 +51,8 @@ export const mockCompanies: Company[] = [
     nameEn: 'Techcombank',
     logo: 'https://readdy.ai/api/search-image?query=Professional%20banking%20logo%20design%20with%20clean%20lines%2C%20blue%20and%20white%20minimalist%20corporate%20identity%2C%20modern%20financial%20brand%20mark&width=120&height=120&seq=logo-techcombank&orientation=squarish',
     banner: 'https://readdy.ai/api/search-image?query=Modern%20bank%20office%20interior%20with%20glass%20walls%2C%20professional%20atmosphere%2C%20warm%20lighting%2C%20corporate%20financial%20environment%2C%20clean%20minimal%20design&width=1200&height=400&seq=banner-techcombank&orientation=landscape',
-    description: 'Ngân hàng TMCP Kỹ Thương Việt Nam (Techcombank) là một trong những ngân hàng thương mại cổ phần hàng đầu Việt Nam với hệ sinh thái sản phẩm đa dạng và nền tảng công nghệ hiện đại.',
+    description:
+      'Ngân hàng TMCP Kỹ Thương Việt Nam (Techcombank) là một trong những ngân hàng thương mại cổ phần hàng đầu Việt Nam với hệ sinh thái sản phẩm đa dạng và nền tảng công nghệ hiện đại.',
     industry: 'Ngân hàng',
     size: '1000+',
     location: 'Hà Nội',
@@ -87,7 +72,8 @@ export const mockCompanies: Company[] = [
     nameEn: 'Masan Group',
     logo: 'https://readdy.ai/api/search-image?query=Cosumer%20goods%20company%20logo%20with%20modern%20typography%2C%20green%20and%20white%20palette%2C%20clean%20minimalist%20corporate%20brand%20identity&width=120&height=120&seq=logo-masan&orientation=squarish',
     banner: 'https://readdy.ai/api/search-image?query=Modern%20consumer%20goods%20company%20office%20with%20product%20displays%2C%20clean%20bright%20interior%2C%20professional%20corporate%20environment%2C%20natural%20light&width=1200&height=400&seq=banner-masan&orientation=landscape',
-    description: 'Masan Group là tập đoàn hàng tiêu dùng hàng đầu Việt Nam với hệ sinh thái đa dạng bao gồm hàng tiêu dùng, bán lẻ, tài nguyên và dịch vụ tài chính.',
+    description:
+      'Masan Group là tập đoàn hàng tiêu dùng hàng đầu Việt Nam với hệ sinh thái đa dạng bao gồm hàng tiêu dùng, bán lẻ, tài nguyên và dịch vụ tài chính.',
     industry: 'Sản xuất',
     size: '501-1000',
     location: 'Hồ Chí Minh',
@@ -107,7 +93,8 @@ export const mockCompanies: Company[] = [
     nameEn: 'MoMo (M_Service)',
     logo: 'https://readdy.ai/api/search-image?query=Fintech%20app%20logo%20design%20with%20playful%20modern%20style%2C%20pink%20and%20white%20gradient%2C%20minimalist%20rounded%20icon%20mark&width=120&height=120&seq=logo-momo&orientation=squarish',
     banner: 'https://readdy.ai/api/search-image?query=Modern%20fintech%20startup%20office%20with%20colorful%20creative%20interior%2C%20open%20workspace%20design%2C%20young%20dynamic%20atmosphere%2C%20collaborative%20environment&width=1200&height=400&seq=banner-momo&orientation=landscape',
-    description: 'MoMo là ví điện tử hàng đầu Việt Nam với hơn 31 triệu người dùng. Chúng tôi xây dựng nền tảng thanh toán di động và hệ sinh thái tài chính số toàn diện.',
+    description:
+      'MoMo là ví điện tử hàng đầu Việt Nam với hơn 31 triệu người dùng. Chúng tôi xây dựng nền tảng thanh toán di động và hệ sinh thái tài chính số toàn diện.',
     industry: 'Công nghệ thông tin',
     size: '201-500',
     location: 'Hồ Chí Minh',
@@ -127,7 +114,8 @@ export const mockCompanies: Company[] = [
     nameEn: 'Shopee Vietnam',
     logo: 'https://readdy.ai/api/search-image?query=Ecommerce%20orange%20logo%20design%20with%20shopping%20bag%20icon%2C%20modern%20clean%20style%2C%20flat%20design%20corporate%20brand%20identity&width=120&height=120&seq=logo-shopee&orientation=squarish',
     banner: 'https://readdy.ai/api/search-image?query=Modern%20ecommerce%20company%20office%20with%20vibrant%20orange%20accents%2C%20open%20workspace%2C%20tech%20startup%20culture%2C%20collaborative%20meeting%20areas&width=1200&height=400&seq=banner-shopee&orientation=landscape',
-    description: 'Shopee là nền tảng thương mại điện tử hàng đầu Đông Nam Á và Đài Loan. Tại Việt Nam, Shopee kết nối hàng triệu người mua và người bán mỗi ngày.',
+    description:
+      'Shopee là nền tảng thương mại điện tử hàng đầu Đông Nam Á và Đài Loan. Tại Việt Nam, Shopee kết nối hàng triệu người mua và người bán mỗi ngày.',
     industry: 'Công nghệ thông tin',
     size: '1000+',
     location: 'Hồ Chí Minh',
@@ -147,7 +135,8 @@ export const mockCompanies: Company[] = [
     nameEn: 'Zalo (VNG Corporation)',
     logo: 'https://readdy.ai/api/search-image?query=Tech%20company%20logo%20with%20speech%20bubble%20icon%2C%20blue%20gradient%20modern%20design%2C%20clean%20minimalist%20corporate%20identity&width=120&height=120&seq=logo-zalo&orientation=squarish',
     banner: 'https://readdy.ai/api/search-image?query=Modern%20gaming%20and%20tech%20company%20headquarters%20with%20creative%20design%2C%20open%20collaborative%20workspace%2C%20young%20vibrant%20atmosphere&width=1200&height=400&seq=banner-zalo&orientation=landscape',
-    description: 'VNG là công ty công nghệ hàng đầu Việt Nam, nổi tiếng với ứng dụng nhắn tin Zalo, cổng game ZingPlay và hệ sinh thái sản phẩm số đa dạng.',
+    description:
+      'VNG là công ty công nghệ hàng đầu Việt Nam, nổi tiếng với ứng dụng nhắn tin Zalo, cổng game ZingPlay và hệ sinh thái sản phẩm số đa dạng.',
     industry: 'Công nghệ thông tin',
     size: '501-1000',
     location: 'Hồ Chí Minh',
@@ -167,7 +156,8 @@ export const mockCompanies: Company[] = [
     nameEn: 'Viettel Digital',
     logo: 'https://readdy.ai/api/search-image?query=Telecom%20company%20logo%20design%20with%20signal%20waves%20icon%2C%20green%20and%20white%20color%20scheme%2C%20modern%20minimalist%20corporate%20brand&width=120&height=120&seq=logo-viettel&orientation=squarish',
     banner: 'https://readdy.ai/api/search-image?query=Large%20technology%20campus%20with%20modern%20buildings%2C%20green%20landscape%2C%20professional%20corporate%20headquarters%2C%20innovation%20center&width=1200&height=400&seq=banner-viettel&orientation=landscape',
-    description: 'Viettel Digital là đơn vị thành viên của Tập đoàn Viettel, tập trung phát triển các sản phẩm và dịch vụ số, chuyển đổi số cho doanh nghiệp và chính phủ.',
+    description:
+      'Viettel Digital là đơn vị thành viên của Tập đoàn Viettel, tập trung phát triển các sản phẩm và dịch vụ số, chuyển đổi số cho doanh nghiệp và chính phủ.',
     industry: 'Công nghệ thông tin',
     size: '1000+',
     location: 'Hà Nội',
@@ -187,7 +177,8 @@ export const mockCompanies: Company[] = [
     nameEn: 'ABC Tech JSC',
     logo: 'https://readdy.ai/api/search-image?query=Startup%20tech%20company%20logo%20with%20abstract%20geometric%20shape%2C%20warm%20coral%20and%20white%20color%20palette%2C%20modern%20minimalist%20design&width=120&height=120&seq=logo-abctech&orientation=squarish',
     banner: 'https://readdy.ai/api/search-image?query=Small%20modern%20tech%20startup%20office%20with%20creative%20decor%2C%20cozy%20warm%20atmosphere%2C%20plants%20and%20wooden%20furniture%2C%20collaborative%20environment&width=1200&height=400&seq=banner-abctech&orientation=landscape',
-    description: 'ABC Tech là startup công nghệ chuyên phát triển các giải pháp AI và Machine Learning cho doanh nghiệp vừa và nhỏ tại Việt Nam. Chúng tôi đang tìm kiếm những tài năng công nghệ để cùng phát triển.',
+    description:
+      'ABC Tech là startup công nghệ chuyên phát triển các giải pháp AI và Machine Learning cho doanh nghiệp vừa và nhỏ tại Việt Nam. Chúng tôi đang tìm kiếm những tài năng công nghệ để cùng phát triển.',
     industry: 'Công nghệ thông tin',
     size: '11-50',
     location: 'Hồ Chí Minh',
@@ -207,7 +198,8 @@ export const mockCompanies: Company[] = [
     nameEn: 'XYZ Media Co., Ltd',
     logo: 'https://readdy.ai/api/search-image?query=Creative%20media%20agency%20logo%20with%20modern%20typography%20and%20geometric%20play%20button%20icon%2C%20vibrant%20warm%20gradient%20colors&width=120&height=120&seq=logo-xyzmedia&orientation=squarish',
     banner: 'https://readdy.ai/api/search-image?query=Creative%20media%20agency%20office%20with%20vibrant%20colorful%20interior%2C%20studio%20lighting%20equipment%2C%20modern%20creative%20workspace%2C%20artistic%20atmosphere&width=1200&height=400&seq=banner-xyzmedia&orientation=landscape',
-    description: 'XYZ Media là agency sáng tạo chuyên cung cấp dịch vụ video marketing, content creation và quản lý mạng xã hội cho các thương hiệu lớn tại Việt Nam.',
+    description:
+      'XYZ Media là agency sáng tạo chuyên cung cấp dịch vụ video marketing, content creation và quản lý mạng xã hội cho các thương hiệu lớn tại Việt Nam.',
     industry: 'Marketing',
     size: '11-50',
     location: 'Đà Nẵng',
@@ -227,7 +219,8 @@ export const mockCompanies: Company[] = [
     nameEn: 'Galaxy Digital Co., Ltd',
     logo: 'https://readdy.ai/api/search-image?query=Media%20company%20logo%20with%20star%20and%20play%20button%20icon%2C%20purple%20gradient%20modern%20design%2C%20creative%20brand%20identity&width=120&height=120&seq=logo-galaxy&orientation=squarish',
     banner: 'https://readdy.ai/api/search-image?query=Digital%20media%20production%20studio%20with%20professional%20lighting%20equipment%2C%20creative%20workspace%2C%20modern%20industrial%20interior%20design%2C%20creative%20team%20atmosphere&width=1200&height=400&seq=banner-galaxy&orientation=landscape',
-    description: 'Galaxy Digital là công ty truyền thông số chuyên sản xuất nội dung video, podcast và chiến dịch influencer marketing cho các thương hiệu tại thị trường Việt Nam.',
+    description:
+      'Galaxy Digital là công ty truyền thông số chuyên sản xuất nội dung video, podcast và chiến dịch influencer marketing cho các thương hiệu tại thị trường Việt Nam.',
     industry: 'Marketing',
     size: '11-50',
     location: 'Hồ Chí Minh',
@@ -243,11 +236,4 @@ export const mockCompanies: Company[] = [
   },
 ];
 
-export const companySizes: string[] = [
-  '1-10',
-  '11-50',
-  '51-200',
-  '201-500',
-  '501-1000',
-  '1000+',
-];
+export { companySizes } from '@/constants/company';

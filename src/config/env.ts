@@ -10,13 +10,25 @@ function normalizeApiBaseUrl(raw: string): string {
   return `http://${trimmed}`;
 }
 
+function readBool(key: keyof ImportMetaEnv, fallback: boolean): boolean {
+  const value = readEnv(key);
+  if (!value) return fallback;
+  return value === 'true' || value === '1';
+}
+
+/** Prefer VITE_BACKEND_URL (axios standard), keep VITE_API_BASE_URL as alias. */
+const apiBaseUrl = normalizeApiBaseUrl(
+  readEnv('VITE_BACKEND_URL') || readEnv('VITE_API_BASE_URL'),
+);
+const useMockFlag = readEnv('VITE_USE_MOCK');
+
 export const env = {
   appName: readEnv('VITE_APP_NAME', 'Jobs247'),
   appUrl: readEnv('VITE_APP_URL'),
   basePath: readEnv('VITE_BASE_PATH', '/'),
-  apiBaseUrl: normalizeApiBaseUrl(readEnv('VITE_API_BASE_URL')),
-  contactFormUrl: readEnv('VITE_CONTACT_FORM_URL'),
-  newsletterFormUrl: readEnv('VITE_NEWSLETTER_FORM_URL'),
+  apiBaseUrl,
+  /** Mock-first when flag is true, or when backend URL is empty. */
+  useMock: useMockFlag ? readBool('VITE_USE_MOCK', true) : !apiBaseUrl,
   isDev: import.meta.env.DEV,
   isProd: import.meta.env.PROD,
 } as const;

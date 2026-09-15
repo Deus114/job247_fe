@@ -1,5 +1,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { mockProjectUsers, type ProjectUser } from '@/mocks/projectUsers';
+import { mockProjectUsers } from '@/mocks/projectUsers';
+import type { ProjectUser } from '@/types/projectUser';
 
 interface ProjectUsersState {
   items: ProjectUser[];

@@ -1,5 +1,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { mockRoles, mockPermissions, type Role, type Permission } from '@/mocks/roles';
+import { mockRoles, mockPermissions } from '@/mocks/roles';
+import type { Role, Permission } from '@/types/role';
 
 interface RolesState {
   roles: Role[];

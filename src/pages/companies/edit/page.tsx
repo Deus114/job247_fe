@@ -1,20 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type SubmitEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { updateCompany } from '@/store/slices/companySlice';
-import { companySizes } from '@/mocks/companies';
-import CustomSelect from '@/components/base/CustomSelect';
-import LoadingSpinner from '@/components/base/LoadingSpinner';
+import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/features/auth';
+import { useJobs } from '@/features/jobs';
+import { useCompanies, companySizes } from '@/features/companies';
+import CustomSelect from '@/components/ui/CustomSelect';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 export default function EditCompanyPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
-  const { user } = useAppSelector((state) => state.auth);
-  const companies = useAppSelector((state) => state.companies.items);
-  const loading = useAppSelector((state) => state.companies.loading);
-  const categories = useAppSelector((state) => (state.jobs?.categories || []).map((c: { name: string }) => c.name));
-
+  const { user } = useAuth();
+  const { companies, loading, updateCompany } = useCompanies();
+  const { categories: rawCategories } = useJobs();
+  
+  const categories = (rawCategories || []).map((c: { name: string }) => c.name);
   const company = companies.find((c) => c.id === id);
 
   const [formData, setFormData] = useState({
@@ -61,10 +62,10 @@ export default function EditCompanyPage() {
           <div className="w-20 h-20 mx-auto rounded-full bg-background-200 flex items-center justify-center mb-5">
             <i className="ri-building-line text-3xl text-foreground-400"></i>
           </div>
-          <h2 className="text-xl font-heading font-bold text-foreground-950 mb-2">Không tìm thấy công ty</h2>
-          <p className="text-sm text-foreground-600 mb-6">Công ty này không tồn tại hoặc đã bị xóa.</p>
+          <h2 className="text-xl font-heading font-bold text-foreground-950 mb-2">{t('company.notFound', 'Không tìm thấy công ty')}</h2>
+          <p className="text-sm text-foreground-600 mb-6">{t('company.notFoundDesc', 'Công ty này không tồn tại hoặc đã bị xóa.')}</p>
           <button onClick={() => navigate('/companies/manage')} className="px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap">
-            Quay lại
+            {t('common.back')}
           </button>
         </div>
       </div>
@@ -78,10 +79,10 @@ export default function EditCompanyPage() {
           <div className="w-20 h-20 mx-auto rounded-full bg-red-50 flex items-center justify-center mb-5">
             <i className="ri-forbid-line text-3xl text-red-500"></i>
           </div>
-          <h2 className="text-xl font-heading font-bold text-foreground-950 mb-2">Truy cập bị từ chối</h2>
-          <p className="text-sm text-foreground-600 mb-6">Bạn không có quyền chỉnh sửa công ty này.</p>
+          <h2 className="text-xl font-heading font-bold text-foreground-950 mb-2">{t('common.accessDenied')}</h2>
+          <p className="text-sm text-foreground-600 mb-6">{t('company.noEditPermission', 'Bạn không có quyền chỉnh sửa công ty này.')}</p>
           <button onClick={() => navigate('/companies/manage')} className="px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap">
-            Quay lại
+            {t('common.back')}
           </button>
         </div>
       </div>
@@ -101,27 +102,27 @@ export default function EditCompanyPage() {
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.name.trim()) newErrors.name = 'Vui lòng nhập tên công ty';
-    if (!formData.industry) newErrors.industry = 'Vui lòng chọn ngành nghề';
-    if (!formData.size) newErrors.size = 'Vui lòng chọn quy mô';
-    if (!formData.location.trim()) newErrors.location = 'Vui lòng nhập địa điểm';
-    if (!formData.address.trim()) newErrors.address = 'Vui lòng nhập địa chỉ';
-    if (!formData.contactEmail.trim()) newErrors.contactEmail = 'Vui lòng nhập email liên hệ';
-    if (!formData.contactPhone.trim()) newErrors.contactPhone = 'Vui lòng nhập số điện thoại';
-    if (!formData.taxCode.trim()) newErrors.taxCode = 'Vui lòng nhập mã số thuế';
-    if (!formData.description.trim()) newErrors.description = 'Vui lòng nhập mô tả công ty';
-    if (formData.description.length > 500) newErrors.description = 'Mô tả không được vượt quá 500 ký tự';
-    if (formData.website && !/^https?:\/\/.+/.test(formData.website)) newErrors.website = 'URL không hợp lệ';
+    if (!formData.name.trim()) newErrors.name = t('company.validation.nameRequired');
+    if (!formData.industry) newErrors.industry = t('validation.selectOption');
+    if (!formData.size) newErrors.size = t('validation.selectOption');
+    if (!formData.location.trim()) newErrors.location = t('validation.required');
+    if (!formData.address.trim()) newErrors.address = t('company.validation.addressRequired');
+    if (!formData.contactEmail.trim()) newErrors.contactEmail = t('validation.required');
+    if (!formData.contactPhone.trim()) newErrors.contactPhone = t('validation.required');
+    if (!formData.taxCode.trim()) newErrors.taxCode = t('validation.required');
+    if (!formData.description.trim()) newErrors.description = t('company.validation.descRequired');
+    if (formData.description.length > 500) newErrors.description = t('validation.maxLength', { max: 500 });
+    if (formData.website && !/^https?:\/\/.+/.test(formData.website)) newErrors.website = t('validation.urlInvalid');
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!validate()) return;
 
-    dispatch(updateCompany({
-      id: company.id,
+    updateCompany({
+      ...company,
       name: formData.name.trim(),
       nameEn: formData.nameEn.trim() || formData.name.trim(),
       description: formData.description.trim(),
@@ -135,7 +136,8 @@ export default function EditCompanyPage() {
       taxCode: formData.taxCode.trim(),
       status: company.status === 'needs_revision' ? 'pending' : company.status,
       adminNote: undefined,
-    }));
+      updatedAt: new Date().toISOString().split('T')[0],
+    });
     setSaved(true);
   };
 
@@ -146,17 +148,17 @@ export default function EditCompanyPage() {
           <div className="w-20 h-20 mx-auto rounded-full bg-accent-100 flex items-center justify-center mb-5">
             <i className="ri-check-line text-4xl text-accent-500"></i>
           </div>
-          <h2 className="text-2xl font-heading font-bold text-foreground-950 mb-3">Đã cập nhật!</h2>
-          <p className="text-sm text-foreground-600 mb-2">Thông tin công ty <strong>{formData.name}</strong> đã được cập nhật.</p>
+          <h2 className="text-2xl font-heading font-bold text-foreground-950 mb-3">{t('company.updateSuccess', 'Đã cập nhật!')}</h2>
+          <p className="text-sm text-foreground-600 mb-2">{t('company.updated', 'Thông tin công ty')} <strong>{formData.name}</strong> {t('company.wasUpdated', 'đã được cập nhật')}.</p>
           {company.status === 'needs_revision' && (
-            <p className="text-xs text-yellow-600 bg-yellow-50 rounded-lg px-4 py-2 mb-6">Hồ sơ đã được gửi lại để admin xét duyệt.</p>
+            <p className="text-xs text-yellow-600 bg-yellow-50 rounded-lg px-4 py-2 mb-6">{t('company.resubmitted', 'Hồ sơ đã được gửi lại để admin xét duyệt.')}</p>
           )}
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button onClick={() => navigate(`/companies/${company.id}`)} className="px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap">
-              Xem hồ sơ
+              {t('company.viewProfile', 'Xem hồ sơ')}
             </button>
             <button onClick={() => navigate('/companies/manage')} className="px-6 py-2.5 border border-background-300 text-foreground-700 rounded-full text-sm font-medium hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap">
-              Quản lý công ty
+              {t('company.myCompanies')}
             </button>
           </div>
         </div>
@@ -173,9 +175,9 @@ export default function EditCompanyPage() {
               <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center rounded-full border border-background-200 text-foreground-500 hover:bg-background-50 transition-colors cursor-pointer">
                 <i className="ri-arrow-left-line"></i>
               </button>
-              <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground-950">Chỉnh sửa hồ sơ công ty</h1>
+              <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground-950">{t('company.edit')}</h1>
             </div>
-            <p className="text-sm text-foreground-600 mt-1 ml-12">Cập nhật thông tin công ty <strong>{company.name}</strong></p>
+            <p className="text-sm text-foreground-600 mt-1 ml-12">{t('company.updateInfo', 'Cập nhật thông tin công ty')} <strong>{company.name}</strong></p>
           </div>
 
           {company.adminNote && (
@@ -185,9 +187,9 @@ export default function EditCompanyPage() {
                   <i className="ri-error-warning-line text-yellow-600"></i>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-yellow-800 mb-1">Yêu cầu chỉnh sửa từ Admin</p>
+                  <p className="text-sm font-semibold text-yellow-800 mb-1">{t('company.revisionRequest', 'Yêu cầu chỉnh sửa từ Admin')}</p>
                   <p className="text-sm text-yellow-700">{company.adminNote}</p>
-                  <p className="text-xs text-yellow-600 mt-2">Vui lòng cập nhật thông tin theo góp ý trên và gửi lại để được xét duyệt.</p>
+                  <p className="text-xs text-yellow-600 mt-2">{t('company.revisionInstr', 'Vui lòng cập nhật thông tin theo góp ý trên và gửi lại để được xét duyệt.')}</p>
                 </div>
               </div>
             </div>
@@ -196,7 +198,7 @@ export default function EditCompanyPage() {
           <form onSubmit={handleSubmit} className="bg-background-50 border border-background-200/70 rounded-2xl p-6 md:p-8 space-y-6">
             <div>
               <h3 className="text-base font-heading font-semibold text-foreground-950 mb-4 flex items-center gap-2">
-                <i className="ri-information-line text-primary-500"></i> Thông tin cơ bản
+                <i className="ri-information-line text-primary-500"></i> {t('company.basicInfo', 'Thông tin cơ bản')}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
@@ -308,10 +310,10 @@ export default function EditCompanyPage() {
 
             <div className="flex flex-col sm:flex-row gap-3 pt-4">
               <button type="submit" className="flex-1 py-3 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap">
-                <i className="ri-save-line mr-1.5"></i> Lưu thay đổi
+                <i className="ri-save-line mr-1.5"></i> {t('common.save')}
               </button>
               <button type="button" onClick={() => navigate('/companies/manage')} className="px-6 py-3 border border-background-300 text-foreground-700 rounded-xl text-sm font-medium hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap">
-                Hủy
+                {t('common.cancel')}
               </button>
             </div>
           </form>

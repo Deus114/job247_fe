@@ -1,120 +1,342 @@
-import type { RouteObject } from 'react-router-dom';
-import NotFound from '@/pages/NotFound';
-import Layout from '@/components/feature/Layout';
-import AuthGuard from '@/components/feature/AuthGuard';
-import AdminAuthGuard from '@/components/feature/AdminAuthGuard';
-import Home from '@/pages/home/page';
-import JobsPage from '@/pages/jobs/page';
-import JobDetailPage from '@/pages/jobs/detail/page';
-import PostJobPage from '@/pages/post-job/page';
-import ContactPage from '@/pages/contact/page';
-import LoginPage from '@/pages/login/page';
-import RegisterPage from '@/pages/register/page';
-import SettingsPage from '@/pages/settings/page';
-import AdminLoginPage from '@/pages/admin/login/page';
-import AdminPage from '@/pages/admin/page';
-import CompaniesPage from '@/pages/companies/page';
-import CreateCompanyPage from '@/pages/companies/create/page';
-import EditCompanyPage from '@/pages/companies/edit/page';
-import CompanyDetailPage from '@/pages/companies/detail/page';
-import CompaniesBrowsePage from '@/pages/companies/browse/page';
-import SavedJobsPage from '@/pages/saved-jobs/page';
-import MyApplicationsPage from '@/pages/my-applications/page';
-import DashboardPage from '@/pages/dashboard/page';
+import { lazy } from "react";
+import { Navigate, type RouteObject } from "react-router-dom";
+import AppLayout from "@/layouts/AppLayout";
+import AdminLayout from "@/layouts/AdminLayout";
+import AuthGuard from "@/components/guards/AuthGuard";
+import AdminAuthGuard from "@/components/guards/AdminAuthGuard";
+import LazyPage from "@/components/LazyPage";
+
+const Home = lazy(() => import("@/pages/home/page"));
+const JobsPage = lazy(() => import("@/pages/jobs/page"));
+const JobDetailPage = lazy(() => import("@/pages/jobs/detail/page"));
+const PostJobPage = lazy(() => import("@/pages/post-job/page"));
+const ContactPage = lazy(() => import("@/pages/contact/page"));
+const LoginPage = lazy(() => import("@/pages/login/page"));
+const RegisterPage = lazy(() => import("@/pages/register/page"));
+const SettingsPage = lazy(() => import("@/pages/settings/page"));
+const AdminLoginPage = lazy(() => import("@/pages/admin/login/page"));
+const CompaniesPage = lazy(() => import("@/pages/companies/page"));
+const CreateCompanyPage = lazy(() => import("@/pages/companies/create/page"));
+const EditCompanyPage = lazy(() => import("@/pages/companies/edit/page"));
+const CompanyDetailPage = lazy(() => import("@/pages/companies/detail/page"));
+const CompaniesBrowsePage = lazy(() => import("@/pages/companies/browse/page"));
+const SavedJobsPage = lazy(() => import("@/pages/saved-jobs/page"));
+const MyApplicationsPage = lazy(() => import("@/pages/my-applications/page"));
+const DashboardPage = lazy(() => import("@/pages/dashboard/page"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
+
+const AdminDashboardPage = lazy(
+  () => import("@/features/admin/components/DashboardPage"),
+);
+const AdminJobsPage = lazy(
+  () => import("@/features/admin/components/JobsPage"),
+);
+const AdminCompaniesPage = lazy(
+  () => import("@/features/admin/components/CompaniesPage"),
+);
+const AdminProjectUsersPage = lazy(
+  () => import("@/features/admin/components/ProjectUsersPage"),
+);
+const AdminUsersPage = lazy(
+  () => import("@/features/admin/components/UsersPage"),
+);
+const AdminRolesPage = lazy(
+  () => import("@/features/admin/components/RolesPage"),
+);
+const AdminPermissionsPage = lazy(
+  () => import("@/features/admin/components/PermissionsPage"),
+);
+const AdminCategoriesPage = lazy(
+  () => import("@/features/admin/components/CategoriesPage"),
+);
+const AdminEducationPage = lazy(
+  () => import("@/features/admin/components/EducationPage"),
+);
+const AdminBannersPage = lazy(
+  () => import("@/features/admin/components/BannersPage"),
+);
+const AdminBusinessConfigPage = lazy(
+  () => import("@/features/admin/components/BusinessConfigPage"),
+);
+const AdminProfilePage = lazy(
+  () => import("@/features/admin/components/ProfilePage"),
+);
 
 const routes: RouteObject[] = [
+  // App routes
   {
-    element: <Layout />,
+    element: <AppLayout />,
     children: [
-      { path: '/', element: <Home /> },
-      { path: '/jobs', element: <JobsPage /> },
-      { path: '/jobs/:id', element: <JobDetailPage /> },
       {
-        path: '/post-job',
+        path: "/",
         element: (
-          <AuthGuard>
-            <PostJobPage />
-          </AuthGuard>
-        ),
-      },
-      { path: '/contact', element: <ContactPage /> },
-      { path: '/login', element: <LoginPage /> },
-      { path: '/register', element: <RegisterPage /> },
-      {
-        path: '/settings',
-        element: (
-          <AuthGuard>
-            <SettingsPage />
-          </AuthGuard>
+          <LazyPage>
+            <Home />
+          </LazyPage>
         ),
       },
       {
-        path: '/dashboard',
+        path: "/jobs",
         element: (
-          <AuthGuard requiredRole="employer">
-            <DashboardPage />
-          </AuthGuard>
+          <LazyPage>
+            <JobsPage />
+          </LazyPage>
         ),
       },
       {
-        path: '/companies/manage',
+        path: "/jobs/:id",
         element: (
-          <AuthGuard requiredRole="employer">
-            <CompaniesPage />
-          </AuthGuard>
+          <LazyPage>
+            <JobDetailPage />
+          </LazyPage>
         ),
       },
       {
-        path: '/companies/create',
+        path: "/post-job",
         element: (
-          <AuthGuard requiredRole="employer">
-            <CreateCompanyPage />
-          </AuthGuard>
+          <LazyPage>
+            <AuthGuard requiredRole="employer">
+              <PostJobPage />
+            </AuthGuard>
+          </LazyPage>
         ),
       },
       {
-        path: '/companies/edit/:id',
+        path: "/contact",
         element: (
-          <AuthGuard requiredRole="employer">
-            <EditCompanyPage />
-          </AuthGuard>
-        ),
-      },
-      { path: '/companies/:id', element: <CompanyDetailPage /> },
-      { path: '/companies', element: <CompaniesBrowsePage /> },
-      {
-        path: '/saved-jobs',
-        element: (
-          <AuthGuard>
-            <SavedJobsPage />
-          </AuthGuard>
+          <LazyPage>
+            <ContactPage />
+          </LazyPage>
         ),
       },
       {
-        path: '/my-applications',
+        path: "/login",
         element: (
-          <AuthGuard>
-            <MyApplicationsPage />
-          </AuthGuard>
+          <LazyPage>
+            <LoginPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "/register",
+        element: (
+          <LazyPage>
+            <RegisterPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "/settings",
+        element: (
+          <LazyPage>
+            <AuthGuard>
+              <SettingsPage />
+            </AuthGuard>
+          </LazyPage>
+        ),
+      },
+      {
+        path: "/dashboard",
+        element: (
+          <LazyPage>
+            <AuthGuard requiredRole="employer">
+              <DashboardPage />
+            </AuthGuard>
+          </LazyPage>
+        ),
+      },
+      {
+        path: "/companies/manage",
+        element: (
+          <LazyPage>
+            <AuthGuard requiredRole="employer">
+              <CompaniesPage />
+            </AuthGuard>
+          </LazyPage>
+        ),
+      },
+      {
+        path: "/companies/create",
+        element: (
+          <LazyPage>
+            <AuthGuard requiredRole="employer">
+              <CreateCompanyPage />
+            </AuthGuard>
+          </LazyPage>
+        ),
+      },
+      {
+        path: "/companies/edit/:id",
+        element: (
+          <LazyPage>
+            <AuthGuard requiredRole="employer">
+              <EditCompanyPage />
+            </AuthGuard>
+          </LazyPage>
+        ),
+      },
+      {
+        path: "/companies/:id",
+        element: (
+          <LazyPage>
+            <CompanyDetailPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "/companies",
+        element: (
+          <LazyPage>
+            <CompaniesBrowsePage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "/saved-jobs",
+        element: (
+          <LazyPage>
+            <AuthGuard>
+              <SavedJobsPage />
+            </AuthGuard>
+          </LazyPage>
+        ),
+      },
+      {
+        path: "/my-applications",
+        element: (
+          <LazyPage>
+            <AuthGuard>
+              <MyApplicationsPage />
+            </AuthGuard>
+          </LazyPage>
+        ),
+      },
+    ],
+  },
+
+  // Admin routes
+  {
+    path: "/admin/login",
+    element: (
+      <LazyPage>
+        <AdminLoginPage />
+      </LazyPage>
+    ),
+  },
+  {
+    path: "/admin",
+    element: (
+      <AdminAuthGuard>
+        <AdminLayout />
+      </AdminAuthGuard>
+    ),
+    children: [
+      { index: true, element: <Navigate to="dashboard" replace /> },
+      {
+        path: "dashboard",
+        element: (
+          <LazyPage>
+            <AdminDashboardPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "jobs",
+        element: (
+          <LazyPage>
+            <AdminJobsPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "companies",
+        element: (
+          <LazyPage>
+            <AdminCompaniesPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "project-users",
+        element: (
+          <LazyPage>
+            <AdminProjectUsersPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "users",
+        element: (
+          <LazyPage>
+            <AdminUsersPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "roles",
+        element: (
+          <LazyPage>
+            <AdminRolesPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "permissions",
+        element: (
+          <LazyPage>
+            <AdminPermissionsPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "categories",
+        element: (
+          <LazyPage>
+            <AdminCategoriesPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "education",
+        element: (
+          <LazyPage>
+            <AdminEducationPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "banners",
+        element: (
+          <LazyPage>
+            <AdminBannersPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "business-config",
+        element: (
+          <LazyPage>
+            <AdminBusinessConfigPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "profile",
+        element: (
+          <LazyPage>
+            <AdminProfilePage />
+          </LazyPage>
         ),
       },
     ],
   },
   {
-    path: '/admin/login',
-    element: <AdminLoginPage />,
-  },
-  {
-    path: '/admin',
+    path: "*",
     element: (
-      <AdminAuthGuard>
-        <AdminPage />
-      </AdminAuthGuard>
+      <LazyPage>
+        <NotFound />
+      </LazyPage>
     ),
-  },
-  {
-    path: '*',
-    element: <NotFound />,
   },
 ];
 

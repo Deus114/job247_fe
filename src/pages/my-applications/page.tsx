@@ -1,18 +1,10 @@
 import { useState, useMemo } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { removeApplication } from '@/store/slices/applicationsSlice';
-import ViewApplicationModal from './components/ViewApplicationModal';
-import EditApplicationModal from './components/EditApplicationModal';
-import ConfirmCancelModal from './components/ConfirmCancelModal';
-import type { Application } from '@/store/slices/applicationsSlice';
-
-const statusLabel: Record<string, string> = {
-  pending: 'Đang chờ',
-  reviewing: 'Đang xem xét',
-  accepted: 'Được chấp nhận',
-  rejected: 'Từ chối',
-};
+import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/features/auth';
+import { useApplications, ViewApplicationModal, EditApplicationModal, ConfirmCancelModal } from '@/features/applications';
+import { useJobs } from '@/features/jobs';
+import type { Application } from '@/types/application';
 
 const statusColor: Record<string, string> = {
   pending: 'bg-secondary-100 text-secondary-700',
@@ -22,10 +14,10 @@ const statusColor: Record<string, string> = {
 };
 
 export default function MyApplicationsPage() {
-  const dispatch = useAppDispatch();
-  const { user } = useAppSelector((state) => state.auth);
-  const applications = useAppSelector((state) => state.applications.items);
-  const allJobs = useAppSelector((state) => state.jobs.items);
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const { applications, removeApplication } = useApplications();
+  const { jobs: allJobs } = useJobs();
 
   const [viewApp, setViewApp] = useState<Application | null>(null);
   const [editApp, setEditApp] = useState<Application | null>(null);
@@ -33,13 +25,22 @@ export default function MyApplicationsPage() {
 
   const jobsMap = useMemo(() => new Map(allJobs.map((j) => [j.id, j])), [allJobs]);
 
+  const myApplications = useMemo(() => {
+    if (!user) return [];
+    return applications.filter(
+      (app) =>
+        app.userId === user.id ||
+        (!app.userId && app.email.toLowerCase() === user.email.toLowerCase()),
+    );
+  }, [applications, user]);
+
   if (user?.role === 'employer') {
     return <Navigate to="/" replace />;
   }
 
   const handleCancelConfirm = () => {
     if (cancelApp) {
-      dispatch(removeApplication(cancelApp.id));
+      removeApplication(cancelApp.id);
       setCancelApp(null);
     }
   };
@@ -49,29 +50,29 @@ export default function MyApplicationsPage() {
       <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-8">
         <div className="mb-6">
           <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground-950 mb-2">
-            Việc làm đã ứng tuyển
+            {t('applications.title')}
           </h1>
           <p className="text-sm text-foreground-600">
-            Theo dõi trạng thái, xem và chỉnh sửa các đơn ứng tuyển của bạn
+            {t('applications.desc', 'Theo dõi trạng thái, xem và chỉnh sửa các đơn ứng tuyển của bạn')}
           </p>
         </div>
 
-        {applications.length === 0 ? (
+        {myApplications.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-20 h-20 mx-auto rounded-full bg-background-100 flex items-center justify-center mb-5">
               <i className="ri-send-plane-line text-3xl text-foreground-400"></i>
             </div>
             <h3 className="text-lg font-heading font-semibold text-foreground-950 mb-2">
-              Chưa có đơn ứng tuyển nào
+              {t('applications.empty')}
             </h3>
             <p className="text-sm text-foreground-500 mb-6">
-              Tìm việc và gửi đơn ứng tuyển để theo dõi tại đây
+              {t('applications.emptyDesc')}
             </p>
             <Link
               to="/jobs"
               className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
             >
-              <i className="ri-search-line"></i> Tìm việc làm
+              <i className="ri-search-line"></i> {t('applications.browseJobs')}
             </Link>
           </div>
         ) : (
@@ -81,21 +82,21 @@ export default function MyApplicationsPage() {
                 <thead>
                   <tr className="border-b border-background-200/70 bg-background-100/50">
                     <th className="px-5 py-3.5 text-xs font-semibold text-foreground-600 uppercase tracking-wider">
-                      Công việc
+                      {t('job.jobTitle', 'Công việc')}
                     </th>
                     <th className="px-5 py-3.5 text-xs font-semibold text-foreground-600 uppercase tracking-wider hidden md:table-cell">
-                      Ngày ứng tuyển
+                      {t('applications.appliedDate')}
                     </th>
                     <th className="px-5 py-3.5 text-xs font-semibold text-foreground-600 uppercase tracking-wider">
-                      Trạng thái
+                      {t('applications.status')}
                     </th>
                     <th className="px-5 py-3.5 text-xs font-semibold text-foreground-600 uppercase tracking-wider text-right">
-                      Hành động
+                      {t('applications.actions')}
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-background-200/70">
-                  {applications.map((app) => {
+                  {myApplications.map((app) => {
                     const job = jobsMap.get(app.jobId);
                     return (
                       <tr key={app.id} className="hover:bg-background-100/50 transition-colors">
@@ -132,7 +133,7 @@ export default function MyApplicationsPage() {
                             <span
                               className={`w-1.5 h-1.5 rounded-full ${app.status === 'pending' ? 'bg-secondary-500' : app.status === 'reviewing' ? 'bg-accent-500' : app.status === 'accepted' ? 'bg-green-500' : 'bg-red-500'}`}
                             ></span>
-                            {statusLabel[app.status] || app.status}
+                            {t(`applications.statuses.${app.status}`, app.status)}
                           </span>
                         </td>
                         <td className="px-5 py-4">
@@ -140,21 +141,21 @@ export default function MyApplicationsPage() {
                             <button
                               onClick={() => setViewApp(app)}
                               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-background-100 text-foreground-500 hover:text-primary-500 transition-colors cursor-pointer"
-                              title="Xem chi tiết CV"
+                              title={t('applications.view')}
                             >
                               <i className="ri-eye-line text-lg"></i>
                             </button>
                             <button
                               onClick={() => setEditApp(app)}
                               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-background-100 text-foreground-500 hover:text-accent-500 transition-colors cursor-pointer"
-                              title="Sửa đơn ứng tuyển"
+                              title={t('applications.edit')}
                             >
                               <i className="ri-edit-line text-lg"></i>
                             </button>
                             <button
                               onClick={() => setCancelApp(app)}
                               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-foreground-500 hover:text-red-500 transition-colors cursor-pointer"
-                              title="Hủy ứng tuyển"
+                              title={t('applications.cancel')}
                             >
                               <i className="ri-close-circle-line text-lg"></i>
                             </button>
@@ -162,7 +163,7 @@ export default function MyApplicationsPage() {
                               <Link
                                 to={`/jobs/${job.id}`}
                                 className="w-8 h-8 hidden md:flex items-center justify-center rounded-lg hover:bg-background-100 text-foreground-400 hover:text-foreground-600 transition-colors cursor-pointer"
-                                title="Xem tin tuyển dụng"
+                                title={t('job.viewDetail', 'Xem tin tuyển dụng')}
                               >
                                 <i className="ri-external-link-line text-base"></i>
                               </Link>

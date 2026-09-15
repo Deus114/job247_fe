@@ -1,23 +1,6 @@
-export type ProjectUserRole = 'candidate' | 'recruiter';
+import type { ProjectUser, ProjectUserRole } from '@/types/projectUser';
 
-export interface ProjectUser {
-  id: string;
-  fullName: string;
-  email: string;
-  phone?: string;
-  avatar?: string;
-  role: ProjectUserRole;
-  status: 'active' | 'inactive';
-  createdAt: string;
-  lastLogin?: string;
-  deletedAt?: string;
-  // Candidate-specific
-  jobTitle?: string;
-  education?: string;
-  // Recruiter-specific
-  companyName?: string;
-  companyId?: string;
-}
+export type { ProjectUser, ProjectUserRole };
 
 export const mockProjectUsers: ProjectUser[] = [
   {

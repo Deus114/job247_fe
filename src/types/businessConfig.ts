@@ -1,0 +1,29 @@
+export interface BusinessConfig {
+  id: string;
+  name: string;
+  tagline: string;
+  email: string;
+  phone: string;
+  address: string;
+  taxCode: string;
+  logoUrl: string;
+  faviconUrl: string;
+  loginBgUrl: string;
+  adminLoginBgUrl: string;
+  metaTitle: string;
+  metaDescription: string;
+  metaKeywords: string;
+  footerAboutDesc: string;
+  footerCopyright: string;
+  footerAddress: string;
+  footerPhone: string;
+  footerEmail: string;
+  socialFacebook: string;
+  socialLinkedin: string;
+  socialTwitter: string;
+  socialYoutube: string;
+  privacyPolicyUrl: string;
+  termsOfServiceUrl: string;
+  createdAt: string;
+  updatedAt: string;
+}

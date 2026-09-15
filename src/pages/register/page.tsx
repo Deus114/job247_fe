@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { useState, type SubmitEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAppDispatch } from '@/store/hooks';
-import { login } from '@/store/slices/authSlice';
+import { useAuth } from '@/features/auth';
+import { registerRequest } from '@/api';
 
 export default function RegisterPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
+  const { login: loginUser } = useAuth();
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -17,27 +17,36 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp');
+      setError(t('validation.passwordMismatch'));
       return;
     }
     if (formData.password.length < 6) {
-      setError('Mật khẩu phải có ít nhất 6 ký tự');
+      setError(t('validation.passwordTooShort'));
       return;
     }
 
-    dispatch(login({
-      id: Date.now().toString(),
-      email: formData.email,
-      fullName: formData.fullName,
-      role: formData.role,
-    }));
-    navigate('/');
+    setLoading(true);
+    try {
+      const user = await registerRequest({
+        email: formData.email,
+        password: formData.password,
+        fullName: formData.fullName,
+        role: formData.role,
+      });
+      loginUser(user);
+      navigate('/');
+    } catch {
+      setError(t('common.error'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -121,8 +130,8 @@ export default function RegisterPage() {
               <span className="text-xs text-foreground-600">{t('auth.agreeTermsPrefix')} <a href="#" className="text-primary-500 hover:underline">{t('auth.terms')}</a> {t('common.and')} <a href="#" className="text-primary-500 hover:underline">{t('auth.privacy')}</a></span>
             </label>
 
-            <button type="submit" className="w-full py-3 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap">
-              {t('auth.registerButton')}
+            <button type="submit" disabled={loading} className="w-full py-3 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60">
+              {loading ? t('common.loading') : t('auth.registerButton')}
             </button>
           </form>
         </div>

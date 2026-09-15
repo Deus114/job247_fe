@@ -1,24 +1,6 @@
-export interface Permission {
-  id: string;
-  name: string;
-  description: string;
-  module: string;
-  type: 'module_access' | 'action';
-  apiRoute?: string;
-  createdAt?: string;
-  deletedAt?: string;
-  isActive?: boolean;
-}
+import type { Permission, Role } from '@/types/role';
 
-export interface Role {
-  id: string;
-  name: string;
-  description: string;
-  permissions: string[];
-  createdAt: string;
-  deletedAt?: string;
-  isActive?: boolean;
-}
+export type { Permission, Role };
 
 export const mockPermissions: Permission[] = [
   // Module access permissions

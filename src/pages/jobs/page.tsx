@@ -1,12 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type SubmitEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAppSelector } from '@/store/hooks';
-import JobCard from './components/JobCard';
-import SkeletonCard from '@/components/base/SkeletonCard';
-import FilterModal, { type FilterState } from './components/FilterModal';
-import type { Job } from '@/store/slices/jobSlice';
-import CustomSelect from '@/components/base/CustomSelect';
+import { JobCard, FilterModal, type FilterState, useJobs } from '@/features/jobs';
+import SkeletonCard from '@/components/ui/SkeletonCard';
+import type { Job } from '@/types/job';
+import CustomSelect from '@/components/ui/CustomSelect';
 
 const JOBS_PER_PAGE = 9;
 
@@ -27,11 +25,9 @@ function getSalaryAvg(job: Job): number {
 export default function JobsPage() {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const jobsFromStore = useAppSelector((state) => state.jobs.items);
-  const loading = useAppSelector((state) => state.jobs.loading);
-  const categories = useAppSelector((state) => (state.jobs?.categories || []).filter((c: { name: string; isActive?: boolean }) => c.isActive !== false).map((c: { name: string }) => c.name));
-  const educationLevels = useAppSelector((state) => (state.jobs?.educationLevels || []).filter((e: { name: string; isActive?: boolean }) => e.isActive !== false).map((e: { name: string }) => e.name));
-  const locations = useAppSelector((state) => state.jobs?.locations || []);
+  const { jobs: jobsFromStore, loading, categories: rawCategories, educationLevels: rawEducationLevels, locations } = useJobs();
+  const categories = (rawCategories || []).filter((c: { name: string; isActive?: boolean }) => c.isActive !== false).map((c: { name: string }) => c.name);
+  const educationLevels = (rawEducationLevels || []).filter((e: { name: string; isActive?: boolean }) => e.isActive !== false).map((e: { name: string }) => e.name);
 
   const companyNames = useMemo(() => {
     const set = new Set(jobsFromStore.filter((j) => j.status === 'approved' && !j.deletedAt && j.isActive !== false).map((j) => j.company));
@@ -52,12 +48,15 @@ export default function JobsPage() {
   const [salaryMin, setSalaryMin] = useState('');
   const [salaryMax, setSalaryMax] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'salary_desc' | 'salary_asc'>('newest');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(() => {
+    const page = Number(searchParams.get('page') || '1');
+    return Number.isFinite(page) && page > 0 ? page : 1;
+  });
   const [filterModalOpen, setFilterModalOpen] = useState(false);
 
-  // Read URL params on mount
+  // Read URL params on mount / when search changes
   useEffect(() => {
-    const cat = searchParams.get('categories');
+    const cat = searchParams.get('categories') || searchParams.get('category');
     const loc = searchParams.get('locations');
     const edu = searchParams.get('educations');
     const typesParam = searchParams.get('types');
@@ -66,6 +65,7 @@ export default function JobsPage() {
     const sMin = searchParams.get('salaryMin') || '';
     const sMax = searchParams.get('salaryMax') || '';
     const sort = searchParams.get('sort') as typeof sortBy;
+    const page = Number(searchParams.get('page') || '1');
 
     if (cat) setSelectedCategories(cat.split(',').filter(Boolean));
     if (loc) setSelectedLocations(loc.split(',').filter(Boolean));
@@ -76,6 +76,7 @@ export default function JobsPage() {
     if (sMin) setSalaryMin(sMin);
     if (sMax) setSalaryMax(sMax);
     if (sort && ['newest', 'oldest', 'salary_desc', 'salary_asc'].includes(sort)) setSortBy(sort);
+    if (Number.isFinite(page) && page > 0) setCurrentPage(page);
   }, [searchParams]);
 
   const filteredJobs = useMemo(() => {
@@ -140,9 +141,15 @@ export default function JobsPage() {
     }
 
     return result;
-  }, [jobsFromStore, keyword, selectedCategories, selectedLocations, selectedEducations, selectedTypes, salaryMin, salaryMax, sortBy]);
+  }, [jobsFromStore, keyword, selectedCategories, selectedLocations, selectedEducations, selectedTypes, selectedCompanies, salaryMin, salaryMax, sortBy]);
 
-  const totalPages = Math.ceil(filteredJobs.length / JOBS_PER_PAGE);
+  const totalPages = Math.max(1, Math.ceil(filteredJobs.length / JOBS_PER_PAGE));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
   const paginatedJobs = filteredJobs.slice((currentPage - 1) * JOBS_PER_PAGE, currentPage * JOBS_PER_PAGE);
 
   const activeFilterCount =
@@ -181,7 +188,7 @@ export default function JobsPage() {
     setSearchParams(params);
   };
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setCurrentPage(1);
     syncUrl(keyword, selectedCategories, selectedLocations, selectedEducations, selectedTypes, selectedCompanies, salaryMin, salaryMax, sortBy, 1);
@@ -247,10 +254,10 @@ export default function JobsPage() {
   };
 
   const sortOptions = [
-    { value: 'newest', label: 'Mới nhất' },
-    { value: 'oldest', label: 'Cũ nhất' },
-    { value: 'salary_desc', label: 'Lương cao nhất' },
-    { value: 'salary_asc', label: 'Lương thấp nhất' },
+    { value: 'newest', label: t('job.sortNewest') },
+    { value: 'oldest', label: t('job.sortOldest') },
+    { value: 'salary_desc', label: t('job.sortSalaryDesc') },
+    { value: 'salary_asc', label: t('job.sortSalaryAsc') },
   ];
 
   return (
@@ -260,7 +267,7 @@ export default function JobsPage() {
         <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-6 md:py-8">
           <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground-950">{t('nav.jobs')}</h1>
           <p className="text-sm text-foreground-600 mt-1">
-            {loading ? 'Đang tải...' : `${filteredJobs.length} ${t('job.results')}`}
+            {loading ? t('common.loading') : `${filteredJobs.length} ${t('job.results')}`}
           </p>
 
           <form onSubmit={handleSearch} className="mt-5 flex flex-col sm:flex-row gap-3">

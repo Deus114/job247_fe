@@ -1,13 +1,15 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useAppSelector } from '@/store/hooks';
-import LoadingSpinner from '@/components/base/LoadingSpinner';
-import CustomSelect from '@/components/base/CustomSelect';
+import { useTranslation } from 'react-i18next';
+import { useCompanies } from '@/features/companies';
+import { useJobs } from '@/features/jobs';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import CustomSelect from '@/components/ui/CustomSelect';
 
 export default function CompaniesBrowsePage() {
-  const companies = useAppSelector((state) => state.companies.items);
-  const loading = useAppSelector((state) => state.companies.loading);
-  const jobs = useAppSelector((state) => state.jobs.items);
+  const { t } = useTranslation();
+  const { companies, loading } = useCompanies();
+  const { jobs } = useJobs();
 
   const [search, setSearch] = useState('');
   const [industryFilter, setIndustryFilter] = useState('');
@@ -23,7 +25,11 @@ export default function CompaniesBrowsePage() {
       .filter((c) => {
         if (search) {
           const q = search.toLowerCase();
-          return c.name.toLowerCase().includes(q) || c.nameEn.toLowerCase().includes(q) || c.industry.toLowerCase().includes(q);
+          return (
+            c.name.toLowerCase().includes(q) ||
+            (c.nameEn ?? '').toLowerCase().includes(q) ||
+            c.industry.toLowerCase().includes(q)
+          );
         }
         return true;
       })
@@ -41,10 +47,10 @@ export default function CompaniesBrowsePage() {
         <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-10 md:py-16">
           <div className="max-w-2xl">
             <h1 className="text-2xl md:text-4xl font-heading font-bold text-foreground-950 mb-3">
-              Khám phá các công ty hàng đầu
+              {t('company.browse')}
             </h1>
             <p className="text-sm md:text-base text-foreground-600 mb-6">
-              Tìm hiểu về môi trường làm việc, văn hóa và cơ hội nghề nghiệp tại các doanh nghiệp uy tín trên toàn quốc
+              {t('company.browseDesc', 'Tìm hiểu về môi trường làm việc, văn hóa và cơ hội nghề nghiệp tại các doanh nghiệp uy tín trên toàn quốc')}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3">
@@ -54,7 +60,7 @@ export default function CompaniesBrowsePage() {
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Tìm kiếm công ty theo tên hoặc ngành nghề..."
+                  placeholder={t('company.searchPlaceholder', 'Tìm kiếm công ty theo tên hoặc ngành nghề...')}
                   className="w-full pl-10 pr-4 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-xl focus:outline-none focus:border-primary-300 transition-colors"
                 />
               </div>
@@ -62,10 +68,10 @@ export default function CompaniesBrowsePage() {
                 value={industryFilter}
                 onChange={setIndustryFilter}
                 options={[
-                  { value: '', label: 'Tất cả ngành nghề' },
+                  { value: '', label: t('job.allCategories') },
                   ...industries.map((ind) => ({ value: ind, label: ind })),
                 ]}
-                placeholder="Tất cả ngành nghề"
+                placeholder={t('job.allCategories')}
                 className="min-w-[180px]"
               />
             </div>
@@ -76,8 +82,8 @@ export default function CompaniesBrowsePage() {
       <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12">
         <div className="flex items-center justify-between mb-6">
           <p className="text-sm text-foreground-600">
-            {loading ? 'Đang tải...' : (
-              <>Hiển thị <strong className="text-foreground-950">{filteredCompanies.length}</strong> công ty</>
+            {loading ? t('common.loading') : (
+              <>{t('common.showing')} <strong className="text-foreground-950">{filteredCompanies.length}</strong> {t('company.title').toLowerCase()}</>
             )}
           </p>
         </div>
@@ -92,10 +98,10 @@ export default function CompaniesBrowsePage() {
               <i className="ri-building-2-line text-2xl text-foreground-400"></i>
             </div>
             <h3 className="text-lg font-heading font-semibold text-foreground-950 mb-2">
-              {search || industryFilter ? 'Không tìm thấy công ty phù hợp' : 'Chưa có công ty nào'}
+              {search || industryFilter ? t('company.noCompanies') : t('company.empty')}
             </h3>
             <p className="text-sm text-foreground-500">
-              {search || industryFilter ? 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.' : 'Hiện chưa có công ty nào được duyệt trong hệ thống.'}
+              {search || industryFilter ? t('company.emptySearchDesc', 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.') : t('company.emptySystemDesc', 'Hiện chưa có công ty nào được duyệt trong hệ thống.')}
             </p>
           </div>
         ) : (
@@ -131,10 +137,10 @@ export default function CompaniesBrowsePage() {
 
                   <div className="flex items-center justify-between pt-4 border-t border-background-200/40">
                     <span className="flex items-center gap-1.5 text-xs font-medium text-accent-600">
-                      <i className="ri-briefcase-line"></i> {jobCount} việc làm
+                      <i className="ri-briefcase-line"></i> {jobCount} {t('company.activeJobs').toLowerCase()}
                     </span>
                     <span className="flex items-center gap-1 text-xs text-primary-500 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                      Chi tiết <i className="ri-arrow-right-line"></i>
+                      {t('company.detail')} <i className="ri-arrow-right-line"></i>
                     </span>
                   </div>
                 </Link>

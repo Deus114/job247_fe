@@ -1,11 +1,14 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import { readJson } from '@/lib/storage';
 
 interface ThemeState {
   mode: 'light' | 'dark';
 }
 
+const stored = readJson<ThemeState>('redux_theme');
+
 const initialState: ThemeState = {
-  mode: 'light',
+  mode: stored?.mode === 'dark' ? 'dark' : 'light',
 };
 
 const themeSlice = createSlice({
