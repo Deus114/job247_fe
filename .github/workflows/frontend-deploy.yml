@@ -100,7 +100,7 @@ jobs:
 
               set -e
 
-              cd /opt/jobs247/frontend
+              cd /var/www/jobs247-frontend
 
               export DOCKERHUB_USERNAME="${{ secrets.DOCKERHUB_USERNAME }}"
 
