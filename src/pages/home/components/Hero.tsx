@@ -2,10 +2,14 @@ import { useState, type SubmitEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import CustomSelect from '@/components/ui/CustomSelect';
+import { useAppSelector } from '@/store/hooks';
+import { mockBusinessConfig } from '@/mocks/businessConfig';
 
 export default function Hero() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const configuredBanner = useAppSelector((state) => state.businessConfig.config.homeBannerUrl);
+  const homeBannerUrl = configuredBanner || mockBusinessConfig.homeBannerUrl;
   const [keyword, setKeyword] = useState('');
   const [location, setLocation] = useState('');
 
@@ -31,7 +35,7 @@ export default function Hero() {
     <section className="relative min-h-[42vh] md:min-h-[48vh] lg:min-h-[50vh] flex items-center">
       <div className="absolute inset-0 overflow-hidden">
         <img
-          src="https://readdy.ai/api/search-image?query=Modern%20bright%20minimalist%20office%20workspace%20with%20warm%20natural%20lighting%2C%20clean%20white%20desks%20with%20laptops%2C%20green%20plants%2C%20large%20windows%2C%20collaborative%20open%20space%2C%20soft%20beige%20and%20cream%20tones%2C%20architectural%20photography%2C%20bright%20and%20airy%20atmosphere&width=1920&height=900&seq=hero-bg-2026&orientation=landscape"
+          src={homeBannerUrl}
           alt="Modern workspace"
           className="w-full h-full object-cover object-center"
         />

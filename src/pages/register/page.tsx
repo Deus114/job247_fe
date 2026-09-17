@@ -3,11 +3,15 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/features/auth';
 import { registerRequest } from '@/api';
+import { useAppSelector } from '@/store/hooks';
+import { mockBusinessConfig } from '@/mocks/businessConfig';
 
 export default function RegisterPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { login: loginUser } = useAuth();
+  const configuredBg = useAppSelector((state) => state.businessConfig.config.registerBgUrl);
+  const registerBgUrl = configuredBg || mockBusinessConfig.registerBgUrl;
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -127,7 +131,16 @@ export default function RegisterPage() {
 
             <label className="flex items-start gap-2 cursor-pointer">
               <input type="checkbox" required className="w-4 h-4 mt-0.5 rounded border-background-300 text-primary-500 focus:ring-primary-400 cursor-pointer" />
-              <span className="text-xs text-foreground-600">{t('auth.agreeTermsPrefix')} <a href="#" className="text-primary-500 hover:underline">{t('auth.terms')}</a> {t('common.and')} <a href="#" className="text-primary-500 hover:underline">{t('auth.privacy')}</a></span>
+              <span className="text-xs text-foreground-600">
+                {t('auth.agreeTermsPrefix')}{' '}
+                <Link to="/terms" className="text-primary-500 hover:underline">
+                  {t('auth.terms')}
+                </Link>{' '}
+                {t('common.and')}{' '}
+                <Link to="/privacy" className="text-primary-500 hover:underline">
+                  {t('auth.privacy')}
+                </Link>
+              </span>
             </label>
 
             <button type="submit" disabled={loading} className="w-full py-3 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60">
@@ -138,7 +151,7 @@ export default function RegisterPage() {
 
         <div className="lg:w-1/2 relative hidden lg:block order-1 lg:order-2">
           <img
-            src="https://readdy.ai/api/search-image?query=Modern%20collaborative%20office%20environment%20with%20diverse%20professional%20team%20working%20together%2C%20warm%20natural%20lighting%2C%20green%20plants%2C%20creative%20workspace%20with%20sticky%20notes%2C%20glass%20walls%2C%20soft%20beige%20and%20warm%20tones%2C%20editorial%20photography&width=800&height=900&seq=auth-register-bg&orientation=portrait"
+            src={registerBgUrl}
             alt="Register"
             className="w-full h-full object-cover"
           />

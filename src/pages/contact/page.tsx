@@ -1,8 +1,10 @@
 import { useState, type SubmitEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAppSelector } from '@/store/hooks';
 
 export default function ContactPage() {
   const { t } = useTranslation();
+  const config = useAppSelector((state) => state.businessConfig.config);
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [formError, setFormError] = useState('');
@@ -22,10 +24,12 @@ export default function ContactPage() {
     setFormError(t('contact.comingSoon'));
   };
 
+  const mapSrc = `https://www.google.com/maps?q=${config.latitude},${config.longitude}&z=15&output=embed`;
+
   const contactInfos = [
-    { icon: 'ri-map-pin-line', label: t('contact.address'), value: '123 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh', colorClass: 'text-primary-500 bg-primary-100' },
-    { icon: 'ri-phone-line', label: t('contact.phone'), value: '+84 28 1234 5678', colorClass: 'text-accent-500 bg-accent-100' },
-    { icon: 'ri-mail-line', label: t('contact.email'), value: 'info@jobs247.vn', colorClass: 'text-secondary-500 bg-secondary-100' },
+    { icon: 'ri-map-pin-line', label: t('contact.address'), value: config.address, colorClass: 'text-primary-500 bg-primary-100' },
+    { icon: 'ri-phone-line', label: t('contact.phone'), value: config.phone, colorClass: 'text-accent-500 bg-accent-100' },
+    { icon: 'ri-mail-line', label: t('contact.email'), value: config.email, colorClass: 'text-secondary-500 bg-secondary-100' },
     { icon: 'ri-time-line', label: t('contact.workingHours'), value: t('contact.workingHoursValue'), colorClass: 'text-primary-500 bg-primary-100' },
   ];
 
@@ -134,7 +138,7 @@ export default function ContactPage() {
 
         <div className="mt-12 rounded-2xl overflow-hidden h-[400px] border border-background-200/70">
           <iframe
-            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.4241674197956!2d106.69969831533427!3d10.775529392324627!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752f467a5d0e11%3A0x1d6e4a5f8b5e4e6c!2zMTIzIE5ndXnhu4VuIEh14buHLCDEkOG6oXUgMSwgSOG7kyBDaMOtIE1pbmgsIFZp4buHdCBOYW0!5e0!3m2!1sen!2s!4v1620000000000!5m2!1sen!2s"
+            src={mapSrc}
             width="100%"
             height="100%"
             style={{ border: 0 }}

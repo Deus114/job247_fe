@@ -69,5 +69,5 @@ Desktop.ini
 .vercel
 .netlify
 
-# Local agent guidance (optional; keep out of remote if desired)
-AGENTS.md
+# Local Cursor agent rules (not committed)
+.cursor/rules/

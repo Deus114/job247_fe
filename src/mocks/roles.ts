@@ -10,9 +10,11 @@ export const mockPermissions: Permission[] = [
   { id: 'perm_module_users', name: 'Truy cập Người dùng', description: 'Cho phép xem module Người dùng', module: 'Người dùng', type: 'module_access', createdAt: '2025-01-01' },
   { id: 'perm_module_roles', name: 'Truy cập Vai trò', description: 'Cho phép xem module Vai trò', module: 'Vai trò', type: 'module_access', createdAt: '2025-01-01' },
   { id: 'perm_module_permissions', name: 'Truy cập Quyền hạn', description: 'Cho phép xem module Quyền hạn', module: 'Quyền hạn', type: 'module_access', createdAt: '2025-01-01' },
-  { id: 'perm_module_categories', name: 'Truy cập Ngành nghề', description: 'Cho phép xem module Ngành nghề', module: 'Danh mục', type: 'module_access', createdAt: '2025-01-01' },
+  { id: 'perm_module_industry_groups', name: 'Truy cập Nhóm ngành nghề', description: 'Cho phép xem module Nhóm ngành nghề', module: 'Danh mục', type: 'module_access', createdAt: '2025-01-01' },
+  { id: 'perm_module_industries', name: 'Truy cập Ngành nghề', description: 'Cho phép xem module Ngành nghề', module: 'Danh mục', type: 'module_access', createdAt: '2025-01-01' },
+  { id: 'perm_module_provinces', name: 'Truy cập Tỉnh thành phố', description: 'Cho phép xem module Tỉnh thành phố', module: 'Danh mục', type: 'module_access', createdAt: '2025-01-01' },
   { id: 'perm_module_education', name: 'Truy cập Trình độ', description: 'Cho phép xem module Trình độ', module: 'Danh mục', type: 'module_access', createdAt: '2025-01-01' },
-  { id: 'perm_module_banners', name: 'Truy cập Banner', description: 'Cho phép xem module Banner', module: 'Hệ thống', type: 'module_access', createdAt: '2025-01-01' },
+  { id: 'perm_module_business_config', name: 'Truy cập Cấu hình hệ thống', description: 'Cho phép xem module Cấu hình hệ thống', module: 'Hệ thống', type: 'module_access', createdAt: '2025-01-01' },
   { id: 'perm_module_profile', name: 'Truy cập Tài khoản', description: 'Cho phép xem module Tài khoản', module: 'Tài khoản', type: 'module_access', createdAt: '2025-01-01' },
 
   // Action permissions - Dashboard
@@ -52,11 +54,23 @@ export const mockPermissions: Permission[] = [
   { id: 'perm_permissions_edit', name: 'Sửa quyền', description: 'Chỉnh sửa thông tin quyền', module: 'Quyền hạn', type: 'action', apiRoute: 'PUT /api/admin/permissions/:id', createdAt: '2025-01-01' },
   { id: 'perm_permissions_delete', name: 'Xóa quyền', description: 'Xóa quyền khỏi hệ thống', module: 'Quyền hạn', type: 'action', apiRoute: 'DELETE /api/admin/permissions/:id', createdAt: '2025-01-01' },
 
-  // Action permissions - Categories
-  { id: 'perm_categories_view', name: 'Xem ngành nghề', description: 'Xem danh sách ngành nghề', module: 'Danh mục', type: 'action', apiRoute: 'GET /api/admin/categories', createdAt: '2025-01-01' },
-  { id: 'perm_categories_create', name: 'Thêm ngành nghề', description: 'Tạo ngành nghề mới', module: 'Danh mục', type: 'action', apiRoute: 'POST /api/admin/categories', createdAt: '2025-01-01' },
-  { id: 'perm_categories_edit', name: 'Sửa ngành nghề', description: 'Chỉnh sửa thông tin ngành nghề', module: 'Danh mục', type: 'action', apiRoute: 'PUT /api/admin/categories/:id', createdAt: '2025-01-01' },
-  { id: 'perm_categories_delete', name: 'Xóa ngành nghề', description: 'Xóa ngành nghề', module: 'Danh mục', type: 'action', apiRoute: 'DELETE /api/admin/categories/:id', createdAt: '2025-01-01' },
+  // Action permissions - Industry groups
+  { id: 'perm_industry_groups_view', name: 'Xem nhóm ngành nghề', description: 'Xem danh sách nhóm ngành nghề', module: 'Danh mục', type: 'action', apiRoute: 'GET /api/admin/industry-groups', createdAt: '2025-01-01' },
+  { id: 'perm_industry_groups_create', name: 'Thêm nhóm ngành nghề', description: 'Tạo nhóm ngành nghề mới', module: 'Danh mục', type: 'action', apiRoute: 'POST /api/admin/industry-groups', createdAt: '2025-01-01' },
+  { id: 'perm_industry_groups_edit', name: 'Sửa nhóm ngành nghề', description: 'Chỉnh sửa nhóm ngành nghề', module: 'Danh mục', type: 'action', apiRoute: 'PUT /api/admin/industry-groups/:id', createdAt: '2025-01-01' },
+  { id: 'perm_industry_groups_delete', name: 'Xóa nhóm ngành nghề', description: 'Xóa nhóm ngành nghề', module: 'Danh mục', type: 'action', apiRoute: 'DELETE /api/admin/industry-groups/:id', createdAt: '2025-01-01' },
+
+  // Action permissions - Industries
+  { id: 'perm_industries_view', name: 'Xem ngành nghề', description: 'Xem danh sách ngành nghề', module: 'Danh mục', type: 'action', apiRoute: 'GET /api/admin/industries', createdAt: '2025-01-01' },
+  { id: 'perm_industries_create', name: 'Thêm ngành nghề', description: 'Tạo ngành nghề mới', module: 'Danh mục', type: 'action', apiRoute: 'POST /api/admin/industries', createdAt: '2025-01-01' },
+  { id: 'perm_industries_edit', name: 'Sửa ngành nghề', description: 'Chỉnh sửa thông tin ngành nghề', module: 'Danh mục', type: 'action', apiRoute: 'PUT /api/admin/industries/:id', createdAt: '2025-01-01' },
+  { id: 'perm_industries_delete', name: 'Xóa ngành nghề', description: 'Xóa ngành nghề', module: 'Danh mục', type: 'action', apiRoute: 'DELETE /api/admin/industries/:id', createdAt: '2025-01-01' },
+
+  // Action permissions - Provinces
+  { id: 'perm_provinces_view', name: 'Xem tỉnh thành phố', description: 'Xem danh sách tỉnh / thành phố', module: 'Danh mục', type: 'action', apiRoute: 'GET /api/admin/provinces', createdAt: '2025-01-01' },
+  { id: 'perm_provinces_create', name: 'Thêm tỉnh thành phố', description: 'Tạo tỉnh / thành phố mới', module: 'Danh mục', type: 'action', apiRoute: 'POST /api/admin/provinces', createdAt: '2025-01-01' },
+  { id: 'perm_provinces_edit', name: 'Sửa tỉnh thành phố', description: 'Chỉnh sửa tỉnh / thành phố', module: 'Danh mục', type: 'action', apiRoute: 'PUT /api/admin/provinces/:id', createdAt: '2025-01-01' },
+  { id: 'perm_provinces_delete', name: 'Xóa tỉnh thành phố', description: 'Xóa tỉnh / thành phố', module: 'Danh mục', type: 'action', apiRoute: 'DELETE /api/admin/provinces/:id', createdAt: '2025-01-01' },
 
   // Action permissions - Education
   { id: 'perm_education_view', name: 'Xem trình độ', description: 'Xem danh sách trình độ', module: 'Danh mục', type: 'action', apiRoute: 'GET /api/admin/education', createdAt: '2025-01-01' },
@@ -64,11 +78,9 @@ export const mockPermissions: Permission[] = [
   { id: 'perm_education_edit', name: 'Sửa trình độ', description: 'Chỉnh sửa thông tin trình độ', module: 'Danh mục', type: 'action', apiRoute: 'PUT /api/admin/education/:id', createdAt: '2025-01-01' },
   { id: 'perm_education_delete', name: 'Xóa trình độ', description: 'Xóa trình độ', module: 'Danh mục', type: 'action', apiRoute: 'DELETE /api/admin/education/:id', createdAt: '2025-01-01' },
 
-  // Action permissions - Banners
-  { id: 'perm_banners_view', name: 'Xem banner', description: 'Xem danh sách banner', module: 'Hệ thống', type: 'action', apiRoute: 'GET /api/admin/banners', createdAt: '2025-01-01' },
-  { id: 'perm_banners_create', name: 'Thêm banner', description: 'Tạo banner mới', module: 'Hệ thống', type: 'action', apiRoute: 'POST /api/admin/banners', createdAt: '2025-01-01' },
-  { id: 'perm_banners_edit', name: 'Sửa banner', description: 'Chỉnh sửa thông tin banner', module: 'Hệ thống', type: 'action', apiRoute: 'PUT /api/admin/banners/:id', createdAt: '2025-01-01' },
-  { id: 'perm_banners_delete', name: 'Xóa banner', description: 'Xóa banner', module: 'Hệ thống', type: 'action', apiRoute: 'DELETE /api/admin/banners/:id', createdAt: '2025-01-01' },
+  // Action permissions - Business Config
+  { id: 'perm_business_config_view', name: 'Xem cấu hình hệ thống', description: 'Xem cấu hình doanh nghiệp, banner, SMTP', module: 'Hệ thống', type: 'action', apiRoute: 'GET /api/admin/business-config', createdAt: '2025-01-01' },
+  { id: 'perm_business_config_edit', name: 'Sửa cấu hình hệ thống', description: 'Chỉnh sửa cấu hình doanh nghiệp, banner, SMTP', module: 'Hệ thống', type: 'action', apiRoute: 'PUT /api/admin/business-config', createdAt: '2025-01-01' },
 
   // Action permissions - Profile
   { id: 'perm_profile_edit', name: 'Sửa tài khoản', description: 'Chỉnh sửa thông tin cá nhân', module: 'Tài khoản', type: 'action', apiRoute: 'PUT /api/admin/profile', createdAt: '2025-01-01' },
@@ -92,9 +104,11 @@ export const mockRoles: Role[] = [
       'perm_module_jobs', 'perm_jobs_view', 'perm_jobs_create', 'perm_jobs_edit', 'perm_jobs_delete', 'perm_jobs_approve',
       'perm_module_companies', 'perm_companies_view', 'perm_companies_create', 'perm_companies_edit', 'perm_companies_delete', 'perm_companies_approve',
       'perm_module_users', 'perm_users_view', 'perm_users_create', 'perm_users_edit', 'perm_users_delete', 'perm_users_toggle_status',
-      'perm_module_categories', 'perm_categories_view', 'perm_categories_create', 'perm_categories_edit', 'perm_categories_delete',
+      'perm_module_industry_groups', 'perm_industry_groups_view', 'perm_industry_groups_create', 'perm_industry_groups_edit', 'perm_industry_groups_delete',
+      'perm_module_industries', 'perm_industries_view', 'perm_industries_create', 'perm_industries_edit', 'perm_industries_delete',
+      'perm_module_provinces', 'perm_provinces_view', 'perm_provinces_create', 'perm_provinces_edit', 'perm_provinces_delete',
       'perm_module_education', 'perm_education_view', 'perm_education_create', 'perm_education_edit', 'perm_education_delete',
-      'perm_module_banners', 'perm_banners_view', 'perm_banners_create', 'perm_banners_edit', 'perm_banners_delete',
+      'perm_module_business_config', 'perm_business_config_view', 'perm_business_config_edit',
       'perm_module_profile', 'perm_profile_edit', 'perm_profile_password',
     ],
     createdAt: '2025-02-01',
@@ -115,12 +129,14 @@ export const mockRoles: Role[] = [
   {
     id: 'role-content',
     name: 'Content Manager',
-    description: 'Quản lý nội dung: việc làm, banner, danh mục',
+    description: 'Quản lý nội dung: việc làm, cấu hình hệ thống, danh mục',
     permissions: [
       'perm_module_dashboard', 'perm_dashboard_view',
       'perm_module_jobs', 'perm_jobs_view', 'perm_jobs_create', 'perm_jobs_edit',
-      'perm_module_banners', 'perm_banners_view', 'perm_banners_create', 'perm_banners_edit',
-      'perm_module_categories', 'perm_categories_view', 'perm_categories_create', 'perm_categories_edit',
+      'perm_module_business_config', 'perm_business_config_view', 'perm_business_config_edit',
+      'perm_module_industry_groups', 'perm_industry_groups_view', 'perm_industry_groups_create', 'perm_industry_groups_edit',
+      'perm_module_industries', 'perm_industries_view', 'perm_industries_create', 'perm_industries_edit',
+      'perm_module_provinces', 'perm_provinces_view', 'perm_provinces_create', 'perm_provinces_edit',
       'perm_module_education', 'perm_education_view', 'perm_education_create', 'perm_education_edit',
       'perm_module_profile', 'perm_profile_edit',
     ],

@@ -26,20 +26,35 @@ export interface AdminLoginResult {
 }
 
 export class AdminAuthError extends Error {
+  /** i18n key under `apiErrors.*` — resolve with `resolveAdminAuthErrorMessage` */
+  messageKey: string;
   statusCode?: number;
+  /** Prefer when backend already localized the message (via Accept-Language) */
+  serverMessage?: string;
 
-  constructor(message: string, statusCode?: number) {
-    super(message);
+  constructor(messageKey: string, statusCode?: number, serverMessage?: string) {
+    super(serverMessage || messageKey);
     this.name = "AdminAuthError";
+    this.messageKey = messageKey;
     this.statusCode = statusCode;
+    this.serverMessage = serverMessage;
   }
 }
 
-/** Backend may use 0 (app code) or 200 (HTTP-style) for success. */
+/** Resolve error text for UI: server message first, then i18n key. */
+export function resolveAdminAuthErrorMessage(
+  error: AdminAuthError,
+  t: (key: string) => string,
+): string {
+  if (error.serverMessage?.trim()) return error.serverMessage.trim();
+  return t(error.messageKey);
+}
+
+/** Backend may use 0 (app code), 200, or 201 (Created) for success. */
 export function isAdminApiSuccess(
   statusCode: number | undefined | null,
 ): boolean {
-  return statusCode === 0 || statusCode === 200;
+  return statusCode === 0 || statusCode === 200 || statusCode === 201;
 }
 
 function persistAdminTokens(accessToken?: string, refreshToken?: string) {
@@ -137,7 +152,7 @@ export async function adminLoginRequest(
   payload: AdminLoginPayload,
 ): Promise<AdminLoginResult> {
   if (!env.apiBaseUrl) {
-    throw new AdminAuthError("Chưa cấu hình VITE_BACKEND_URL", undefined);
+    throw new AdminAuthError("apiErrors.missingBackendUrl");
   }
 
   clearAdminTokens();
@@ -149,13 +164,14 @@ export async function adminLoginRequest(
     })) as ApiResponse<AdminLoginData | Record<string, unknown>>;
 
     if (!res || typeof res !== "object") {
-      throw new AdminAuthError("Phản hồi không hợp lệ");
+      throw new AdminAuthError("apiErrors.invalidResponse");
     }
 
     if (!isAdminApiSuccess(res.statusCode)) {
       throw new AdminAuthError(
-        res.message || "Đăng nhập thất bại",
+        "apiErrors.loginFailed",
         res.statusCode,
+        res.message,
       );
     }
 
@@ -169,15 +185,17 @@ export async function adminLoginRequest(
 
     if (!user || !accessToken) {
       throw new AdminAuthError(
-        res.message || "Thiếu dữ liệu đăng nhập",
+        "apiErrors.loginMissingData",
         res.statusCode,
+        res.message,
       );
     }
 
     if (!isValidAdminSession(user)) {
       throw new AdminAuthError(
-        res.message || "Tài khoản hoặc vai trò không còn hoạt động",
+        "apiErrors.loginInactiveAccount",
         res.statusCode,
+        res.message,
       );
     }
 
@@ -187,7 +205,7 @@ export async function adminLoginRequest(
       user,
       accessToken,
       refreshToken,
-      message: res.message || "Đăng nhập thành công",
+      message: res.message || "",
     };
   } catch (error) {
     clearAdminTokens();
@@ -195,15 +213,149 @@ export async function adminLoginRequest(
 
     if (isAxiosError(error)) {
       const body = error.response?.data as ApiResponse<unknown> | undefined;
+      const key =
+        error.code === "ERR_NETWORK"
+          ? "apiErrors.networkError"
+          : "apiErrors.loginFailed";
       throw new AdminAuthError(
-        body?.message ||
-          (error.code === "ERR_NETWORK"
-            ? "Không kết nối được máy chủ"
-            : "Đăng nhập thất bại"),
+        key,
         body?.statusCode ?? error.response?.status,
+        body?.message,
       );
     }
 
-    throw new AdminAuthError("Đăng nhập thất bại");
+    throw new AdminAuthError("apiErrors.loginFailed");
+  }
+}
+
+function throwAdminMeError(fallbackKey: string, error: unknown): never {
+  if (error instanceof AdminAuthError) throw error;
+
+  if (isAxiosError(error)) {
+    const body = error.response?.data as ApiResponse<unknown> | undefined;
+    const key =
+      error.code === "ERR_NETWORK" ? "apiErrors.networkError" : fallbackKey;
+    throw new AdminAuthError(
+      key,
+      body?.statusCode ?? error.response?.status,
+      body?.message,
+    );
+  }
+
+  throw new AdminAuthError(fallbackKey);
+}
+
+/** GET /admin/users/me — current admin profile for session/UI. */
+export async function fetchAdminMe(): Promise<AdminSessionUser> {
+  if (!env.apiBaseUrl) {
+    throw new AdminAuthError("apiErrors.missingBackendUrl");
+  }
+
+  try {
+    const res = (await axios.get(
+      "/admin/users/me",
+    )) as ApiResponse<AdminSessionUser | Record<string, unknown>>;
+
+    if (!res || typeof res !== "object") {
+      throw new AdminAuthError("apiErrors.invalidResponse");
+    }
+
+    if (!isAdminApiSuccess(res.statusCode)) {
+      throw new AdminAuthError(
+        "apiErrors.adminMeLoadFailed",
+        res.statusCode,
+        res.message,
+      );
+    }
+
+    const user = normalizeAdminSessionUser(res.data);
+    if (!user) {
+      throw new AdminAuthError(
+        "apiErrors.adminMeMissingData",
+        res.statusCode,
+        res.message,
+      );
+    }
+
+    if (!isValidAdminSession(user)) {
+      throw new AdminAuthError(
+        "apiErrors.loginInactiveAccount",
+        res.statusCode,
+        res.message,
+      );
+    }
+
+    return user;
+  } catch (error) {
+    throwAdminMeError("apiErrors.adminMeLoadFailed", error);
+  }
+}
+
+export interface UpdateAdminMePayload {
+  name?: string;
+  currentPassword?: string;
+  newPassword?: string;
+  avatarFile?: File;
+}
+
+/**
+ * PUT /admin/users/me — multipart/form-data.
+ * Password change requires both currentPassword and newPassword.
+ */
+export async function updateAdminMe(
+  payload: UpdateAdminMePayload,
+): Promise<AdminSessionUser> {
+  if (!env.apiBaseUrl) {
+    throw new AdminAuthError("apiErrors.missingBackendUrl");
+  }
+
+  const body = new FormData();
+  if (payload.name != null && payload.name.trim() !== "") {
+    body.append("name", payload.name.trim());
+  }
+  if (payload.currentPassword) {
+    body.append("currentPassword", payload.currentPassword);
+  }
+  if (payload.newPassword) {
+    body.append("newPassword", payload.newPassword);
+  }
+  if (payload.avatarFile) {
+    body.append("avatar", payload.avatarFile);
+  }
+
+  if ([...body.keys()].length === 0) {
+    throw new AdminAuthError("apiErrors.adminMeNothingToUpdate");
+  }
+
+  try {
+    const res = (await axios.put(
+      "/admin/users/me",
+      body,
+    )) as ApiResponse<AdminSessionUser | Record<string, unknown>>;
+
+    if (!res || typeof res !== "object") {
+      throw new AdminAuthError("apiErrors.invalidResponse");
+    }
+
+    if (!isAdminApiSuccess(res.statusCode)) {
+      throw new AdminAuthError(
+        "apiErrors.adminMeUpdateFailed",
+        res.statusCode,
+        res.message,
+      );
+    }
+
+    const user = normalizeAdminSessionUser(res.data);
+    if (!user) {
+      throw new AdminAuthError(
+        "apiErrors.adminMeMissingData",
+        res.statusCode,
+        res.message,
+      );
+    }
+
+    return user;
+  } catch (error) {
+    throwAdminMeError("apiErrors.adminMeUpdateFailed", error);
   }
 }

@@ -1,37 +1,36 @@
 import { useState, useEffect, type SubmitEvent } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAdminAuth } from '@/features/auth';
-import { adminLoginRequest, AdminAuthError } from '@/api';
+import {
+  adminLoginRequest,
+  AdminAuthError,
+  resolveAdminAuthErrorMessage,
+} from '@/api';
 import { toast } from '@/lib/toast';
+import { useAppSelector } from '@/store/hooks';
+import LanguageSwitcher from '@/components/ui/LanguageSwitcher';
 
 interface FormError {
   message: string;
-  statusCode?: number;
 }
 
 export default function AdminLoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const location = useLocation();
   const { isAuthenticated, login: adminLoginUser } = useAdminAuth();
+  const adminLoginBgUrl = useAppSelector((state) => state.businessConfig.config.adminLoginBgUrl);
   const [userName, setUserName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<FormError | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const redirectTo =
-    (location.state as { from?: string } | null)?.from &&
-    !(location.state as { from?: string }).from!.startsWith('/admin/login')
-      ? (location.state as { from: string }).from
-      : '/admin/dashboard';
-
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(redirectTo, { replace: true });
+      navigate('/admin/dashboard', { replace: true });
     }
-  }, [isAuthenticated, navigate, redirectTo]);
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -54,11 +53,13 @@ export default function AdminLoginPage() {
         accessToken: result.accessToken,
         refreshToken: result.refreshToken,
       });
-      toast.success(result.message);
-      navigate(redirectTo === '/admin' ? '/admin/dashboard' : redirectTo, { replace: true });
+      toast.success(result.message.trim() || t('adminLogin.welcome'));
+      navigate('/admin/dashboard', { replace: true });
     } catch (err) {
       if (err instanceof AdminAuthError) {
-        setError({ message: err.message, statusCode: err.statusCode });
+        setError({
+          message: resolveAdminAuthErrorMessage(err, t),
+        });
       } else {
         setError({ message: t('adminLogin.invalidCredentials') });
       }
@@ -68,11 +69,15 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background-50 flex">
+    <div className="min-h-screen bg-background-50 flex relative">
+      <div className="absolute top-4 right-4 z-20">
+        <LanguageSwitcher />
+      </div>
+
       <div className="hidden lg:flex lg:w-[42%] xl:w-[40%] relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary-800/90 via-primary-700/85 to-primary-600/80"></div>
         <img
-          src="https://readdy.ai/api/search-image?query=Abstract%20warm%20geometric%20shapes%20with%20soft%20orange%20amber%20gradient%20lighting%2C%20minimalist%20clean%20design%2C%20subtle%20grid%20pattern%20overlay%2C%20professional%20corporate%20atmosphere%2C%20cream%20and%20peach%20tones&width=800&height=1000&seq=admin-login-bg&orientation=portrait"
+          src={adminLoginBgUrl}
           alt=""
           className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-overlay"
         />
@@ -118,12 +123,7 @@ export default function AdminLoginPage() {
             {error && (
               <div className="mb-5 p-3.5 rounded-xl bg-red-50 border border-red-200 text-sm text-red-600 flex items-start gap-2.5">
                 <i className="ri-error-warning-line text-base flex-shrink-0 mt-px"></i>
-                <div className="min-w-0">
-                  <p>{error.message}</p>
-                  {error.statusCode != null && (
-                    <p className="text-xs text-red-500/80 mt-1 font-mono">statusCode: {error.statusCode}</p>
-                  )}
-                </div>
+                <p>{error.message}</p>
               </div>
             )}
 

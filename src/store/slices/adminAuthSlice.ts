@@ -1,8 +1,8 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { AdminSessionUser } from '@/types/adminAuth';
-import { isValidAdminSession } from '@/types/adminAuth';
-import { readJson } from '@/lib/storage';
-import { clearAdminTokens } from '@/api/adminAuth';
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import type { AdminSessionUser } from "@/types/adminAuth";
+import { isValidAdminSession } from "@/types/adminAuth";
+import { readJson } from "@/lib/storage";
+import { clearAdminTokens } from "@/api/adminAuth";
 
 interface AdminAuthState {
   admin: AdminSessionUser | null;
@@ -17,13 +17,17 @@ interface AdminLoginPayload {
   refreshToken: string;
 }
 
-const stored = readJson<AdminAuthState>('redux_adminAuth');
+const stored = readJson<AdminAuthState>("redux_adminAuth");
 
 function hydrateInitial(): AdminAuthState {
   const admin = stored?.admin ?? null;
   const accessToken = stored?.accessToken ?? null;
   const refreshToken = stored?.refreshToken ?? null;
-  const valid = Boolean(admin && isValidAdminSession(admin) && (accessToken || stored?.isAuthenticated));
+  const valid = Boolean(
+    admin &&
+    isValidAdminSession(admin) &&
+    (accessToken || stored?.isAuthenticated),
+  );
 
   if (!valid) {
     clearAdminTokens();
@@ -37,10 +41,10 @@ function hydrateInitial(): AdminAuthState {
 
   // Keep tokens in localStorage in sync for axios interceptor
   if (accessToken) {
-    localStorage.setItem('admin_access_token', accessToken);
+    localStorage.setItem("admin_access_token", accessToken);
   }
   if (refreshToken) {
-    localStorage.setItem('admin_refresh_token', refreshToken);
+    localStorage.setItem("admin_refresh_token", refreshToken);
   }
 
   return {
@@ -54,7 +58,7 @@ function hydrateInitial(): AdminAuthState {
 const initialState: AdminAuthState = hydrateInitial();
 
 const adminAuthSlice = createSlice({
-  name: 'adminAuth',
+  name: "adminAuth",
   initialState,
   reducers: {
     adminLogin(state, action: PayloadAction<AdminLoginPayload>) {
@@ -70,13 +74,24 @@ const adminAuthSlice = createSlice({
       state.isAuthenticated = false;
       clearAdminTokens();
     },
-    updateAdminProfile(state, action: PayloadAction<Partial<AdminSessionUser>>) {
+    updateAdminProfile(
+      state,
+      action: PayloadAction<Partial<AdminSessionUser>>,
+    ) {
       if (state.admin) {
         state.admin = { ...state.admin, ...action.payload };
       }
     },
+    setAdminSessionUser(state, action: PayloadAction<AdminSessionUser>) {
+      state.admin = action.payload;
+    },
   },
 });
 
-export const { adminLogin, adminLogout, updateAdminProfile } = adminAuthSlice.actions;
+export const {
+  adminLogin,
+  adminLogout,
+  updateAdminProfile,
+  setAdminSessionUser,
+} = adminAuthSlice.actions;
 export default adminAuthSlice.reducer;

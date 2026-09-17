@@ -46,14 +46,17 @@ const AdminRolesPage = lazy(
 const AdminPermissionsPage = lazy(
   () => import("@/features/admin/components/PermissionsPage"),
 );
-const AdminCategoriesPage = lazy(
-  () => import("@/features/admin/components/CategoriesPage"),
+const AdminIndustryGroupsPage = lazy(
+  () => import("@/features/admin/components/IndustryGroupsPage"),
+);
+const AdminIndustriesPage = lazy(
+  () => import("@/features/admin/components/IndustriesPage"),
+);
+const AdminProvincesPage = lazy(
+  () => import("@/features/admin/components/ProvincesPage"),
 );
 const AdminEducationPage = lazy(
   () => import("@/features/admin/components/EducationPage"),
-);
-const AdminBannersPage = lazy(
-  () => import("@/features/admin/components/BannersPage"),
 );
 const AdminBusinessConfigPage = lazy(
   () => import("@/features/admin/components/BusinessConfigPage"),
@@ -61,6 +64,8 @@ const AdminBusinessConfigPage = lazy(
 const AdminProfilePage = lazy(
   () => import("@/features/admin/components/ProfilePage"),
 );
+const PrivacyPage = lazy(() => import("@/pages/privacy/page"));
+const TermsPage = lazy(() => import("@/pages/terms/page"));
 
 const routes: RouteObject[] = [
   // App routes
@@ -106,6 +111,22 @@ const routes: RouteObject[] = [
         element: (
           <LazyPage>
             <ContactPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "/privacy",
+        element: (
+          <LazyPage>
+            <PrivacyPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "/terms",
+        element: (
+          <LazyPage>
+            <TermsPage />
           </LazyPage>
         ),
       },
@@ -216,6 +237,10 @@ const routes: RouteObject[] = [
 
   // Admin routes
   {
+    path: "/login/admin",
+    element: <Navigate to="/admin/login" replace />,
+  },
+  {
     path: "/admin/login",
     element: (
       <LazyPage>
@@ -289,26 +314,38 @@ const routes: RouteObject[] = [
         ),
       },
       {
-        path: "categories",
+        path: "industry-groups",
         element: (
           <LazyPage>
-            <AdminCategoriesPage />
+            <AdminIndustryGroupsPage />
           </LazyPage>
         ),
+      },
+      {
+        path: "industries",
+        element: (
+          <LazyPage>
+            <AdminIndustriesPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "provinces",
+        element: (
+          <LazyPage>
+            <AdminProvincesPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "categories",
+        element: <Navigate to="/admin/industries" replace />,
       },
       {
         path: "education",
         element: (
           <LazyPage>
             <AdminEducationPage />
-          </LazyPage>
-        ),
-      },
-      {
-        path: "banners",
-        element: (
-          <LazyPage>
-            <AdminBannersPage />
           </LazyPage>
         ),
       },
@@ -325,6 +362,14 @@ const routes: RouteObject[] = [
         element: (
           <LazyPage>
             <AdminProfilePage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "*",
+        element: (
+          <LazyPage>
+            <NotFound />
           </LazyPage>
         ),
       },

@@ -1,0 +1,133 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-test-push-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ========================================
+      # 1. Checkout
+      # ========================================
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      # ========================================
+      # 2. Setup Node.js
+      # ========================================
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # ========================================
+      # 3. Install dependencies
+      # ========================================
+      - name: Install dependencies
+        run: npm ci
+
+      # ========================================
+      # 4. Build check
+      # ========================================
+      - name: Build React application
+        run: npm run build
+        env:
+          VITE_APP_NAME: ${{ secrets.VITE_APP_NAME }}
+          VITE_APP_URL: ${{ secrets.VITE_APP_URL }}
+          VITE_BASE_PATH: ${{ secrets.VITE_BASE_PATH }}
+          VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
+          VITE_USE_MOCK: ${{ secrets.VITE_USE_MOCK }}
+
+      # ========================================
+      # 5. Login Docker Hub
+      # ========================================
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # ========================================
+      # 6. Build Docker image
+      # ========================================
+      - name: Build Docker image
+        run: |
+          docker build \
+            --build-arg VITE_APP_NAME="${{ secrets.VITE_APP_NAME }}" \
+            --build-arg VITE_APP_URL="${{ secrets.VITE_APP_URL }}" \
+            --build-arg VITE_BASE_PATH="${{ secrets.VITE_BASE_PATH }}" \
+            --build-arg VITE_BACKEND_URL="${{ secrets.VITE_BACKEND_URL }}" \
+            --build-arg VITE_USE_MOCK="${{ secrets.VITE_USE_MOCK }}" \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/jobs247-frontend:latest .
+
+      # ========================================
+      # 7. Push Docker image
+      # ========================================
+      - name: Push Docker image
+        run: |
+          docker push \
+            ${{ secrets.DOCKERHUB_USERNAME }}/jobs247-frontend:latest
+
+      # ========================================
+      # 8. Setup SSH
+      # ========================================
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" \
+            > ~/.ssh/jobs247_key
+
+          chmod 600 ~/.ssh/jobs247_key
+
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" \
+            >> ~/.ssh/known_hosts
+
+      # ========================================
+      # 9. Deploy to EC2
+      # ========================================
+      - name: Deploy frontend to EC2
+        run: |
+          ssh \
+            -i ~/.ssh/jobs247_key \
+            ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} \
+            << 'EOF'
+
+              set -e
+
+              cd /opt/jobs247/frontend
+
+              export DOCKERHUB_USERNAME="${{ secrets.DOCKERHUB_USERNAME }}"
+
+              docker login \
+                -u "${{ secrets.DOCKERHUB_USERNAME }}" \
+                -p "${{ secrets.DOCKERHUB_TOKEN }}"
+
+              docker compose \
+                -f docker-compose.prod.yml \
+                pull
+
+              docker compose \
+                -f docker-compose.prod.yml \
+                up -d \
+                --remove-orphans \
+                --force-recreate
+
+              docker image prune -f
+
+          EOF
+
+      # ========================================
+      # 10. Verify deployment
+      # ========================================
+      - name: Verify frontend container
+        run: |
+          ssh \
+            -i ~/.ssh/jobs247_key \
+            ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} \
+            "docker ps --filter name=jobs247-frontend"

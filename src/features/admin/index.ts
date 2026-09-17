@@ -1,4 +1,4 @@
-export { default as AdminSidebar } from './components/Sidebar';
+export { default as AdminSidebar, AdminAvatar } from './components/Sidebar';
 export {
   adminNavGroups,
   adminStandaloneNav,

@@ -1,5 +1,10 @@
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { adminLogin, adminLogout, updateAdminProfile } from '@/store/slices/adminAuthSlice';
+import {
+  adminLogin,
+  adminLogout,
+  updateAdminProfile,
+  setAdminSessionUser,
+} from '@/store/slices/adminAuthSlice';
 import type { AdminSessionUser } from '@/types/adminAuth';
 
 /** Domain hook for admin portal session. */
@@ -26,6 +31,9 @@ export function useAdminAuth() {
     },
     updateProfile: (patch: Partial<AdminSessionUser>) => {
       dispatch(updateAdminProfile(patch));
+    },
+    setSessionUser: (user: AdminSessionUser) => {
+      dispatch(setAdminSessionUser(user));
     },
   };
 }

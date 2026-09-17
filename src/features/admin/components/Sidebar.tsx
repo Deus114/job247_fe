@@ -15,9 +15,46 @@ interface SidebarProps {
   onToggleCollapse: () => void;
   adminName: string;
   adminRole: string;
+  adminAvatar?: string;
 }
 
 export type { AdminRouteKey as AdminTab };
+
+export function AdminAvatar({
+  src,
+  name,
+  sizeClass = 'w-9 h-9',
+}: {
+  src?: string;
+  name: string;
+  sizeClass?: string;
+}) {
+  const avatarSrc = src?.trim() || '';
+  const [broken, setBroken] = useState(false);
+
+  useEffect(() => {
+    setBroken(false);
+  }, [avatarSrc]);
+
+  if (avatarSrc && !broken) {
+    return (
+      <img
+        src={avatarSrc}
+        alt={name}
+        className={`${sizeClass} rounded-full object-cover flex-shrink-0`}
+        onError={() => setBroken(true)}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`${sizeClass} rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0`}
+    >
+      <i className="ri-shield-user-line text-sm text-primary-600"></i>
+    </div>
+  );
+}
 
 export default function AdminSidebar({
   activeTab,
@@ -25,6 +62,7 @@ export default function AdminSidebar({
   onToggleCollapse,
   adminName,
   adminRole,
+  adminAvatar = '',
 }: SidebarProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -108,9 +146,7 @@ export default function AdminSidebar({
       {!collapsed ? (
         <div className="px-4 py-3 border-b border-background-200/70">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-              <i className="ri-shield-user-line text-sm text-primary-600"></i>
-            </div>
+            <AdminAvatar src={adminAvatar} name={adminName} />
             <div className="min-w-0">
               <p className="text-sm font-medium text-foreground-900 truncate">{adminName}</p>
               <p className="text-[10px] text-foreground-400 capitalize">{adminRole}</p>
@@ -119,9 +155,7 @@ export default function AdminSidebar({
         </div>
       ) : (
         <div className="px-2 py-3 border-b border-background-200/70 flex justify-center">
-          <div className="w-9 h-9 rounded-full bg-primary-100 flex items-center justify-center">
-            <i className="ri-shield-user-line text-sm text-primary-600"></i>
-          </div>
+          <AdminAvatar src={adminAvatar} name={adminName} />
         </div>
       )}
 

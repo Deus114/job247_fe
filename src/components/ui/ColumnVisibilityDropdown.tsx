@@ -52,8 +52,9 @@ export default function ColumnVisibilityDropdown({
   return (
     <div className="relative" ref={ref}>
       <button
+        type="button"
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 px-3 py-2 border border-background-200/70 rounded-xl text-sm text-foreground-600 hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap"
+        className="inline-flex items-center gap-2 h-10 px-3 border border-background-200/70 rounded-xl text-sm text-foreground-600 bg-background-50 hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap"
         title={t('admin.selectColumns', 'Chọn cột hiển thị')}
       >
         <i className="ri-layout-grid-line"></i>

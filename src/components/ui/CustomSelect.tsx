@@ -14,6 +14,8 @@ interface CustomSelectProps {
   className?: string;
   icon?: string;
   compact?: boolean;
+  /** Visible border + fixed height for toolbar/filter rows */
+  outlined?: boolean;
   required?: boolean;
 }
 
@@ -25,6 +27,7 @@ export default function CustomSelect({
   className = '',
   icon,
   compact = false,
+  outlined = false,
   required = false,
 }: CustomSelectProps) {
   const { t } = useTranslation();
@@ -51,8 +54,9 @@ export default function CustomSelect({
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  const btnPadding = compact ? 'px-3 py-2' : 'px-4 py-3.5';
-  const optPadding = compact ? 'px-3 py-2' : 'px-4 py-2.5';
+  const btnPadding = outlined || compact ? 'px-3' : 'px-4 py-3.5';
+  const optPadding = compact || outlined ? 'px-3 py-2' : 'px-4 py-2.5';
+  const heightClass = outlined ? 'h-10' : compact ? '' : '';
 
   return (
     <div ref={ref} className={`relative ${className}`}>
@@ -69,10 +73,14 @@ export default function CustomSelect({
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className={`w-full flex items-center gap-2 ${btnPadding} text-sm rounded-xl border transition-all cursor-pointer text-left whitespace-nowrap ${
-          open
-            ? 'bg-background-50 border-primary-300 ring-2 ring-primary-100'
-            : 'bg-background-100/60 border-transparent hover:bg-background-50 hover:border-background-200'
+        className={`w-full flex items-center gap-2 ${btnPadding} ${heightClass} text-sm rounded-xl border transition-all cursor-pointer text-left whitespace-nowrap ${
+          outlined
+            ? open
+              ? 'bg-background-50 border-primary-300 ring-2 ring-primary-100'
+              : 'bg-background-50 border-background-200/70 hover:border-primary-300'
+            : open
+              ? 'bg-background-50 border-primary-300 ring-2 ring-primary-100'
+              : 'bg-background-100/60 border-transparent hover:bg-background-50 hover:border-background-200'
         } ${value ? 'text-foreground-900' : 'text-foreground-500'}`}
       >
         {icon && <i className={`${icon} text-foreground-400 flex-shrink-0`}></i>}

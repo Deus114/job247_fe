@@ -6,9 +6,10 @@ export type AdminRouteKey =
   | 'users'
   | 'roles'
   | 'permissions'
-  | 'categories'
+  | 'industry-groups'
+  | 'industries'
+  | 'provinces'
   | 'education'
-  | 'banners'
   | 'business-config'
   | 'profile';
 
@@ -65,10 +66,22 @@ export const adminNavGroups: AdminNavGroup[] = [
     icon: 'ri-database-2-line',
     children: [
       {
-        key: 'categories',
-        label: 'adminNav.categories',
+        key: 'industry-groups',
+        label: 'adminNav.industryGroups',
+        icon: 'ri-folder-3-line',
+        path: '/admin/industry-groups',
+      },
+      {
+        key: 'industries',
+        label: 'adminNav.industries',
         icon: 'ri-price-tag-3-line',
-        path: '/admin/categories',
+        path: '/admin/industries',
+      },
+      {
+        key: 'provinces',
+        label: 'adminNav.provinces',
+        icon: 'ri-map-pin-line',
+        path: '/admin/provinces',
       },
       {
         key: 'education',
@@ -97,7 +110,6 @@ export const adminNavGroups: AdminNavGroup[] = [
     label: 'adminNav.groups.system',
     icon: 'ri-server-line',
     children: [
-      { key: 'banners', label: 'adminNav.banners', icon: 'ri-image-line', path: '/admin/banners' },
       {
         key: 'business-config',
         label: 'adminNav.businessConfig',

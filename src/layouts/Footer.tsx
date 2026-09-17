@@ -189,26 +189,19 @@ export default function Footer() {
               {t("footer.copyright")}
             </p>
             <div className="flex items-center gap-5 flex-wrap justify-center">
-              <a
-                href="#"
+              <Link
+                to="/privacy"
                 className="text-xs text-background-50/50 dark:text-foreground-950/50 hover:text-background-50 dark:hover:text-foreground-950 transition-colors cursor-pointer"
               >
                 {t("footer.privacy")}
-              </a>
+              </Link>
               <span className="text-background-50/20 select-none">|</span>
-              <a
-                href="#"
+              <Link
+                to="/terms"
                 className="text-xs text-background-50/50 dark:text-foreground-950/50 hover:text-background-50 dark:hover:text-foreground-950 transition-colors cursor-pointer"
               >
                 {t("footer.terms")}
-              </a>
-              <span className="text-background-50/20 select-none">|</span>
-              <a
-                href="#"
-                className="text-xs text-background-50/50 dark:text-foreground-950/50 hover:text-background-50 dark:hover:text-foreground-950 transition-colors cursor-pointer"
-              >
-                Sitemap
-              </a>
+              </Link>
             </div>
           </div>
         </div>

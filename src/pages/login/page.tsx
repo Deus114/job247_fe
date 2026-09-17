@@ -4,12 +4,14 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/features/auth';
 import { loginRequest, mockDemoAccounts } from '@/api';
 import { env } from '@/config/env';
+import { useAppSelector } from '@/store/hooks';
 
 export default function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { login: loginUser } = useAuth();
+  const loginBgUrl = useAppSelector((state) => state.businessConfig.config.loginBgUrl);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -61,7 +63,7 @@ export default function LoginPage() {
       <div className="w-full max-w-[1000px] bg-background-50 rounded-2xl border border-background-200/70 overflow-hidden flex flex-col lg:flex-row">
         <div className="lg:w-1/2 relative hidden lg:block">
           <img
-            src="https://readdy.ai/api/search-image?query=Modern%20bright%20office%20interior%20with%20warm%20natural%20lighting%2C%20comfortable%20workspace%20with%20plants%20and%20wooden%20furniture%2C%20people%20collaborating%20in%20background%2C%20soft%20beige%20and%20cream%20tones%2C%20professional%20yet%20cozy%20atmosphere%2C%20architectural%20photography&width=800&height=900&seq=auth-login-bg&orientation=portrait"
+            src={loginBgUrl}
             alt="Login"
             className="w-full h-full object-cover"
           />

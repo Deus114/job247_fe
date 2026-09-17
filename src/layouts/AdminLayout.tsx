@@ -1,14 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAdminAuth } from '@/features/auth';
 import {
+  AdminAvatar,
   AdminSidebar,
   adminNavGroups,
   adminStandaloneNav,
   getAdminRouteKeyFromPath,
 } from '@/features/admin';
 import { useCatalogBootstrap } from '@/features/catalog';
+import { fetchAdminMe } from '@/api';
+import LanguageSwitcher from '@/components/ui/LanguageSwitcher';
 
 export default function AdminLayout() {
   const { t } = useTranslation();
@@ -16,7 +19,7 @@ export default function AdminLayout() {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const { admin, logout: logoutAdmin } = useAdminAuth();
+  const { admin, logout: logoutAdmin, setSessionUser } = useAdminAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -24,6 +27,22 @@ export default function AdminLayout() {
     () => getAdminRouteKeyFromPath(location.pathname),
     [location.pathname],
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const user = await fetchAdminMe();
+        if (!cancelled) setSessionUser(user);
+      } catch {
+        // Keep existing session from login if /me fails.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLogout = () => {
     logoutAdmin();
@@ -42,7 +61,7 @@ export default function AdminLayout() {
             {t('common.accessDenied')}
           </h3>
           <p className="text-sm text-foreground-500 mb-6">
-            {t('admin.loginRequired', 'Bạn cần đăng nhập với tài khoản Admin để truy cập trang này')}
+            {t('admin.loginRequired')}
           </p>
           <button
             onClick={() => navigate('/admin/login')}
@@ -63,17 +82,24 @@ export default function AdminLayout() {
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         adminName={admin.name}
         adminRole={admin.role?.name || 'Admin'}
+        adminAvatar={admin.avatar}
       />
 
       <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
-        <div className="lg:hidden flex items-center gap-3 mb-4">
-          <button
-            onClick={() => setMobileSidebarOpen(true)}
-            className="w-10 h-10 flex items-center justify-center rounded-xl border border-background-200/70 hover:bg-background-100 transition-colors cursor-pointer"
-          >
-            <i className="ri-menu-line text-lg text-foreground-600"></i>
-          </button>
-          <span className="font-heading font-semibold text-foreground-950">Jobs247 Admin</span>
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="lg:hidden flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => setMobileSidebarOpen(true)}
+              className="w-10 h-10 flex items-center justify-center rounded-xl border border-background-200/70 hover:bg-background-100 transition-colors cursor-pointer flex-shrink-0"
+            >
+              <i className="ri-menu-line text-lg text-foreground-600"></i>
+            </button>
+            <span className="font-heading font-semibold text-foreground-950 truncate">
+              Jobs247 Admin
+            </span>
+          </div>
+          <div className="hidden lg:block" />
+          <LanguageSwitcher />
         </div>
 
         <Outlet />
@@ -100,9 +126,7 @@ export default function AdminLayout() {
             </div>
             <div className="px-4 py-3 border-b border-background-200/70">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-                  <i className="ri-shield-user-line text-sm text-primary-600"></i>
-                </div>
+                <AdminAvatar src={admin.avatar} name={admin.name} />
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-foreground-900 truncate">{admin.name}</p>
                   <p className="text-[10px] text-foreground-400">
@@ -126,7 +150,7 @@ export default function AdminLayout() {
                   }
                 >
                   <i className={`${tab.icon} text-base flex-shrink-0`}></i>
-                  <span className="whitespace-nowrap">{tab.label}</span>
+                  <span className="whitespace-nowrap">{t(tab.label)}</span>
                 </NavLink>
               ))}
 
