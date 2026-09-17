@@ -91,35 +91,31 @@ jobs:
       # ========================================
       # 9. Deploy to EC2
       # ========================================
+      - name: Sync compose file to EC2
+        run: |
+          DEPLOY_DIR="/var/www/jobs247-frontend"
+          SSH_OPTS="-i ~/.ssh/jobs247_key -o StrictHostKeyChecking=yes"
+          REMOTE="${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }}"
+
+          ssh $SSH_OPTS "$REMOTE" "mkdir -p ${DEPLOY_DIR}"
+
+          scp $SSH_OPTS \
+            docker-compose.prod.yml \
+            "${REMOTE}:${DEPLOY_DIR}/docker-compose.prod.yml"
+
       - name: Deploy frontend to EC2
         run: |
           ssh \
             -i ~/.ssh/jobs247_key \
             ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} \
-            << 'EOF'
-
-              set -e
-
-              cd /var/www/jobs247-frontend
-
-              export DOCKERHUB_USERNAME="${{ secrets.DOCKERHUB_USERNAME }}"
-
-              docker login \
-                -u "${{ secrets.DOCKERHUB_USERNAME }}" \
-                -p "${{ secrets.DOCKERHUB_TOKEN }}"
-
-              docker compose \
-                -f docker-compose.prod.yml \
-                pull
-
-              docker compose \
-                -f docker-compose.prod.yml \
-                up -d \
-                --remove-orphans \
-                --force-recreate
-
-              docker image prune -f
-
+            << EOF
+          set -e
+          cd /var/www/jobs247-frontend
+          export DOCKERHUB_USERNAME="${{ secrets.DOCKERHUB_USERNAME }}"
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+          docker compose -f docker-compose.prod.yml pull
+          docker compose -f docker-compose.prod.yml up -d --remove-orphans --force-recreate
+          docker image prune -f
           EOF
 
       # ========================================

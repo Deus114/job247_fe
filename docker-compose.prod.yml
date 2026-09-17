@@ -1,0 +1,8 @@
+services:
+  frontend:
+    image: ${DOCKERHUB_USERNAME}/jobs247-frontend:latest
+    container_name: jobs247-frontend
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:3000:80"

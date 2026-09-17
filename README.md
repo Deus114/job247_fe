@@ -67,6 +67,6 @@ Mở [http://localhost:3000](http://localhost:3000).
 
 ## Deploy (tóm tắt)
 
-- Image Docker: build Vite → nginx trong container (map host `3000:80` nếu nginx server proxy tới `:3000`).
-- CI: push `main` → `.github/workflows/frontend-deploy.yml` (cần secrets `VITE_*`, `DOCKERHUB_*`, `EC2_*`).
-- Trên EC2 cần sẵn thư mục deploy (ví dụ `/opt/jobs247/frontend`) và `docker-compose.prod.yml`.
+- Image Docker: build Vite → nginx trong container; compose map `127.0.0.1:3000:80` (khớp nginx host proxy tới `:3000`).
+- CI: push `main` → sync `docker-compose.prod.yml` lên `/var/www/jobs247-frontend` → pull/up container.
+- Secrets: `VITE_*`, `DOCKERHUB_*`, `EC2_*`. User SSH cần quyền ghi `/var/www/jobs247-frontend` và chạy Docker.
