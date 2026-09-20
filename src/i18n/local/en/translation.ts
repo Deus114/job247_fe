@@ -315,6 +315,7 @@ export default {
     "loginFailed": "Login failed",
     "loginMissingData": "Login data is incomplete",
     "loginInactiveAccount": "Account or role is no longer active",
+    "sessionExpired": "Your session has expired, please sign in again",
     "businessConfigLoadFailed": "Could not load business configuration",
     "businessConfigMissingData": "Business configuration data is missing",
     "businessConfigUpdateFailed": "Failed to update business configuration",
@@ -327,7 +328,13 @@ export default {
     "industryGroupSaveFailed": "Failed to save industry group",
     "industryGroupDeleteFailed": "Failed to delete industry group",
     "industryGroupRestoreFailed": "Failed to restore industry group",
-    "industryGroupNameRequired": "Please enter both Vietnamese and English names"
+    "industryGroupNameRequired": "Please enter both Vietnamese and English names",
+    "industryLoadFailed": "Could not load industries",
+    "industryMissingData": "Industry data is missing",
+    "industrySaveFailed": "Failed to save industry",
+    "industryDeleteFailed": "Failed to delete industry",
+    "industryRestoreFailed": "Failed to restore industry",
+    "industryNameRequired": "Please select a group and enter Vietnamese and English names"
   },
   "common": {
     "loading": "Loading...",
@@ -967,7 +974,12 @@ export default {
       "needGroupFirst": "Create an industry group before adding industries.",
       "image": "Industry image",
       "activated": "Industry activated",
-      "deactivated": "Industry deactivated"
+      "deactivated": "Industry deactivated",
+      "created": "Industry created",
+      "saved": "Industry updated",
+      "deleted": "Moved to trash",
+      "deletedPermanent": "Permanently deleted",
+      "restored": "Industry restored"
     },
     "provinces": {
       "items": "provinces / cities",

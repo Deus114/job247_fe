@@ -1,6 +1,13 @@
 import type { AxiosRequestConfig } from 'axios';
 
 declare module 'axios' {
+  export interface AxiosRequestConfig {
+    /** Skip 401 → refresh → retry (login/refresh calls). */
+    skipAuthRefresh?: boolean;
+    /** Internal: already retried after refresh. */
+    _retry?: boolean;
+  }
+
   // Response interceptor unwraps to `response.data`, so callers await T directly.
   export interface AxiosInstance {
     request<T = unknown, R = T, D = unknown>(config: AxiosRequestConfig<D>): Promise<R>;

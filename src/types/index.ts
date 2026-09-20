@@ -31,10 +31,14 @@ export type {
   Province,
   IndustryGroupListParams,
   IndustryGroupWritePayload,
+  IndustryListParams,
+  IndustryWritePayload,
   PaginatedList,
   ApiPagination,
 } from "./catalog";
 export {
   industryGroupDisplayName,
   industryGroupDisplayDescription,
+  industryDisplayName,
+  industryDisplayDescription,
 } from "./catalog";

@@ -2,7 +2,7 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { AdminSessionUser } from "@/types/adminAuth";
 import { isValidAdminSession } from "@/types/adminAuth";
 import { readJson } from "@/lib/storage";
-import { clearAdminTokens } from "@/api/adminAuth";
+import { clearAdminTokens } from "@/api/adminAuthTokens";
 
 interface AdminAuthState {
   admin: AdminSessionUser | null;

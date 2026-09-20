@@ -6,6 +6,8 @@ export { fetchCompanies } from "./companies";
 export { fetchApplications } from "./applications";
 export {
   adminLoginRequest,
+  adminRefreshRequest,
+  ensureAdminSession,
   fetchAdminMe,
   updateAdminMe,
   clearAdminTokens,
@@ -16,6 +18,7 @@ export type {
   AdminLoginPayload,
   AdminLoginResult,
   UpdateAdminMePayload,
+  EnsureAdminSessionResult,
 } from "./adminAuth";
 export {
   fetchAdminBusinessConfig,
@@ -31,9 +34,20 @@ export {
   restoreIndustryGroup,
   permanentDeleteIndustryGroup,
 } from "./industryGroups";
+export {
+  fetchIndustries,
+  fetchIndustryById,
+  createIndustry,
+  updateIndustry,
+  softDeleteIndustry,
+  restoreIndustry,
+  permanentDeleteIndustry,
+} from "./industries";
 export type {
   IndustryGroupListParams,
   IndustryGroupWritePayload,
+  IndustryListParams,
+  IndustryWritePayload,
 } from "@/types/catalog";
 export {
   loginRequest,

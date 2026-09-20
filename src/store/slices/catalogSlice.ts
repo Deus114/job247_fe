@@ -1,17 +1,13 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { Industry, Province } from '@/types/catalog';
-import { mockIndustries, mockProvinces } from '@/mocks/catalog';
+import type { Province } from '@/types/catalog';
+import { mockProvinces } from '@/mocks/catalog';
 
 interface CatalogState {
-  industries: Industry[];
-  deletedIndustries: Industry[];
   provinces: Province[];
   deletedProvinces: Province[];
 }
 
 const initialState: CatalogState = {
-  industries: mockIndustries.map((i) => ({ ...i, isActive: i.isActive !== false })),
-  deletedIndustries: [],
   provinces: mockProvinces.map((p) => ({ ...p, isActive: p.isActive !== false })),
   deletedProvinces: [],
 };
@@ -24,71 +20,6 @@ const catalogSlice = createSlice({
   name: 'catalog',
   initialState,
   reducers: {
-    addIndustry(
-      state,
-      action: PayloadAction<{ name: string; groupId: string; image?: string }>,
-    ) {
-      const name = action.payload.name.trim();
-      const groupId = action.payload.groupId;
-      if (!name || !groupId) return;
-      if (
-        state.industries.some((i) => i.name === name) ||
-        state.deletedIndustries.some((i) => i.name === name)
-      ) {
-        return;
-      }
-      state.industries.push({
-        id: nextId('ind'),
-        name,
-        groupId,
-        image: action.payload.image || '',
-        isActive: true,
-        createdAt: new Date().toISOString().slice(0, 10),
-      });
-    },
-    updateIndustry(
-      state,
-      action: PayloadAction<{
-        id: string;
-        name: string;
-        groupId: string;
-        image?: string;
-      }>,
-    ) {
-      const item = state.industries.find((i) => i.id === action.payload.id);
-      if (!item) return;
-      const name = action.payload.name.trim();
-      const groupId = action.payload.groupId;
-      if (!name || !groupId) return;
-      if (state.industries.some((i) => i.id !== item.id && i.name === name)) return;
-      item.name = name;
-      item.groupId = groupId;
-      if (action.payload.image !== undefined) item.image = action.payload.image;
-    },
-    softDeleteIndustry(state, action: PayloadAction<string>) {
-      const idx = state.industries.findIndex((i) => i.id === action.payload);
-      if (idx < 0) return;
-      const [removed] = state.industries.splice(idx, 1);
-      removed.deletedAt = new Date().toISOString();
-      state.deletedIndustries.push(removed);
-    },
-    restoreIndustry(state, action: PayloadAction<string>) {
-      const idx = state.deletedIndustries.findIndex((i) => i.id === action.payload);
-      if (idx < 0) return;
-      const [removed] = state.deletedIndustries.splice(idx, 1);
-      delete removed.deletedAt;
-      state.industries.push(removed);
-    },
-    permanentDeleteIndustry(state, action: PayloadAction<string>) {
-      state.deletedIndustries = state.deletedIndustries.filter(
-        (i) => i.id !== action.payload,
-      );
-    },
-    toggleIndustryActive(state, action: PayloadAction<string>) {
-      const item = state.industries.find((i) => i.id === action.payload);
-      if (item) item.isActive = item.isActive === false ? true : false;
-    },
-
     addProvince(
       state,
       action: PayloadAction<{
@@ -159,12 +90,6 @@ const catalogSlice = createSlice({
 });
 
 export const {
-  addIndustry,
-  updateIndustry,
-  softDeleteIndustry,
-  restoreIndustry,
-  permanentDeleteIndustry,
-  toggleIndustryActive,
   addProvince,
   updateProvince,
   softDeleteProvince,

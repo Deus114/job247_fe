@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAdminAuth } from '@/features/auth';
@@ -10,7 +10,6 @@ import {
   getAdminRouteKeyFromPath,
 } from '@/features/admin';
 import { useCatalogBootstrap } from '@/features/catalog';
-import { fetchAdminMe } from '@/api';
 import LanguageSwitcher from '@/components/ui/LanguageSwitcher';
 
 export default function AdminLayout() {
@@ -19,7 +18,7 @@ export default function AdminLayout() {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const { admin, logout: logoutAdmin, setSessionUser } = useAdminAuth();
+  const { admin, logout: logoutAdmin } = useAdminAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -27,22 +26,6 @@ export default function AdminLayout() {
     () => getAdminRouteKeyFromPath(location.pathname),
     [location.pathname],
   );
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const user = await fetchAdminMe();
-        if (!cancelled) setSessionUser(user);
-      } catch {
-        // Keep existing session from login if /me fails.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handleLogout = () => {
     logoutAdmin();

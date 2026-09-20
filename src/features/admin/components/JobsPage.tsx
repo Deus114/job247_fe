@@ -6,6 +6,7 @@ import CustomSelect from '@/components/ui/CustomSelect';
 import SortHeader from '@/components/ui/SortHeader';
 import ColumnVisibilityDropdown from '@/components/ui/ColumnVisibilityDropdown';
 import Pagination from '@/components/ui/Pagination';
+import { useTableActionMenu, TableActionMenu } from '@/components/ui/TableActionMenu';
 
 type SortField = 'title' | 'company' | 'salary' | 'createdAt';
 
@@ -22,6 +23,7 @@ export default function JobsPage() {
     permanentDeleteJob,
     toggleJobActive,
   } = useJobs();
+  const { openId, pos, menuRef, toggle, close } = useTableActionMenu<string>();
 
   const [viewMode, setViewMode] = useState<'active' | 'trash'>('active');
   const [search, setSearch] = useState('');
@@ -34,7 +36,6 @@ export default function JobsPage() {
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [confirmPermanentDelete, setConfirmPermanentDelete] = useState<string | null>(null);
   const [confirmSoftDelete, setConfirmSoftDelete] = useState<string | null>(null);
-  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [detailJob, setDetailJob] = useState<Job | null>(null);
 
   const [form, setForm] = useState<Partial<Job>>();
@@ -125,7 +126,7 @@ export default function JobsPage() {
     setEditingJob(job);
     setForm({ ...job });
     setModalOpen(true);
-    setDropdownOpen(null);
+    close();
   };
 
   const handleSave = () => {
@@ -143,6 +144,7 @@ export default function JobsPage() {
 
   const activeCount = allJobs.filter((j) => !j.deletedAt).length;
   const trashCount = allJobs.filter((j) => !!j.deletedAt).length;
+  const activeItem = paginatedJobs.find((x) => x.id === openId);
 
   const allColumns = [
     { key: 'title', label: t('adminUi.columns.title') },
@@ -334,40 +336,9 @@ export default function JobsPage() {
                           <button onClick={() => setConfirmPermanentDelete(null)} className="px-2.5 py-1 border border-background-300 rounded-lg text-xs text-foreground-600 hover:bg-background-100 cursor-pointer">{t('adminUi.actions.cancel')}</button>
                         </div>
                       ) : (
-                        <div className="relative inline-block">
-                          <button onClick={() => setDropdownOpen(dropdownOpen === job.id ? null : job.id)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-background-100 transition-colors cursor-pointer">
+                          <button type="button" onClick={(e) => toggle(job.id, e)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-background-100 transition-colors cursor-pointer">
                             <i className="ri-more-2-fill text-foreground-500"></i>
                           </button>
-                          {dropdownOpen === job.id && (
-                            <div className="absolute right-0 top-full mt-1 w-44 bg-background-50 border border-background-200/70 rounded-xl shadow-lg z-20 overflow-hidden">
-                              {viewMode === 'active' ? (
-                                <>
-                                  <button onClick={() => { setDetailJob(job); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
-                                    <i className="ri-eye-line text-primary-500"></i> {t('adminUi.jobs.viewDetails')}
-                                  </button>
-                                  <button onClick={() => openEdit(job)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
-                                    <i className="ri-edit-line text-accent-500"></i> {t('adminUi.jobs.edit')}
-                                  </button>
-                                  <button onClick={() => { setConfirmSoftDelete(job.id); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
-                                    <i className="ri-delete-bin-line"></i> {t('adminUi.jobs.delete')}
-                                  </button>
-                                </>
-                              ) : (
-                                <>
-                                  <button onClick={() => { restoreJob(job.id); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-accent-600 hover:bg-accent-50 transition-colors cursor-pointer">
-                                    <i className="ri-arrow-go-back-line"></i> {t('adminUi.jobs.restore')}
-                                  </button>
-                                  <button onClick={() => { setDetailJob(job); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
-                                    <i className="ri-eye-line text-primary-500"></i> {t('adminUi.jobs.viewDetails')}
-                                  </button>
-                                  <button onClick={() => { setConfirmPermanentDelete(job.id); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
-                                    <i className="ri-delete-bin-6-line"></i> {t('adminUi.jobs.deletePermanent')}
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
                       )}
                     </td>
                   </tr>
@@ -557,7 +528,33 @@ export default function JobsPage() {
         </div>
       )}
 
-      {dropdownOpen && <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(null)}></div>}
+      <TableActionMenu open={openId != null && !!activeItem} pos={pos} menuRef={menuRef}>
+        {activeItem && viewMode === 'active' ? (
+          <>
+            <button type="button" onClick={() => { setDetailJob(activeItem); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
+              <i className="ri-eye-line text-primary-500"></i> {t('adminUi.jobs.viewDetails')}
+            </button>
+            <button type="button" onClick={() => openEdit(activeItem)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
+              <i className="ri-edit-line text-accent-500"></i> {t('adminUi.jobs.edit')}
+            </button>
+            <button type="button" onClick={() => { setConfirmSoftDelete(activeItem.id); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
+              <i className="ri-delete-bin-line"></i> {t('adminUi.jobs.delete')}
+            </button>
+          </>
+        ) : activeItem ? (
+          <>
+            <button type="button" onClick={() => { restoreJob(activeItem.id); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-accent-600 hover:bg-accent-50 transition-colors cursor-pointer">
+              <i className="ri-arrow-go-back-line"></i> {t('adminUi.jobs.restore')}
+            </button>
+            <button type="button" onClick={() => { setDetailJob(activeItem); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
+              <i className="ri-eye-line text-primary-500"></i> {t('adminUi.jobs.viewDetails')}
+            </button>
+            <button type="button" onClick={() => { setConfirmPermanentDelete(activeItem.id); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
+              <i className="ri-delete-bin-6-line"></i> {t('adminUi.jobs.deletePermanent')}
+            </button>
+          </>
+        ) : null}
+      </TableActionMenu>
     </div>
   );
 }

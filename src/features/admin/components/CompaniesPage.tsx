@@ -8,6 +8,7 @@ import CustomSelect from '@/components/ui/CustomSelect';
 import SortHeader from '@/components/ui/SortHeader';
 import ColumnVisibilityDropdown from '@/components/ui/ColumnVisibilityDropdown';
 import Pagination from '@/components/ui/Pagination';
+import { useTableActionMenu, TableActionMenu } from '@/components/ui/TableActionMenu';
 
 type SortField = 'name' | 'industry' | 'size' | 'createdAt';
 
@@ -26,6 +27,7 @@ export default function CompaniesPage() {
     toggleCompanyActive,
   } = useCompanies();
   const { jobs } = useJobs();
+  const { openId, pos, menuRef, toggle, close } = useTableActionMenu<string>();
   const [viewMode, setViewMode] = useState<'active' | 'trash'>('active');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | Company['status']>('all');
@@ -38,7 +40,6 @@ export default function CompaniesPage() {
   const [confirmPermanentDelete, setConfirmPermanentDelete] = useState<string | null>(null);
   const [revisionModal, setRevisionModal] = useState<{ open: boolean; companyId: string; companyName: string }>({ open: false, companyId: '', companyName: '' });
   const [revisionNote, setRevisionNote] = useState('');
-  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [detailCompany, setDetailCompany] = useState<Company | null>(null);
 
   const [form, setForm] = useState<Partial<Company>>();
@@ -127,7 +128,7 @@ export default function CompaniesPage() {
     setEditingCompany(company);
     setForm({ ...company });
     setModalOpen(true);
-    setDropdownOpen(null);
+    close();
   };
 
   const handleSave = () => {
@@ -152,6 +153,7 @@ export default function CompaniesPage() {
 
   const activeCount = allCompanies.filter((c) => !c.deletedAt).length;
   const trashCount = allCompanies.filter((c) => !!c.deletedAt).length;
+  const activeItem = paginatedCompanies.find((x) => x.id === openId);
 
   const allColumns = [
     { key: 'name', label: t('adminUi.columns.name') },
@@ -344,56 +346,9 @@ export default function CompaniesPage() {
                           <button onClick={() => setConfirmPermanentDelete(null)} className="px-2.5 py-1 border border-background-300 rounded-lg text-xs text-foreground-600 hover:bg-background-100 cursor-pointer">{t('adminUi.actions.cancel')}</button>
                         </div>
                       ) : (
-                        <div className="relative inline-block">
-                          <button onClick={() => setDropdownOpen(dropdownOpen === company.id ? null : company.id)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-background-100 transition-colors cursor-pointer">
+                          <button type="button" onClick={(e) => toggle(company.id, e)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-background-100 transition-colors cursor-pointer">
                             <i className="ri-more-2-fill text-foreground-500"></i>
                           </button>
-                          {dropdownOpen === company.id && (
-                            <div className="absolute right-0 top-full mt-1 w-44 bg-background-50 border border-background-200/70 rounded-xl shadow-lg z-20 overflow-hidden">
-                              {viewMode === 'active' ? (
-                                <>
-                                  <button onClick={() => { setDetailCompany(company); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
-                                    <i className="ri-eye-line text-primary-500"></i> {t('adminUi.jobs.viewDetails')}
-                                  </button>
-                                  <button onClick={() => navigate(`/companies/${company.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
-                                    <i className="ri-external-link-line text-accent-500"></i> {t('adminUi.companies.companyPage')}
-                                  </button>
-                                  <button onClick={() => openEdit(company)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
-                                    <i className="ri-edit-line text-secondary-500"></i> {t('adminUi.jobs.edit')}
-                                  </button>
-                                  {company.status === 'pending' && (
-                                    <>
-                                      <button onClick={() => { approveCompany(company.id); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-accent-600 hover:bg-accent-50 transition-colors cursor-pointer">
-                                        <i className="ri-check-line"></i> {t('adminUi.companies.approve')}
-                                      </button>
-                                      <button onClick={() => { setRevisionModal({ open: true, companyId: company.id, companyName: company.name }); setRevisionNote(''); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-orange-600 hover:bg-orange-50 transition-colors cursor-pointer">
-                                        <i className="ri-edit-line"></i> {t('adminUi.companies.needsRevision')}
-                                      </button>
-                                      <button onClick={() => { rejectCompany(company.id); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
-                                        <i className="ri-close-line"></i> {t('adminUi.companies.reject')}
-                                      </button>
-                                    </>
-                                  )}
-                                  <button onClick={() => { setConfirmSoftDelete(company.id); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
-                                    <i className="ri-delete-bin-line"></i> {t('adminUi.jobs.delete')}
-                                  </button>
-                                </>
-                              ) : (
-                                <>
-                                  <button onClick={() => { restoreCompany(company.id); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-accent-600 hover:bg-accent-50 transition-colors cursor-pointer">
-                                    <i className="ri-arrow-go-back-line"></i> {t('adminUi.jobs.restore')}
-                                  </button>
-                                  <button onClick={() => { setDetailCompany(company); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
-                                    <i className="ri-eye-line text-primary-500"></i> {t('adminUi.jobs.viewDetails')}
-                                  </button>
-                                  <button onClick={() => { setConfirmPermanentDelete(company.id); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
-                                    <i className="ri-delete-bin-6-line"></i> {t('adminUi.jobs.deletePermanent')}
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
                       )}
                     </td>
                   </tr>
@@ -591,7 +546,49 @@ export default function CompaniesPage() {
         </div>
       )}
 
-      {dropdownOpen && <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(null)}></div>}
+      <TableActionMenu open={openId != null && !!activeItem} pos={pos} menuRef={menuRef}>
+        {activeItem && viewMode === 'active' ? (
+          <>
+            <button type="button" onClick={() => { setDetailCompany(activeItem); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
+              <i className="ri-eye-line text-primary-500"></i> {t('adminUi.jobs.viewDetails')}
+            </button>
+            <button type="button" onClick={() => { navigate(`/companies/${activeItem.id}`); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
+              <i className="ri-external-link-line text-accent-500"></i> {t('adminUi.companies.companyPage')}
+            </button>
+            <button type="button" onClick={() => openEdit(activeItem)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
+              <i className="ri-edit-line text-secondary-500"></i> {t('adminUi.jobs.edit')}
+            </button>
+            {activeItem.status === 'pending' && (
+              <>
+                <button type="button" onClick={() => { approveCompany(activeItem.id); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-accent-600 hover:bg-accent-50 transition-colors cursor-pointer">
+                  <i className="ri-check-line"></i> {t('adminUi.companies.approve')}
+                </button>
+                <button type="button" onClick={() => { setRevisionModal({ open: true, companyId: activeItem.id, companyName: activeItem.name }); setRevisionNote(''); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-orange-600 hover:bg-orange-50 transition-colors cursor-pointer">
+                  <i className="ri-edit-line"></i> {t('adminUi.companies.needsRevision')}
+                </button>
+                <button type="button" onClick={() => { rejectCompany(activeItem.id); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
+                  <i className="ri-close-line"></i> {t('adminUi.companies.reject')}
+                </button>
+              </>
+            )}
+            <button type="button" onClick={() => { setConfirmSoftDelete(activeItem.id); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
+              <i className="ri-delete-bin-line"></i> {t('adminUi.jobs.delete')}
+            </button>
+          </>
+        ) : activeItem ? (
+          <>
+            <button type="button" onClick={() => { restoreCompany(activeItem.id); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-accent-600 hover:bg-accent-50 transition-colors cursor-pointer">
+              <i className="ri-arrow-go-back-line"></i> {t('adminUi.jobs.restore')}
+            </button>
+            <button type="button" onClick={() => { setDetailCompany(activeItem); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
+              <i className="ri-eye-line text-primary-500"></i> {t('adminUi.jobs.viewDetails')}
+            </button>
+            <button type="button" onClick={() => { setConfirmPermanentDelete(activeItem.id); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
+              <i className="ri-delete-bin-6-line"></i> {t('adminUi.jobs.deletePermanent')}
+            </button>
+          </>
+        ) : null}
+      </TableActionMenu>
     </div>
   );
 }

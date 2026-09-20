@@ -20,6 +20,10 @@ import ColumnVisibilityDropdown from '@/components/ui/ColumnVisibilityDropdown';
 import Pagination from '@/components/ui/Pagination';
 import CustomSelect from '@/components/ui/CustomSelect';
 import ImageUploadField from '@/components/ui/ImageUploadField';
+import {
+  useTableActionMenu,
+  TableActionMenu,
+} from '@/components/ui/TableActionMenu';
 import { toast } from '@/lib/toast';
 import { formatDateTime } from '@/lib/formatDate';
 
@@ -75,7 +79,7 @@ export default function IndustryGroupsPage() {
   const [detail, setDetail] = useState<IndustryGroup | null>(null);
   const [confirmSoftDelete, setConfirmSoftDelete] = useState<number | null>(null);
   const [confirmPermanentDelete, setConfirmPermanentDelete] = useState<number | null>(null);
-  const [dropdownOpen, setDropdownOpen] = useState<number | null>(null);
+  const { openId, pos, menuRef, toggle, close } = useTableActionMenu<number>();
   const [form, setForm] = useState<FormState>(emptyForm);
 
   const [sortField, setSortField] = useState<SortField>('sortOrder');
@@ -153,6 +157,11 @@ export default function IndustryGroupsPage() {
     setCurrentPage(1);
   }, [keyword, activeFilter, viewMode, pageSize, sortField, sortOrder]);
 
+  const activeItem = useMemo(
+    () => items.find((item) => item.id === openId) ?? null,
+    [items, openId],
+  );
+
   const activeFilterOptions = useMemo(
     () => [
       { value: '', label: t('adminUi.filters.allStatuses') },
@@ -181,7 +190,7 @@ export default function IndustryGroupsPage() {
       imageFile: null,
     });
     setModalOpen(true);
-    setDropdownOpen(null);
+    close();
   };
 
   const handleSave = async () => {
@@ -247,7 +256,7 @@ export default function IndustryGroupsPage() {
     try {
       await restoreIndustryGroup(id);
       toast.success(t('adminUi.industryGroups.restored'));
-      setDropdownOpen(null);
+      close();
       await loadList();
       await loadTrashCount();
     } catch (error) {
@@ -666,77 +675,13 @@ export default function IndustryGroupsPage() {
                             </button>
                           </div>
                         ) : (
-                          <div className="relative inline-block">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setDropdownOpen(dropdownOpen === item.id ? null : item.id)
-                              }
-                              className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-background-100 cursor-pointer"
-                            >
-                              <i className="ri-more-2-fill text-foreground-500"></i>
-                            </button>
-                            {dropdownOpen === item.id && (
-                              <div className="absolute right-0 top-full mt-1 w-44 bg-background-50 border border-background-200/70 rounded-xl shadow-lg z-20 overflow-hidden">
-                                {viewMode === 'active' ? (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setDetail(item);
-                                        setDropdownOpen(null);
-                                      }}
-                                      className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-background-100 cursor-pointer"
-                                    >
-                                      <i className="ri-eye-line text-primary-500"></i>
-                                      {t('adminUi.jobs.viewDetails')}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => openEdit(item)}
-                                      className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-background-100 cursor-pointer"
-                                    >
-                                      <i className="ri-edit-line text-accent-500"></i>
-                                      {t('adminUi.jobs.edit')}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setConfirmSoftDelete(item.id);
-                                        setDropdownOpen(null);
-                                      }}
-                                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 cursor-pointer"
-                                    >
-                                      <i className="ri-delete-bin-line"></i>
-                                      {t('adminUi.jobs.confirmDelete')}
-                                    </button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={() => void runRestore(item.id)}
-                                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-accent-600 hover:bg-accent-50 cursor-pointer"
-                                    >
-                                      <i className="ri-arrow-go-back-line"></i>
-                                      {t('adminUi.jobs.restore')}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setConfirmPermanentDelete(item.id);
-                                        setDropdownOpen(null);
-                                      }}
-                                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 cursor-pointer"
-                                    >
-                                      <i className="ri-delete-bin-6-line"></i>
-                                      {t('adminUi.jobs.deletePermanent')}
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            )}
-                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => toggle(item.id, e)}
+                            className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-background-100 cursor-pointer"
+                          >
+                            <i className="ri-more-2-fill text-foreground-500"></i>
+                          </button>
                         )}
                       </td>
                     )}
@@ -1018,9 +963,74 @@ export default function IndustryGroupsPage() {
         </div>
       )}
 
-      {dropdownOpen != null && (
-        <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(null)}></div>
-      )}
+      <TableActionMenu
+        open={openId != null && !!activeItem}
+        pos={pos}
+        menuRef={menuRef}
+      >
+        {activeItem && viewMode === 'active' ? (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                setDetail(activeItem);
+                close();
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-background-100 cursor-pointer"
+            >
+              <i className="ri-eye-line text-primary-500"></i>
+              {t('adminUi.jobs.viewDetails')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                openEdit(activeItem);
+                close();
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-background-100 cursor-pointer"
+            >
+              <i className="ri-edit-line text-accent-500"></i>
+              {t('adminUi.jobs.edit')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmSoftDelete(activeItem.id);
+                close();
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 cursor-pointer"
+            >
+              <i className="ri-delete-bin-line"></i>
+              {t('adminUi.jobs.confirmDelete')}
+            </button>
+          </>
+        ) : activeItem ? (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                void runRestore(activeItem.id);
+                close();
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-accent-600 hover:bg-accent-50 cursor-pointer"
+            >
+              <i className="ri-arrow-go-back-line"></i>
+              {t('adminUi.jobs.restore')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmPermanentDelete(activeItem.id);
+                close();
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 cursor-pointer"
+            >
+              <i className="ri-delete-bin-6-line"></i>
+              {t('adminUi.jobs.deletePermanent')}
+            </button>
+          </>
+        ) : null}
+      </TableActionMenu>
     </div>
   );
 }

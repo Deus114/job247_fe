@@ -6,6 +6,7 @@ import type { Role } from '@/types/role';
 import SortHeader from '@/components/ui/SortHeader';
 import ColumnVisibilityDropdown from '@/components/ui/ColumnVisibilityDropdown';
 import Pagination from '@/components/ui/Pagination';
+import { useTableActionMenu, TableActionMenu } from '@/components/ui/TableActionMenu';
 
 type SortField = 'name' | 'permissions' | 'createdAt';
 
@@ -14,6 +15,7 @@ export default function RolesPage() {
   const dispatch = useAppDispatch();
   const allRoles = useAppSelector((state) => state.roles.roles);
   const { permissions } = useAppSelector((state) => state.roles);
+  const { openId, pos, menuRef, toggle, close } = useTableActionMenu<string>();
   const [viewMode, setViewMode] = useState<'active' | 'trash'>('active');
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -24,7 +26,6 @@ export default function RolesPage() {
   const [confirmSoftDelete, setConfirmSoftDelete] = useState<string | null>(null);
   const [confirmPermanentDelete, setConfirmPermanentDelete] = useState<string | null>(null);
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
-  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [sortField, setSortField] = useState<SortField>('name');
@@ -89,14 +90,14 @@ export default function RolesPage() {
     setEditingRole(role);
     setForm({ name: role.name, description: role.description });
     setModalOpen(true);
-    setDropdownOpen(null);
+    close();
   };
 
   const openPermissions = (role: Role) => {
     setEditingRole(role);
     setSelectedPermissions([...role.permissions]);
     setPermissionModalOpen(true);
-    setDropdownOpen(null);
+    close();
   };
 
   const openDetail = (role: Role) => {
@@ -136,6 +137,7 @@ export default function RolesPage() {
 
   const activeCount = allRoles.filter((r) => !r.deletedAt).length;
   const trashCount = allRoles.filter((r) => !!r.deletedAt).length;
+  const activeItem = paginatedRoles.find((x) => x.id === openId);
 
   return (
     <div>
@@ -283,37 +285,9 @@ export default function RolesPage() {
                         <button onClick={() => setConfirmPermanentDelete(null)} className="px-2.5 py-1 border border-background-300 rounded-lg text-xs text-foreground-600 hover:bg-background-100 cursor-pointer">{t('adminUi.actions.cancel')}</button>
                       </div>
                     ) : (
-                      <div className="relative inline-block">
-                        <button onClick={() => setDropdownOpen(dropdownOpen === role.id ? null : role.id)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-background-100 transition-colors cursor-pointer">
+                        <button type="button" onClick={(e) => toggle(role.id, e)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-background-100 transition-colors cursor-pointer">
                           <i className="ri-more-2-fill text-foreground-500"></i>
                         </button>
-                        {dropdownOpen === role.id && (
-                          <div className="absolute right-0 top-full mt-1 w-44 bg-background-50 border border-background-200/70 rounded-xl shadow-lg z-20 overflow-hidden">
-                            {viewMode === 'active' ? (
-                              <>
-                                <button onClick={() => { openDetail(role); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
-                                  <i className="ri-eye-line text-primary-500"></i>{t('adminUi.jobs.viewDetails')}</button>
-                                <button onClick={() => openPermissions(role)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
-                                  <i className="ri-key-2-line text-secondary-500"></i> {t('adminUi.roles.assignPermissions')}
-                                </button>
-                                <button onClick={() => openEdit(role)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
-                                  <i className="ri-edit-line text-accent-500"></i>{t('adminUi.jobs.edit')}</button>
-                                <button onClick={() => { setConfirmSoftDelete(role.id); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
-                                  <i className="ri-delete-bin-line"></i>{t('adminUi.jobs.confirmDelete')}</button>
-                              </>
-                            ) : (
-                              <>
-                                <button onClick={() => { dispatch(restoreRole(role.id)); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-accent-600 hover:bg-accent-50 transition-colors cursor-pointer">
-                                  <i className="ri-arrow-go-back-line"></i>{t('adminUi.jobs.restore')}</button>
-                                <button onClick={() => { openDetail(role); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
-                                  <i className="ri-eye-line text-primary-500"></i>{t('adminUi.jobs.viewDetails')}</button>
-                                <button onClick={() => { setConfirmPermanentDelete(role.id); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
-                                  <i className="ri-delete-bin-6-line"></i>{t('adminUi.jobs.deletePermanent')}</button>
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
                     )}
                   </td>
                 </tr>
@@ -507,7 +481,30 @@ export default function RolesPage() {
         </div>
       )}
 
-      {dropdownOpen && <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(null)}></div>}
+      <TableActionMenu open={openId != null && !!activeItem} pos={pos} menuRef={menuRef}>
+        {activeItem && viewMode === 'active' ? (
+          <>
+            <button type="button" onClick={() => { openDetail(activeItem); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
+              <i className="ri-eye-line text-primary-500"></i>{t('adminUi.jobs.viewDetails')}</button>
+            <button type="button" onClick={() => openPermissions(activeItem)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
+              <i className="ri-key-2-line text-secondary-500"></i> {t('adminUi.roles.assignPermissions')}
+            </button>
+            <button type="button" onClick={() => openEdit(activeItem)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
+              <i className="ri-edit-line text-accent-500"></i>{t('adminUi.jobs.edit')}</button>
+            <button type="button" onClick={() => { setConfirmSoftDelete(activeItem.id); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
+              <i className="ri-delete-bin-line"></i>{t('adminUi.jobs.confirmDelete')}</button>
+          </>
+        ) : activeItem ? (
+          <>
+            <button type="button" onClick={() => { dispatch(restoreRole(activeItem.id)); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-accent-600 hover:bg-accent-50 transition-colors cursor-pointer">
+              <i className="ri-arrow-go-back-line"></i>{t('adminUi.jobs.restore')}</button>
+            <button type="button" onClick={() => { openDetail(activeItem); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
+              <i className="ri-eye-line text-primary-500"></i>{t('adminUi.jobs.viewDetails')}</button>
+            <button type="button" onClick={() => { setConfirmPermanentDelete(activeItem.id); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
+              <i className="ri-delete-bin-6-line"></i>{t('adminUi.jobs.deletePermanent')}</button>
+          </>
+        ) : null}
+      </TableActionMenu>
     </div>
   );
 }

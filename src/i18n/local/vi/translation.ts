@@ -315,6 +315,7 @@ export default {
     "loginFailed": "Đăng nhập thất bại",
     "loginMissingData": "Thiếu dữ liệu đăng nhập",
     "loginInactiveAccount": "Tài khoản hoặc vai trò không còn hoạt động",
+    "sessionExpired": "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại",
     "businessConfigLoadFailed": "Không lấy được cấu hình doanh nghiệp",
     "businessConfigMissingData": "Thiếu dữ liệu cấu hình",
     "businessConfigUpdateFailed": "Cập nhật cấu hình doanh nghiệp thất bại",
@@ -327,7 +328,13 @@ export default {
     "industryGroupSaveFailed": "Lưu nhóm ngành nghề thất bại",
     "industryGroupDeleteFailed": "Xóa nhóm ngành nghề thất bại",
     "industryGroupRestoreFailed": "Khôi phục nhóm ngành nghề thất bại",
-    "industryGroupNameRequired": "Vui lòng nhập tên tiếng Việt và tiếng Anh"
+    "industryGroupNameRequired": "Vui lòng nhập tên tiếng Việt và tiếng Anh",
+    "industryLoadFailed": "Không lấy được danh sách ngành nghề",
+    "industryMissingData": "Thiếu dữ liệu ngành nghề",
+    "industrySaveFailed": "Lưu ngành nghề thất bại",
+    "industryDeleteFailed": "Xóa ngành nghề thất bại",
+    "industryRestoreFailed": "Khôi phục ngành nghề thất bại",
+    "industryNameRequired": "Vui lòng chọn nhóm và nhập tên tiếng Việt, tiếng Anh"
   },
   "common": {
     "loading": "Đang tải...",
@@ -967,7 +974,12 @@ export default {
       "needGroupFirst": "Cần tạo nhóm ngành nghề trước khi thêm ngành nghề.",
       "image": "Ảnh ngành nghề",
       "activated": "Đã bật ngành nghề",
-      "deactivated": "Đã tắt ngành nghề"
+      "deactivated": "Đã tắt ngành nghề",
+      "created": "Đã tạo ngành nghề",
+      "saved": "Đã cập nhật ngành nghề",
+      "deleted": "Đã chuyển vào thùng rác",
+      "deletedPermanent": "Đã xóa vĩnh viễn",
+      "restored": "Đã khôi phục ngành nghề"
     },
     "provinces": {
       "items": "tỉnh / thành phố",

@@ -10,6 +10,7 @@ import CustomSelect from '@/components/ui/CustomSelect';
 import SortHeader from '@/components/ui/SortHeader';
 import ColumnVisibilityDropdown from '@/components/ui/ColumnVisibilityDropdown';
 import Pagination from '@/components/ui/Pagination';
+import { useTableActionMenu, TableActionMenu } from '@/components/ui/TableActionMenu';
 
 type SortField = 'fullName' | 'createdAt' | 'lastLogin';
 
@@ -17,6 +18,7 @@ export default function ProjectUsersPage() {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const allUsers = useAppSelector((state) => state.projectUsers.items);
+  const { openId, pos, menuRef, toggle, close } = useTableActionMenu<string>();
   const [viewMode, setViewMode] = useState<'active' | 'trash'>('active');
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -30,7 +32,6 @@ export default function ProjectUsersPage() {
   const [detailUser, setDetailUser] = useState<ProjectUser | null>(null);
   const [confirmSoftDelete, setConfirmSoftDelete] = useState<string | null>(null);
   const [confirmPermanentDelete, setConfirmPermanentDelete] = useState<string | null>(null);
-  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState('');
 
   const [visibleColumns, setVisibleColumns] = useState<string[]>(['user','type','info','status','createdAt','lastLogin','actions']);
@@ -97,7 +98,7 @@ export default function ProjectUsersPage() {
     });
     setImagePreview(u.avatar || '');
     setModalOpen(true);
-    setDropdownOpen(null);
+    close();
   };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -141,6 +142,7 @@ export default function ProjectUsersPage() {
 
   const clearFilters = () => { setSearch(''); setRoleFilter('all'); setStatusFilter('all'); setDateFrom(''); setDateTo(''); };
   const hasActiveFilters = search || roleFilter !== 'all' || statusFilter !== 'all' || dateFrom || dateTo;
+  const activeItem = paginatedUsers.find((x) => x.id === openId);
   const activeCount = allUsers.filter((u) => !u.deletedAt).length;
   const trashCount = allUsers.filter((u) => !!u.deletedAt).length;
 
@@ -283,29 +285,7 @@ export default function ProjectUsersPage() {
                         <button onClick={() => setConfirmPermanentDelete(null)} className="px-2.5 py-1 border border-background-300 rounded-lg text-xs text-foreground-600 hover:bg-background-100 cursor-pointer">{t('adminUi.actions.cancel')}</button>
                       </div>
                     ) : (
-                      <div className="relative inline-block">
-                        <button onClick={() => setDropdownOpen(dropdownOpen === u.id ? null : u.id)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-background-100 transition-colors cursor-pointer"><i className="ri-more-2-fill text-foreground-500"></i></button>
-                        {dropdownOpen === u.id && (
-                          <div className="absolute right-0 top-full mt-1 w-44 bg-background-50 border border-background-200/70 rounded-xl shadow-lg z-20 overflow-hidden">
-                            {viewMode === 'active' ? (
-                              <>
-                                <button onClick={() => { setDetailUser(u); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer"><i className="ri-eye-line text-primary-500"></i>{t('adminUi.jobs.viewDetails')}</button>
-                                <button onClick={() => openEdit(u)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer"><i className="ri-edit-line text-accent-500"></i>{t('adminUi.jobs.edit')}</button>
-                                <button onClick={() => { dispatch(toggleProjectUserStatus(u.id)); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
-                                  <i className={`${u.status === 'active' ? 'ri-lock-line' : 'ri-lock-unlock-line'} text-yellow-500`}></i> {u.status === 'active' ? t('adminUi.projectUsers.deactivate') : t('adminUi.projectUsers.activate')}
-                                </button>
-                                <button onClick={() => { setConfirmSoftDelete(u.id); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer"><i className="ri-delete-bin-line"></i>{t('adminUi.jobs.confirmDelete')}</button>
-                              </>
-                            ) : (
-                              <>
-                                <button onClick={() => { dispatch(restoreProjectUser(u.id)); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-accent-600 hover:bg-accent-50 transition-colors cursor-pointer"><i className="ri-arrow-go-back-line"></i>{t('adminUi.jobs.restore')}</button>
-                                <button onClick={() => { setDetailUser(u); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer"><i className="ri-eye-line text-primary-500"></i>{t('adminUi.jobs.viewDetails')}</button>
-                                <button onClick={() => { setConfirmPermanentDelete(u.id); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer"><i className="ri-delete-bin-6-line"></i>{t('adminUi.jobs.deletePermanent')}</button>
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                        <button type="button" onClick={(e) => toggle(u.id, e)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-background-100 transition-colors cursor-pointer"><i className="ri-more-2-fill text-foreground-500"></i></button>
                     )}
                   </td>
                 </tr>
@@ -447,7 +427,24 @@ export default function ProjectUsersPage() {
         </div>
       )}
 
-      {dropdownOpen && <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(null)}></div>}
+      <TableActionMenu open={openId != null && !!activeItem} pos={pos} menuRef={menuRef}>
+        {activeItem && viewMode === 'active' ? (
+          <>
+            <button type="button" onClick={() => { setDetailUser(activeItem); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer"><i className="ri-eye-line text-primary-500"></i>{t('adminUi.jobs.viewDetails')}</button>
+            <button type="button" onClick={() => openEdit(activeItem)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer"><i className="ri-edit-line text-accent-500"></i>{t('adminUi.jobs.edit')}</button>
+            <button type="button" onClick={() => { dispatch(toggleProjectUserStatus(activeItem.id)); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
+              <i className={`${activeItem.status === 'active' ? 'ri-lock-line' : 'ri-lock-unlock-line'} text-yellow-500`}></i> {activeItem.status === 'active' ? t('adminUi.projectUsers.deactivate') : t('adminUi.projectUsers.activate')}
+            </button>
+            <button type="button" onClick={() => { setConfirmSoftDelete(activeItem.id); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer"><i className="ri-delete-bin-line"></i>{t('adminUi.jobs.confirmDelete')}</button>
+          </>
+        ) : activeItem ? (
+          <>
+            <button type="button" onClick={() => { dispatch(restoreProjectUser(activeItem.id)); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-accent-600 hover:bg-accent-50 transition-colors cursor-pointer"><i className="ri-arrow-go-back-line"></i>{t('adminUi.jobs.restore')}</button>
+            <button type="button" onClick={() => { setDetailUser(activeItem); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer"><i className="ri-eye-line text-primary-500"></i>{t('adminUi.jobs.viewDetails')}</button>
+            <button type="button" onClick={() => { setConfirmPermanentDelete(activeItem.id); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer"><i className="ri-delete-bin-6-line"></i>{t('adminUi.jobs.deletePermanent')}</button>
+          </>
+        ) : null}
+      </TableActionMenu>
     </div>
   );
 }

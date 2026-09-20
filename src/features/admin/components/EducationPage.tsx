@@ -6,6 +6,7 @@ import type { EducationLevelItem } from '@/types/job';
 import SortHeader from '@/components/ui/SortHeader';
 import ColumnVisibilityDropdown from '@/components/ui/ColumnVisibilityDropdown';
 import Pagination from '@/components/ui/Pagination';
+import { useTableActionMenu, TableActionMenu } from '@/components/ui/TableActionMenu';
 
 type SortField = 'name' | 'count' | 'createdAt';
 
@@ -15,6 +16,7 @@ export default function EducationPage() {
   const allLevels = useAppSelector((state) => state.jobs.educationLevels);
   const deletedLevels = useAppSelector((state) => state.jobs.deletedEducationLevels || []);
   const allJobs = useAppSelector((state) => state.jobs.items);
+  const { openId, pos, menuRef, toggle, close } = useTableActionMenu<string>();
   const [viewMode, setViewMode] = useState<'active' | 'trash'>('active');
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -22,7 +24,6 @@ export default function EducationPage() {
   const [detailLevel, setDetailLevel] = useState<EducationLevelItem | null>(null);
   const [confirmSoftDelete, setConfirmSoftDelete] = useState<string | null>(null);
   const [confirmPermanentDelete, setConfirmPermanentDelete] = useState<string | null>(null);
-  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [formName, setFormName] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -76,7 +77,7 @@ export default function EducationPage() {
     setEditingLevel(lvl);
     setFormName(lvl.name);
     setModalOpen(true);
-    setDropdownOpen(null);
+    close();
   };
 
   const openDetail = (lvl: EducationLevelItem) => {
@@ -97,6 +98,7 @@ export default function EducationPage() {
 
   const activeCount = allLevels.length;
   const trashCount = deletedLevels.length;
+  const activeItem = paginatedLevels.find((x) => x.name === openId);
 
   return (
     <div>
@@ -217,34 +219,9 @@ export default function EducationPage() {
                           <button onClick={() => setConfirmPermanentDelete(null)} className="px-2.5 py-1 border border-background-300 rounded-lg text-xs text-foreground-600 hover:bg-background-100 cursor-pointer">{t('adminUi.actions.cancel')}</button>
                         </div>
                       ) : (
-                        <div className="relative inline-block">
-                          <button onClick={() => setDropdownOpen(dropdownOpen === lvl.name ? null : lvl.name)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-background-100 transition-colors cursor-pointer">
+                          <button type="button" onClick={(e) => toggle(lvl.name, e)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-background-100 transition-colors cursor-pointer">
                             <i className="ri-more-2-fill text-foreground-500"></i>
                           </button>
-                          {dropdownOpen === lvl.name && (
-                            <div className="absolute right-0 top-full mt-1 w-44 bg-background-50 border border-background-200/70 rounded-xl shadow-lg z-20 overflow-hidden">
-                              {viewMode === 'active' ? (
-                                <>
-                                  <button onClick={() => { openDetail(lvl); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
-                                    <i className="ri-eye-line text-primary-500"></i>{t('adminUi.jobs.viewDetails')}</button>
-                                  <button onClick={() => openEdit(lvl)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
-                                    <i className="ri-edit-line text-accent-500"></i>{t('adminUi.jobs.edit')}</button>
-                                  <button onClick={() => { setConfirmSoftDelete(lvl.name); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
-                                    <i className="ri-delete-bin-line"></i>{t('adminUi.jobs.confirmDelete')}</button>
-                                </>
-                              ) : (
-                                <>
-                                  <button onClick={() => { dispatch(restoreEducationLevel(lvl.name)); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-accent-600 hover:bg-accent-50 transition-colors cursor-pointer">
-                                    <i className="ri-arrow-go-back-line"></i>{t('adminUi.jobs.restore')}</button>
-                                  <button onClick={() => { openDetail(lvl); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
-                                    <i className="ri-eye-line text-primary-500"></i>{t('adminUi.jobs.viewDetails')}</button>
-                                  <button onClick={() => { setConfirmPermanentDelete(lvl.name); setDropdownOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
-                                    <i className="ri-delete-bin-6-line"></i>{t('adminUi.jobs.deletePermanent')}</button>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
                       )}
                     </td>
                   </tr>
@@ -339,7 +316,27 @@ export default function EducationPage() {
         </div>
       )}
 
-      {dropdownOpen && <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(null)}></div>}
+      <TableActionMenu open={openId != null && !!activeItem} pos={pos} menuRef={menuRef}>
+        {activeItem && viewMode === 'active' ? (
+          <>
+            <button type="button" onClick={() => { openDetail(activeItem); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
+              <i className="ri-eye-line text-primary-500"></i>{t('adminUi.jobs.viewDetails')}</button>
+            <button type="button" onClick={() => openEdit(activeItem)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
+              <i className="ri-edit-line text-accent-500"></i>{t('adminUi.jobs.edit')}</button>
+            <button type="button" onClick={() => { setConfirmSoftDelete(activeItem.name); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
+              <i className="ri-delete-bin-line"></i>{t('adminUi.jobs.confirmDelete')}</button>
+          </>
+        ) : activeItem ? (
+          <>
+            <button type="button" onClick={() => { dispatch(restoreEducationLevel(activeItem.name)); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-accent-600 hover:bg-accent-50 transition-colors cursor-pointer">
+              <i className="ri-arrow-go-back-line"></i>{t('adminUi.jobs.restore')}</button>
+            <button type="button" onClick={() => { openDetail(activeItem); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
+              <i className="ri-eye-line text-primary-500"></i>{t('adminUi.jobs.viewDetails')}</button>
+            <button type="button" onClick={() => { setConfirmPermanentDelete(activeItem.name); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
+              <i className="ri-delete-bin-6-line"></i>{t('adminUi.jobs.deletePermanent')}</button>
+          </>
+        ) : null}
+      </TableActionMenu>
     </div>
   );
 }
