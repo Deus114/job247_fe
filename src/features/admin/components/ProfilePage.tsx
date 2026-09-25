@@ -11,6 +11,7 @@ import {
 import { changeAppLanguage } from "@/store/slices/languageSlice";
 import { toggleTheme } from "@/store/slices/themeSlice";
 import { formatDateTime } from "@/lib/formatDate";
+import { isStrongPassword } from "@/lib/password";
 import { toast } from "@/lib/toast";
 import CustomSelect from "@/components/ui/CustomSelect";
 
@@ -122,10 +123,10 @@ export default function ProfilePage() {
       });
       return;
     }
-    if (passwordForm.newPass.length < 6) {
+    if (!isStrongPassword(passwordForm.newPass)) {
       setPasswordMsg({
         type: "error",
-        text: t("adminUi.profile.passwordMinLength"),
+        text: t("validation.passwordStrong"),
       });
       return;
     }
@@ -381,6 +382,9 @@ export default function ProfilePage() {
                   placeholder={t("adminUi.profile.newPasswordPlaceholder")}
                   autoComplete="new-password"
                 />
+                <p className="mt-1.5 text-xs text-foreground-500">
+                  {t("validation.passwordHint")}
+                </p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-foreground-700 mb-1">

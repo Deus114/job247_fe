@@ -1,23 +1,15 @@
 import axios from "@/api/axios.customize";
+import { isAxiosError } from "axios";
 import { withApiFallback } from "@/api/withApiFallback";
-import type { AuthUser, UserRole } from "@/types";
-
-export interface LoginPayload {
-  email: string;
-  password: string;
-}
-
-export interface RegisterPayload {
-  email: string;
-  password: string;
-  fullName: string;
-  role: Exclude<UserRole, "admin">;
-}
-
-export interface AuthResponse {
-  user: AuthUser;
-  access_token?: string;
-}
+import { env } from "@/config/env";
+import { AdminAuthError, isAdminApiSuccess } from "@/api/adminAuth";
+import type { ApiResponse } from "@/types/adminAuth";
+import type {
+  AuthResponse,
+  AuthUser,
+  LoginPayload,
+  RegisterPayload,
+} from "@/types";
 
 /** Demo accounts used only in mock / fallback mode. */
 export const mockDemoAccounts: Array<AuthUser & { password: string }> = [
@@ -50,13 +42,111 @@ function mockLogin(payload: LoginPayload): AuthUser {
   return user;
 }
 
-function mockRegister(payload: RegisterPayload): AuthUser {
-  return {
-    id: Date.now().toString(),
-    email: payload.email,
-    fullName: payload.fullName,
-    role: payload.role,
-  };
+function throwPublicAuthError(fallbackKey: string, error: unknown): never {
+  if (error instanceof AdminAuthError) throw error;
+
+  if (isAxiosError(error)) {
+    const body = error.response?.data as ApiResponse<unknown> | undefined;
+    const key =
+      error.code === "ERR_NETWORK" ? "apiErrors.networkError" : fallbackKey;
+    throw new AdminAuthError(
+      key,
+      body?.statusCode ?? error.response?.status,
+      typeof body?.message === "string" ? body.message : undefined,
+    );
+  }
+
+  throw new AdminAuthError(fallbackKey);
+}
+
+function assertPublicSuccess(
+  res: ApiResponse<unknown> | null | undefined,
+  fallbackKey: string,
+): ApiResponse<unknown> {
+  if (!res || typeof res !== "object") {
+    throw new AdminAuthError("apiErrors.invalidResponse");
+  }
+  if (!isAdminApiSuccess(res.statusCode)) {
+    throw new AdminAuthError(fallbackKey, res.statusCode, res.message);
+  }
+  return res;
+}
+
+/** POST /auth/otp/send — body `{ email }` */
+export async function sendOtpRequest(email: string): Promise<void> {
+  if (!env.apiBaseUrl) {
+    throw new AdminAuthError("apiErrors.missingBackendUrl");
+  }
+
+  try {
+    const res = (await axios.post(
+      "/auth/otp/send",
+      { email: email.trim() },
+      { skipAuthRefresh: true },
+    )) as ApiResponse<unknown>;
+    assertPublicSuccess(res, "apiErrors.otpSendFailed");
+  } catch (error) {
+    throwPublicAuthError("apiErrors.otpSendFailed", error);
+  }
+}
+
+/** POST /auth/otp/verify — body `{ email, code }`, returns `verificationToken`. */
+export async function verifyOtpRequest(
+  email: string,
+  code: string,
+): Promise<string> {
+  if (!env.apiBaseUrl) {
+    throw new AdminAuthError("apiErrors.missingBackendUrl");
+  }
+
+  try {
+    const res = (await axios.post(
+      "/auth/otp/verify",
+      { email: email.trim(), code: code.trim() },
+      { skipAuthRefresh: true },
+    )) as ApiResponse<unknown>;
+    const body = assertPublicSuccess(res, "apiErrors.otpVerifyFailed");
+    const data =
+      body.data && typeof body.data === "object"
+        ? (body.data as { verificationToken?: unknown })
+        : {};
+    const token = String(data.verificationToken ?? "").trim();
+    if (!token) {
+      throw new AdminAuthError(
+        "apiErrors.otpVerifyFailed",
+        body.statusCode,
+        body.message,
+      );
+    }
+    return token;
+  } catch (error) {
+    throwPublicAuthError("apiErrors.otpVerifyFailed", error);
+  }
+}
+
+/** POST /auth/register. Does not sign the user in. */
+export async function registerRequest(payload: RegisterPayload): Promise<void> {
+  if (!env.apiBaseUrl) {
+    throw new AdminAuthError("apiErrors.missingBackendUrl");
+  }
+
+  try {
+    const res = (await axios.post(
+      "/auth/register",
+      {
+        name: payload.name.trim(),
+        password: payload.password,
+        confirmPassword: payload.confirmPassword,
+        type: payload.type,
+        verificationToken: payload.verificationToken,
+        acceptTerms: payload.acceptTerms,
+      },
+      { skipAuthRefresh: true },
+    )) as ApiResponse<unknown>;
+    assertPublicSuccess(res, "apiErrors.registerFailed");
+  } catch (error) {
+    throwPublicAuthError("apiErrors.registerFailed", error);
+  }
 }
 
 function persistToken(token?: string) {
@@ -83,27 +173,6 @@ export async function loginRequest(payload: LoginPayload): Promise<AuthUser> {
       return data as unknown as AuthUser;
     },
     () => mockLogin(payload),
-    { mockDelayMs: 150, fallbackOnHttpError: false },
-  );
-}
-
-export async function registerRequest(
-  payload: RegisterPayload,
-): Promise<AuthUser> {
-  clearAccessToken();
-  return withApiFallback(
-    async () => {
-      const data = await axios.post<AuthResponse, AuthResponse>(
-        "/api/auth/register",
-        payload,
-      );
-      if (data && typeof data === "object" && "user" in data) {
-        persistToken(data.access_token);
-        return data.user;
-      }
-      return data as unknown as AuthUser;
-    },
-    () => mockRegister(payload),
     { mockDelayMs: 150, fallbackOnHttpError: false },
   );
 }

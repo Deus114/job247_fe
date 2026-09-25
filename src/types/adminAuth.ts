@@ -73,10 +73,62 @@ export interface AdminSessionUser {
   updatedAt: string;
 }
 
+export interface AdminAccountListParams {
+  keyword?: string;
+  roleId?: number;
+  active?: boolean;
+  deleted?: boolean;
+  page?: number;
+  size?: number;
+  sort?: string;
+}
+
+export interface AdminAccountWritePayload {
+  username: string;
+  password?: string;
+  name: string;
+  roleId: number;
+  active?: boolean;
+  avatarFile?: File | null;
+}
+
+export interface AdminAccountUpdatePayload {
+  username: string;
+  name: string;
+  roleId: number;
+  active?: boolean;
+  currentPassword?: string;
+  newPassword?: string;
+  avatarFile?: File | null;
+}
+
 export interface AdminLoginData {
   user: AdminSessionUser;
   accessToken: string;
   refreshToken: string;
+}
+
+export interface AdminLoginPayload {
+  userName: string;
+  password: string;
+}
+
+export interface AdminLoginResult {
+  user: AdminSessionUser;
+  accessToken: string;
+  refreshToken: string;
+  message: string;
+}
+
+export type EnsureAdminSessionResult =
+  | { ok: true; user: AdminSessionUser; refreshed: boolean }
+  | { ok: false; reason: "unauthenticated" | "session_expired" | "network" };
+
+export interface UpdateAdminMePayload {
+  name?: string;
+  currentPassword?: string;
+  newPassword?: string;
+  avatarFile?: File;
 }
 
 export interface ApiResponse<T> {

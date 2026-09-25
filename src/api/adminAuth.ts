@@ -3,10 +3,14 @@ import { isAxiosError } from "axios";
 import { env } from "@/config/env";
 import type {
   AdminLoginData,
+  AdminLoginPayload,
+  AdminLoginResult,
   AdminPermission,
   AdminRole,
   AdminSessionUser,
   ApiResponse,
+  EnsureAdminSessionResult,
+  UpdateAdminMePayload,
 } from "@/types/adminAuth";
 import { isValidAdminSession } from "@/types/adminAuth";
 import {
@@ -21,18 +25,6 @@ export {
   ADMIN_REFRESH_TOKEN_KEY,
   clearAdminTokens,
 } from "@/api/adminAuthTokens";
-
-export interface AdminLoginPayload {
-  userName: string;
-  password: string;
-}
-
-export interface AdminLoginResult {
-  user: AdminSessionUser;
-  accessToken: string;
-  refreshToken: string;
-  message: string;
-}
 
 export class AdminAuthError extends Error {
   /** i18n key under `apiErrors.*` — resolve with `resolveAdminAuthErrorMessage` */
@@ -322,10 +314,6 @@ export async function adminRefreshRequest(
   return refreshInFlight;
 }
 
-export type EnsureAdminSessionResult =
-  | { ok: true; user: AdminSessionUser; refreshed: boolean }
-  | { ok: false; reason: "unauthenticated" | "session_expired" | "network" };
-
 function authErrorStatus(error: unknown): number | undefined {
   if (error instanceof AdminAuthError) return error.statusCode;
   if (isAxiosError(error)) return error.response?.status;
@@ -467,13 +455,6 @@ export async function fetchAdminMe(): Promise<AdminSessionUser> {
   } catch (error) {
     throwAdminMeError("apiErrors.adminMeLoadFailed", error);
   }
-}
-
-export interface UpdateAdminMePayload {
-  name?: string;
-  currentPassword?: string;
-  newPassword?: string;
-  avatarFile?: File;
 }
 
 /**

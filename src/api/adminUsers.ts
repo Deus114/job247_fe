@@ -6,37 +6,14 @@ import {
   AdminAuthError,
   normalizeAdminSessionUser,
 } from "@/api/adminAuth";
-import type { AdminSessionUser, ApiResponse } from "@/types/adminAuth";
+import type {
+  AdminAccountListParams,
+  AdminAccountUpdatePayload,
+  AdminAccountWritePayload,
+  AdminSessionUser,
+  ApiResponse,
+} from "@/types/adminAuth";
 import type { ApiPagination, PaginatedList } from "@/types/catalog";
-
-export interface AdminAccountListParams {
-  keyword?: string;
-  roleId?: number;
-  active?: boolean;
-  deleted?: boolean;
-  page?: number;
-  size?: number;
-  sort?: string;
-}
-
-export interface AdminAccountWritePayload {
-  username: string;
-  password?: string;
-  name: string;
-  roleId: number;
-  active?: boolean;
-  avatarFile?: File | null;
-}
-
-export interface AdminAccountUpdatePayload {
-  username: string;
-  name: string;
-  roleId: number;
-  active?: boolean;
-  currentPassword?: string;
-  newPassword?: string;
-  avatarFile?: File | null;
-}
 
 function throwAccountError(fallbackKey: string, error: unknown): never {
   if (error instanceof AdminAuthError) throw error;
@@ -79,7 +56,10 @@ function normalizePagination(raw: unknown): ApiPagination {
   };
 }
 
-function assertAccount(res: ApiResponse<unknown>, fallbackKey: string): AdminSessionUser {
+function assertAccount(
+  res: ApiResponse<unknown>,
+  fallbackKey: string,
+): AdminSessionUser {
   if (!isAdminApiSuccess(res.statusCode)) {
     throw new AdminAuthError(fallbackKey, res.statusCode, res.message);
   }
@@ -91,7 +71,11 @@ function assertAccount(res: ApiResponse<unknown>, fallbackKey: string): AdminSes
   const user =
     normalizeAdminSessionUser(raw) ?? normalizeAdminSessionUser(nested);
   if (!user || !Number.isFinite(user.id)) {
-    throw new AdminAuthError("apiErrors.invalidResponse", res.statusCode, res.message);
+    throw new AdminAuthError(
+      "apiErrors.invalidResponse",
+      res.statusCode,
+      res.message,
+    );
   }
   return user;
 }
@@ -189,7 +173,9 @@ export async function fetchAdminUsers(
 }
 
 /** GET /admin/users/:id */
-export async function fetchAdminUserById(id: number): Promise<AdminSessionUser> {
+export async function fetchAdminUserById(
+  id: number,
+): Promise<AdminSessionUser> {
   requireBackend();
 
   try {

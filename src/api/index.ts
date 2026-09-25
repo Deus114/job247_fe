@@ -19,13 +19,16 @@ export type {
   AdminLoginResult,
   UpdateAdminMePayload,
   EnsureAdminSessionResult,
-} from "./adminAuth";
+  AdminAccountListParams,
+  AdminAccountWritePayload,
+  AdminAccountUpdatePayload,
+} from "@/types/adminAuth";
 export {
   fetchPublicBusinessConfig,
   fetchAdminBusinessConfig,
   updateAdminBusinessConfig,
 } from "./businessConfig";
-export type { UpdateAdminBusinessConfigInput } from "./businessConfig";
+export type { UpdateAdminBusinessConfigInput } from "@/types/businessConfig";
 export {
   fetchIndustryGroups,
   fetchIndustryGroupById,
@@ -80,11 +83,6 @@ export {
   restoreAdminUser,
   permanentDeleteAdminUser,
 } from "./adminUsers";
-export type {
-  AdminAccountListParams,
-  AdminAccountWritePayload,
-  AdminAccountUpdatePayload,
-} from "./adminUsers";
 export {
   fetchPermissions,
   fetchPermissionById,
@@ -107,8 +105,15 @@ export type {
 export {
   loginRequest,
   registerRequest,
+  sendOtpRequest,
+  verifyOtpRequest,
   mockDemoAccounts,
   clearAccessToken,
 } from "./auth";
-export type { JobsCatalog } from "./jobs";
-export type { LoginPayload, RegisterPayload, AuthResponse } from "./auth";
+export type { JobsCatalog } from "@/types/job";
+export type {
+  LoginPayload,
+  RegisterPayload,
+  PublicAccountType,
+  AuthResponse,
+} from "@/types/user";

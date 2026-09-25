@@ -12,7 +12,7 @@ import {
   buildBusinessConfigUpdateFormData,
   mapAdminBusinessConfigApiToForm,
   mapPublicBusinessConfigApiToForm,
-  type BusinessConfigImageFiles,
+  type UpdateAdminBusinessConfigInput,
 } from "@/types/businessConfig";
 
 function throwBusinessConfigError(fallbackKey: string, error: unknown): never {
@@ -108,12 +108,6 @@ export async function fetchAdminBusinessConfig(): Promise<BusinessConfig> {
     throwBusinessConfigError("apiErrors.businessConfigLoadFailed", error);
   }
 }
-
-export type UpdateAdminBusinessConfigInput = {
-  form: BusinessConfig;
-  baseline: BusinessConfig;
-  imageFiles: BusinessConfigImageFiles;
-};
 
 /**
  * PUT /admin/business-config — multipart/form-data.

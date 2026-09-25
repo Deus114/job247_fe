@@ -10,6 +10,13 @@ function normalizeApiBaseUrl(raw: string): string {
   return `http://${trimmed}`;
 }
 
+function readNumber(key: keyof ImportMetaEnv, fallback: number): number {
+  const raw = readEnv(key);
+  const value = Number(raw);
+  if (!raw || !Number.isFinite(value) || value < 0) return fallback;
+  return Math.floor(value);
+}
+
 function readBool(key: keyof ImportMetaEnv, fallback: boolean): boolean {
   const value = readEnv(key);
   if (!value) return fallback;
@@ -29,6 +36,8 @@ export const env = {
   apiBaseUrl,
   /** Mock-first when flag is true, or when backend URL is empty. */
   useMock: useMockFlag ? readBool("VITE_USE_MOCK", true) : !apiBaseUrl,
+  /** Seconds to wait before the registration OTP can be sent again. */
+  otpResendCooldown: readNumber("VITE_OTP_RESEND_COOLDOWN", 60),
   isDev: import.meta.env.DEV,
   isProd: import.meta.env.PROD,
 } as const;

@@ -211,6 +211,12 @@ export type BusinessConfigImageFiles = Partial<
   Record<BusinessConfigImageFormKey, File | null>
 >;
 
+export type UpdateAdminBusinessConfigInput = {
+  form: BusinessConfig;
+  baseline: BusinessConfig;
+  imageFiles: BusinessConfigImageFiles;
+};
+
 const TEXT_FIELD_MAP: Array<{
   formKey: keyof BusinessConfig;
   apiKey: string;

@@ -120,6 +120,8 @@ export default {
     email: "Email",
     password: "Password",
     confirmPassword: "Confirm Password",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
     fullName: "Full Name",
     loginButton: "Login",
     registerButton: "Register",
@@ -149,6 +151,20 @@ export default {
     agreeTermsPrefix: "I agree to the",
     terms: "Terms of Service",
     privacy: "Privacy Policy",
+    stepRole: "Role",
+    stepOtp: "Verify",
+    stepInfo: "Details",
+    sendOtp: "Send OTP",
+    otpTitle: "Enter the verification code",
+    otpSent: "A 6-digit code was sent to {{email}}",
+    otpSpamHint:
+      "If you do not see the email in your inbox, check the spam folder.",
+    verifyOtp: "Verify code",
+    resendOtp: "Resend code",
+    resendIn: "Resend in {{time}}",
+    changeEmail: "Change email",
+    otpHint: "Enter the 6 digits from the email",
+    continue: "Continue",
   },
   contact: {
     title: "Contact Us",
@@ -292,7 +308,8 @@ export default {
     },
     validation: {
       passwordMismatch: "Passwords do not match",
-      passwordTooShort: "Password must be at least 6 characters",
+      passwordTooShort:
+        "Password must be at least 6 characters and include an uppercase letter, a lowercase letter, a number, and a special character",
     },
   },
   footer: {
@@ -379,6 +396,9 @@ export default {
     adminUserRequired: "Please enter a username, name, password, and role",
     adminUserPasswordRequired:
       "Changing the password requires both the current and new password",
+    otpSendFailed: "Could not send the OTP code",
+    otpVerifyFailed: "The OTP code is incorrect or has expired",
+    registerFailed: "Registration failed",
   },
   common: {
     loading: "Loading...",
@@ -593,6 +613,10 @@ export default {
     required: "This field is required",
     emailInvalid: "Invalid email address",
     passwordTooShort: "Password must be at least 6 characters",
+    passwordStrong:
+      "Password must be at least 6 characters and include an uppercase letter, a lowercase letter, a number, and a special character",
+    passwordHint:
+      "At least 6 characters, with an uppercase letter, a lowercase letter, a number, and a special character",
     passwordMismatch: "Passwords do not match",
     phoneInvalid: "Invalid phone number",
     urlInvalid: "Invalid URL",
@@ -1266,7 +1290,8 @@ export default {
       newPassword: "New password",
       confirmPassword: "Confirm new password",
       currentPasswordPlaceholder: "Enter current password",
-      newPasswordPlaceholder: "At least 6 characters",
+      newPasswordPlaceholder:
+        "At least 6 characters, with upper, lower, a number, and a symbol",
       confirmPasswordPlaceholder: "Re-enter new password",
       updatePassword: "Update password",
       permissionCount: "Permissions",
@@ -1284,7 +1309,8 @@ export default {
       noActionPermissions: "No action permissions",
       other: "Other",
       fillAllFields: "Please fill in all fields",
-      passwordMinLength: "New password must be at least 6 characters",
+      passwordMinLength:
+        "Password must be at least 6 characters and include an uppercase letter, a lowercase letter, a number, and a special character",
       passwordMismatch: "Confirmation password does not match",
       passwordChanged: "Password changed successfully!",
       avatarUpdated: "Avatar updated successfully!",

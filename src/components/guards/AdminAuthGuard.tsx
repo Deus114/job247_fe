@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAdminAuth } from "@/features/auth";
-import { isValidAdminSession } from "@/types/adminAuth";
-import { ensureAdminSession, type EnsureAdminSessionResult } from "@/api";
+import {
+  isValidAdminSession,
+  type EnsureAdminSessionResult,
+} from "@/types/adminAuth";
+import { ensureAdminSession } from "@/api";
 import PageLoader from "@/components/ui/PageLoader";
 
 interface AdminAuthGuardProps {

@@ -6,6 +6,7 @@ import { changeAppLanguage } from "@/store/slices/languageSlice";
 import { useAuth } from "@/features/auth";
 import { useNavigate } from "react-router-dom";
 import { useNotification } from "@/hooks/useNotification";
+import { isStrongPassword } from "@/lib/password";
 
 export default function SettingsPage() {
   const { t } = useTranslation();
@@ -46,8 +47,8 @@ export default function SettingsPage() {
       setPasswordMsg(t("settings.validation.passwordMismatch"));
       return;
     }
-    if (passwordForm.newPass.length < 6) {
-      setPasswordMsg(t("settings.validation.passwordTooShort"));
+    if (!isStrongPassword(passwordForm.newPass)) {
+      setPasswordMsg(t("validation.passwordStrong"));
       return;
     }
     setPasswordMsg("success");
@@ -236,6 +237,9 @@ export default function SettingsPage() {
                       required
                       className="w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors"
                     />
+                    <p className="mt-1.5 text-xs text-foreground-500">
+                      {t("validation.passwordHint")}
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-foreground-700 mb-1.5">

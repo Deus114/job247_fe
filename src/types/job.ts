@@ -35,3 +35,10 @@ export interface EducationLevelItem {
   createdAt?: string;
   deletedAt?: string;
 }
+
+export interface JobsCatalog {
+  jobs: Job[];
+  categories: CategoryItem[];
+  educationLevels: EducationLevelItem[];
+  locations: string[];
+}

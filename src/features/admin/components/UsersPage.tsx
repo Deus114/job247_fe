@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/TableActionMenu";
 import { toast } from "@/lib/toast";
 import { formatDateTime } from "@/lib/formatDate";
+import { isStrongPassword } from "@/lib/password";
 
 type SortField = "username" | "name" | "createdAt";
 
@@ -296,13 +297,14 @@ export default function UsersPage() {
   );
   const passwordChangeValid =
     !passwordChangeStarted ||
-    Boolean(form.currentPassword.trim() && form.newPassword.trim());
+    (Boolean(form.currentPassword.trim() && form.newPassword.trim()) &&
+      isStrongPassword(form.newPassword));
 
   const canSave = Boolean(
     form.username.trim() &&
       form.name.trim() &&
       form.roleId &&
-      (editing ? passwordChangeValid : form.password.trim()),
+      (editing ? passwordChangeValid : isStrongPassword(form.password)),
   );
 
   const handleSave = async () => {
@@ -916,6 +918,9 @@ export default function UsersPage() {
                       placeholder={t("adminUi.users.passwordChangeHint")}
                       className={`${inputClass} mt-1.5`}
                     />
+                    <p className="mt-1.5 text-xs text-foreground-500">
+                      {t("validation.passwordHint")}
+                    </p>
                   </label>
                 </>
               ) : (
@@ -933,6 +938,9 @@ export default function UsersPage() {
                     placeholder={t("adminUi.users.passwordPlaceholder")}
                     className={`${inputClass} mt-1.5`}
                   />
+                  <p className="mt-1.5 text-xs text-foreground-500">
+                    {t("validation.passwordHint")}
+                  </p>
                 </label>
               )}
               <div>

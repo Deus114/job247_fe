@@ -6,14 +6,7 @@ import {
   mockEducationLevels,
   mockLocations,
 } from "@/mocks/jobs";
-import type { Job, CategoryItem, EducationLevelItem } from "@/types/job";
-
-export interface JobsCatalog {
-  jobs: Job[];
-  categories: CategoryItem[];
-  educationLevels: EducationLevelItem[];
-  locations: string[];
-}
+import type { Job, JobsCatalog } from "@/types/job";
 
 function mockCatalog(): JobsCatalog {
   return {

@@ -120,6 +120,8 @@ export default {
     email: "Email",
     password: "Mật khẩu",
     confirmPassword: "Xác nhận mật khẩu",
+    showPassword: "Hiện mật khẩu",
+    hidePassword: "Ẩn mật khẩu",
     fullName: "Họ và tên",
     loginButton: "Đăng nhập",
     registerButton: "Đăng ký",
@@ -149,6 +151,20 @@ export default {
     agreeTermsPrefix: "Tôi đồng ý với",
     terms: "Điều khoản dịch vụ",
     privacy: "Chính sách bảo mật",
+    stepRole: "Vai trò",
+    stepOtp: "Xác nhận",
+    stepInfo: "Thông tin",
+    sendOtp: "Gửi mã OTP",
+    otpTitle: "Nhập mã xác nhận",
+    otpSent: "Mã 6 số đã được gửi tới {{email}}",
+    otpSpamHint:
+      "Nếu không thấy email trong hộp thư đến, hãy kiểm tra thư mục spam.",
+    verifyOtp: "Xác nhận mã",
+    resendOtp: "Gửi lại mã",
+    resendIn: "Gửi lại sau {{time}}",
+    changeEmail: "Đổi email",
+    otpHint: "Nhập đủ 6 chữ số trong email",
+    continue: "Tiếp tục",
   },
   contact: {
     title: "Liên hệ với chúng tôi",
@@ -292,7 +308,8 @@ export default {
     },
     validation: {
       passwordMismatch: "Mật khẩu xác nhận không khớp",
-      passwordTooShort: "Mật khẩu phải có ít nhất 6 ký tự",
+      passwordTooShort:
+        "Mật khẩu phải có ít nhất 6 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt",
     },
   },
   footer: {
@@ -379,6 +396,9 @@ export default {
     adminUserRequired: "Vui lòng nhập tên đăng nhập, tên, mật khẩu và vai trò",
     adminUserPasswordRequired:
       "Đổi mật khẩu cần cả mật khẩu hiện tại và mật khẩu mới",
+    otpSendFailed: "Không gửi được mã OTP",
+    otpVerifyFailed: "Mã OTP không đúng hoặc đã hết hạn",
+    registerFailed: "Đăng ký thất bại",
   },
   common: {
     loading: "Đang tải...",
@@ -594,6 +614,10 @@ export default {
     required: "Trường này là bắt buộc",
     emailInvalid: "Email không hợp lệ",
     passwordTooShort: "Mật khẩu phải có ít nhất 6 ký tự",
+    passwordStrong:
+      "Mật khẩu phải có ít nhất 6 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt",
+    passwordHint:
+      "Ít nhất 6 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt",
     passwordMismatch: "Mật khẩu xác nhận không khớp",
     phoneInvalid: "Số điện thoại không hợp lệ",
     urlInvalid: "URL không hợp lệ",
@@ -1272,7 +1296,8 @@ export default {
       newPassword: "Mật khẩu mới",
       confirmPassword: "Xác nhận mật khẩu mới",
       currentPasswordPlaceholder: "Nhập mật khẩu hiện tại",
-      newPasswordPlaceholder: "Ít nhất 6 ký tự",
+      newPasswordPlaceholder:
+        "Ít nhất 6 ký tự, gồm chữ hoa, thường, số và ký tự đặc biệt",
       confirmPasswordPlaceholder: "Nhập lại mật khẩu mới",
       updatePassword: "Cập nhật mật khẩu",
       permissionCount: "Số quyền",
@@ -1291,7 +1316,8 @@ export default {
       noActionPermissions: "Không có quyền hành động nào",
       other: "Khác",
       fillAllFields: "Vui lòng điền đầy đủ các trường",
-      passwordMinLength: "Mật khẩu mới phải có ít nhất 6 ký tự",
+      passwordMinLength:
+        "Mật khẩu phải có ít nhất 6 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt",
       passwordMismatch: "Mật khẩu xác nhận không khớp",
       passwordChanged: "Đổi mật khẩu thành công!",
       avatarUpdated: "Cập nhật ảnh đại diện thành công!",
