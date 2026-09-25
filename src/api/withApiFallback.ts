@@ -1,6 +1,6 @@
-import axios from 'axios';
-import { env } from '@/config/env';
-import { delay } from '@/lib/delay';
+import axios from "axios";
+import { env } from "@/config/env";
+import { delay } from "@/lib/delay";
 
 type FallbackOptions = {
   mockDelayMs?: number;
@@ -18,7 +18,7 @@ export async function withApiFallback<T>(
   options: number | FallbackOptions = 150,
 ): Promise<T> {
   const opts: FallbackOptions =
-    typeof options === 'number' ? { mockDelayMs: options } : options;
+    typeof options === "number" ? { mockDelayMs: options } : options;
   const mockDelayMs = opts.mockDelayMs ?? 150;
   const fallbackOnHttpError = opts.fallbackOnHttpError ?? true;
 
@@ -38,7 +38,7 @@ export async function withApiFallback<T>(
     }
 
     if (env.isDev) {
-      console.warn('[api] request failed, using mock fallback', error);
+      console.warn("[api] request failed, using mock fallback", error);
     }
     await delay(mockDelayMs);
     return mockData();

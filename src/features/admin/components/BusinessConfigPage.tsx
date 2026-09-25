@@ -13,6 +13,8 @@ import {
   type BusinessConfigImageFiles,
   type BusinessConfigImageFormKey,
 } from "@/types/businessConfig";
+import { useAppDispatch } from "@/store/hooks";
+import { setBusinessConfig } from "@/store/slices/businessConfigSlice";
 import HtmlContentEditor from "@/components/ui/HtmlContentEditor";
 import LatLngMapPicker from "@/components/ui/LatLngMapPicker";
 import ImageUploadField from "@/components/ui/ImageUploadField";
@@ -26,6 +28,7 @@ const labelClass = "block text-sm font-medium text-foreground-700 mb-1.5";
 
 export default function BusinessConfigPage() {
   const { t } = useTranslation();
+  const dispatch = useAppDispatch();
   const sectionTabs: { key: SectionKey; label: string; icon: string }[] = [
     {
       key: "basic",
@@ -79,6 +82,7 @@ export default function BusinessConfigPage() {
       setBaseline(data);
       setForm(data);
       setImageFiles({});
+      dispatch(setBusinessConfig(data));
     } catch (error) {
       const message =
         error instanceof AdminAuthError
@@ -132,6 +136,7 @@ export default function BusinessConfigPage() {
       setBaseline(updated);
       setForm(updated);
       setImageFiles({});
+      dispatch(setBusinessConfig(updated));
       setSaved(true);
       toast.success(t("adminUi.businessConfig.saved"));
       setTimeout(() => setSaved(false), 2000);

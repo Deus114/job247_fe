@@ -2,7 +2,7 @@ export interface SortHeaderProps {
   label: string;
   field: string;
   currentField: string;
-  currentOrder: 'asc' | 'desc';
+  currentOrder: "asc" | "desc";
   onSort: (field: string) => void;
   className?: string;
 }
@@ -13,7 +13,7 @@ export default function SortHeader({
   currentField,
   currentOrder,
   onSort,
-  className = '',
+  className = "",
 }: SortHeaderProps) {
   const isActive = currentField === field;
   return (
@@ -24,7 +24,7 @@ export default function SortHeader({
       {label}
       {isActive && (
         <i
-          className={`ml-1 ${currentOrder === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line'}`}
+          className={`ml-1 ${currentOrder === "asc" ? "ri-arrow-up-line" : "ri-arrow-down-line"}`}
         ></i>
       )}
     </th>

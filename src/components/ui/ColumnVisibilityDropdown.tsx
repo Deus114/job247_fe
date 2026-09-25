@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 export interface ColumnDef {
   key: string;
@@ -32,13 +32,13 @@ export default function ColumnVisibilityDropdown({
         setOpen(false);
       }
     };
-    if (open) document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    if (open) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
   const toggle = (key: string) => {
     setDraft((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
     );
   };
 
@@ -55,15 +55,19 @@ export default function ColumnVisibilityDropdown({
         type="button"
         onClick={() => setOpen(!open)}
         className="inline-flex items-center gap-2 h-10 px-3 border border-background-200/70 rounded-xl text-sm text-foreground-600 bg-background-50 hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap"
-        title={t('admin.selectColumns', 'Chọn cột hiển thị')}
+        title={t("admin.selectColumns", "Chọn cột hiển thị")}
       >
         <i className="ri-layout-grid-line"></i>
-        <span className="hidden sm:inline">{t('admin.columns', 'Cột')}</span>
-        <i className={`ri-arrow-down-s-line text-xs transition-transform ${open ? 'rotate-180' : ''}`}></i>
+        <span className="hidden sm:inline">{t("admin.columns", "Cột")}</span>
+        <i
+          className={`ri-arrow-down-s-line text-xs transition-transform ${open ? "rotate-180" : ""}`}
+        ></i>
       </button>
       {open && (
         <div className="absolute right-0 top-full mt-2 w-64 bg-background-50 border border-background-200/70 rounded-xl shadow-lg z-30 p-4">
-          <p className="text-sm font-semibold text-foreground-800 mb-3">{t('admin.selectColumns', 'Chọn cột hiển thị')}</p>
+          <p className="text-sm font-semibold text-foreground-800 mb-3">
+            {t("admin.selectColumns", "Chọn cột hiển thị")}
+          </p>
           <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
             {columns.map((col) => (
               <label

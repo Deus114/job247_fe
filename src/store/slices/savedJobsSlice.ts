@@ -1,5 +1,5 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { readJson } from '@/lib/storage';
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import { readJson } from "@/lib/storage";
 
 export interface SavedJob {
   jobId: string;
@@ -10,20 +10,23 @@ interface SavedJobsState {
   items: SavedJob[];
 }
 
-const stored = readJson<SavedJobsState>('redux_savedJobs');
+const stored = readJson<SavedJobsState>("redux_savedJobs");
 
 const initialState: SavedJobsState = {
   items: Array.isArray(stored?.items) ? stored.items : [],
 };
 
 const savedJobsSlice = createSlice({
-  name: 'savedJobs',
+  name: "savedJobs",
   initialState,
   reducers: {
     saveJob(state, action: PayloadAction<string>) {
       const exists = state.items.find((i) => i.jobId === action.payload);
       if (!exists) {
-        state.items.unshift({ jobId: action.payload, savedAt: new Date().toISOString() });
+        state.items.unshift({
+          jobId: action.payload,
+          savedAt: new Date().toISOString(),
+        });
       }
     },
     removeSavedJob(state, action: PayloadAction<string>) {
@@ -35,5 +38,6 @@ const savedJobsSlice = createSlice({
   },
 });
 
-export const { saveJob, removeSavedJob, clearSavedJobs } = savedJobsSlice.actions;
+export const { saveJob, removeSavedJob, clearSavedJobs } =
+  savedJobsSlice.actions;
 export default savedJobsSlice.reducer;

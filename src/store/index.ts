@@ -7,11 +7,8 @@ import jobReducer from "./slices/jobSlice";
 import companyReducer from "./slices/companySlice";
 import savedJobsReducer from "./slices/savedJobsSlice";
 import applicationsReducer from "./slices/applicationsSlice";
-import adminUserReducer from "./slices/adminUserSlice";
-import roleReducer from "./slices/roleSlice";
 import projectUserReducer from "./slices/projectUserSlice";
 import businessConfigReducer from "./slices/businessConfigSlice";
-import catalogReducer from "./slices/catalogSlice";
 import { writeJson, removeKeys } from "@/lib/storage";
 
 const STORE_VERSION = "v2-admin-api-auth";
@@ -58,11 +55,8 @@ export const store = configureStore({
     companies: companyReducer,
     savedJobs: savedJobsReducer,
     applications: applicationsReducer,
-    adminUsers: adminUserReducer,
-    roles: roleReducer,
     projectUsers: projectUserReducer,
     businessConfig: businessConfigReducer,
-    catalog: catalogReducer,
   },
 });
 

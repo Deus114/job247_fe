@@ -13,7 +13,7 @@ export interface Company {
   contactEmail: string;
   contactPhone: string;
   taxCode: string;
-  status: 'pending' | 'approved' | 'rejected' | 'needs_revision';
+  status: "pending" | "approved" | "rejected" | "needs_revision";
   adminNote?: string;
   createdBy: string;
   createdAt: string;

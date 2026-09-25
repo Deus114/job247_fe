@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { useAdminAuth } from '@/features/auth';
+import { useEffect, useMemo, useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { useAdminAuth } from "@/features/auth";
+import { canAccessAdminModule } from "@/types/adminAuth";
 import {
   adminNavGroups,
   adminStandaloneNav,
   getAdminGroupKeyForRoute,
   type AdminRouteKey,
-} from '@/features/admin/config/nav';
+} from "@/features/admin/config/nav";
 
 interface SidebarProps {
   activeTab: AdminRouteKey;
@@ -23,13 +24,13 @@ export type { AdminRouteKey as AdminTab };
 export function AdminAvatar({
   src,
   name,
-  sizeClass = 'w-9 h-9',
+  sizeClass = "w-9 h-9",
 }: {
   src?: string;
   name: string;
   sizeClass?: string;
 }) {
-  const avatarSrc = src?.trim() || '';
+  const avatarSrc = src?.trim() || "";
   const [broken, setBroken] = useState(false);
 
   useEffect(() => {
@@ -62,15 +63,34 @@ export default function AdminSidebar({
   onToggleCollapse,
   adminName,
   adminRole,
-  adminAvatar = '',
+  adminAvatar = "",
 }: SidebarProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { logout: logoutAdmin } = useAdminAuth();
+  const { admin, logout: logoutAdmin } = useAdminAuth();
+  const visibleStandalone = useMemo(
+    () =>
+      adminStandaloneNav.filter((item) =>
+        canAccessAdminModule(admin, item.path),
+      ),
+    [admin],
+  );
+  const visibleGroups = useMemo(
+    () =>
+      adminNavGroups
+        .map((group) => ({
+          ...group,
+          children: group.children.filter((item) =>
+            canAccessAdminModule(admin, item.path),
+          ),
+        }))
+        .filter((group) => group.children.length > 0),
+    [admin],
+  );
 
   const handleLogout = () => {
     logoutAdmin();
-    navigate('/admin/login', { replace: true });
+    navigate("/admin/login", { replace: true });
   };
 
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
@@ -102,35 +122,39 @@ export default function AdminSidebar({
   };
 
   const linkClass = (isActive: boolean, compact = false) =>
-    `w-full flex items-center ${compact ? 'justify-center' : 'gap-3'} px-3 ${
-      compact ? 'py-2.5' : 'py-2.5'
+    `w-full flex items-center ${compact ? "justify-center" : "gap-3"} px-3 ${
+      compact ? "py-2.5" : "py-2.5"
     } rounded-lg text-sm font-medium transition-colors cursor-pointer mb-0.5 ${
       isActive
-        ? 'bg-primary-100 text-primary-700'
-        : 'text-foreground-600 hover:bg-background-100'
+        ? "bg-primary-100 text-primary-700"
+        : "text-foreground-600 hover:bg-background-100"
     }`;
 
   const childLinkClass = (isActive: boolean) =>
     `w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer mb-0.5 ${
       isActive
-        ? 'bg-primary-100 text-primary-700 font-medium'
-        : 'text-foreground-500 hover:text-foreground-700 hover:bg-background-100'
+        ? "bg-primary-100 text-primary-700 font-medium"
+        : "text-foreground-500 hover:text-foreground-700 hover:bg-background-100"
     }`;
 
   return (
     <div
       className={`hidden lg:flex flex-shrink-0 bg-background-50 border-r border-background-200/70 h-screen overflow-y-auto transition-all duration-200 flex-col ${
-        collapsed ? 'w-[68px]' : 'w-[260px]'
+        collapsed ? "w-[68px]" : "w-[260px]"
       }`}
     >
       <div className="px-4 py-4 border-b border-background-200/70 flex items-center gap-3">
         <button
           onClick={onToggleCollapse}
           className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-background-100 transition-colors cursor-pointer flex-shrink-0"
-          title={collapsed ? t('admin.expand', 'Mở rộng') : t('admin.collapse', 'Thu gọn')}
+          title={
+            collapsed
+              ? t("admin.expand", "Mở rộng")
+              : t("admin.collapse", "Thu gọn")
+          }
         >
           <i
-            className={`${collapsed ? 'ri-menu-fold-line' : 'ri-menu-unfold-line'} text-lg text-foreground-600`}
+            className={`${collapsed ? "ri-menu-fold-line" : "ri-menu-unfold-line"} text-lg text-foreground-600`}
           ></i>
         </button>
         {!collapsed && (
@@ -138,7 +162,9 @@ export default function AdminSidebar({
             <h1 className="text-sm font-heading font-bold text-foreground-950 truncate">
               Jobs247
             </h1>
-            <p className="text-[10px] text-foreground-400">{t('adminLogin.subtitle')}</p>
+            <p className="text-[10px] text-foreground-400">
+              {t("adminLogin.subtitle")}
+            </p>
           </div>
         )}
       </div>
@@ -148,8 +174,12 @@ export default function AdminSidebar({
           <div className="flex items-center gap-2.5">
             <AdminAvatar src={adminAvatar} name={adminName} />
             <div className="min-w-0">
-              <p className="text-sm font-medium text-foreground-900 truncate">{adminName}</p>
-              <p className="text-[10px] text-foreground-400 capitalize">{adminRole}</p>
+              <p className="text-sm font-medium text-foreground-900 truncate">
+                {adminName}
+              </p>
+              <p className="text-[10px] text-foreground-400 capitalize">
+                {adminRole}
+              </p>
             </div>
           </div>
         </div>
@@ -162,7 +192,7 @@ export default function AdminSidebar({
       <div className="p-2 flex-1 overflow-y-auto">
         {collapsed ? (
           <>
-            {adminStandaloneNav.map((tab) => (
+            {visibleStandalone.map((tab) => (
               <NavLink
                 key={tab.key}
                 to={tab.path}
@@ -172,20 +202,22 @@ export default function AdminSidebar({
                 <i className={`${tab.icon} text-base flex-shrink-0`}></i>
               </NavLink>
             ))}
-            {adminNavGroups.flatMap((g) => g.children).map((tab) => (
-              <NavLink
-                key={tab.key}
-                to={tab.path}
-                className={({ isActive }) => linkClass(isActive, true)}
-                title={t(tab.label)}
-              >
-                <i className={`${tab.icon} text-base flex-shrink-0`}></i>
-              </NavLink>
-            ))}
+            {visibleGroups
+              .flatMap((g) => g.children)
+              .map((tab) => (
+                <NavLink
+                  key={tab.key}
+                  to={tab.path}
+                  className={({ isActive }) => linkClass(isActive, true)}
+                  title={t(tab.label)}
+                >
+                  <i className={`${tab.icon} text-base flex-shrink-0`}></i>
+                </NavLink>
+              ))}
           </>
         ) : (
           <>
-            {adminStandaloneNav.map((tab) => (
+            {visibleStandalone.map((tab) => (
               <NavLink
                 key={tab.key}
                 to={tab.path}
@@ -196,24 +228,28 @@ export default function AdminSidebar({
               </NavLink>
             ))}
 
-            {adminNavGroups.map((group) => {
+            {visibleGroups.map((group) => {
               const isExpanded = expandedGroups.has(group.key);
-              const hasActiveChild = group.children.some((c) => c.key === activeTab);
+              const hasActiveChild = group.children.some(
+                (c) => c.key === activeTab,
+              );
               return (
                 <div key={group.key} className="mb-1">
                   <button
                     onClick={() => toggleGroup(group.key)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
                       hasActiveChild
-                        ? 'text-primary-700'
-                        : 'text-foreground-700 hover:bg-background-100'
+                        ? "text-primary-700"
+                        : "text-foreground-700 hover:bg-background-100"
                     }`}
                   >
                     <i className={`${group.icon} text-base flex-shrink-0`}></i>
-                    <span className="whitespace-nowrap flex-1 text-left">{t(group.label)}</span>
+                    <span className="whitespace-nowrap flex-1 text-left">
+                      {t(group.label)}
+                    </span>
                     <i
                       className={`ri-arrow-down-s-line text-base flex-shrink-0 transition-transform duration-200 ${
-                        isExpanded ? 'rotate-180' : ''
+                        isExpanded ? "rotate-180" : ""
                       }`}
                     ></i>
                   </button>
@@ -225,8 +261,12 @@ export default function AdminSidebar({
                           to={tab.path}
                           className={({ isActive }) => childLinkClass(isActive)}
                         >
-                          <i className={`${tab.icon} text-sm flex-shrink-0 opacity-70`}></i>
-                          <span className="whitespace-nowrap">{t(tab.label)}</span>
+                          <i
+                            className={`${tab.icon} text-sm flex-shrink-0 opacity-70`}
+                          ></i>
+                          <span className="whitespace-nowrap">
+                            {t(tab.label)}
+                          </span>
                         </NavLink>
                       ))}
                     </div>
@@ -242,12 +282,14 @@ export default function AdminSidebar({
         <button
           onClick={handleLogout}
           className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer ${
-            collapsed ? 'justify-center' : ''
+            collapsed ? "justify-center" : ""
           }`}
-          title={collapsed ? t('nav.logout') : undefined}
+          title={collapsed ? t("nav.logout") : undefined}
         >
           <i className="ri-logout-box-line text-base"></i>
-          {!collapsed && <span className="whitespace-nowrap">{t('nav.logout')}</span>}
+          {!collapsed && (
+            <span className="whitespace-nowrap">{t("nav.logout")}</span>
+          )}
         </button>
       </div>
     </div>

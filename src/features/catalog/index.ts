@@ -1,1 +1,2 @@
-export { useCatalogBootstrap } from './hooks/useCatalogBootstrap';
+export { useCatalogBootstrap } from "./hooks/useCatalogBootstrap";
+export { useBusinessConfigBootstrap } from "./hooks/useBusinessConfigBootstrap";

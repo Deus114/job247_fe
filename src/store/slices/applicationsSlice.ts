@@ -1,17 +1,17 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { readJson } from '@/lib/storage';
-import { env } from '@/config/env';
-import { mockApplications } from '@/mocks/applications';
-import type { Application } from '@/types/application';
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import { readJson } from "@/lib/storage";
+import { env } from "@/config/env";
+import { mockApplications } from "@/mocks/applications";
+import type { Application } from "@/types/application";
 
-export type { Application } from '@/types/application';
+export type { Application } from "@/types/application";
 
 interface ApplicationsState {
   items: Application[];
 }
 
 function loadInitialApplications(): Application[] {
-  const stored = readJson<ApplicationsState>('redux_applications');
+  const stored = readJson<ApplicationsState>("redux_applications");
   if (Array.isArray(stored?.items) && stored.items.length > 0) {
     const seen = new Set<string>();
     return stored.items.filter((app) => {
@@ -28,7 +28,7 @@ const initialState: ApplicationsState = {
 };
 
 const applicationsSlice = createSlice({
-  name: 'applications',
+  name: "applications",
   initialState,
   reducers: {
     setApplications(state, action: PayloadAction<Application[]>) {
@@ -49,7 +49,7 @@ const applicationsSlice = createSlice({
     },
     updateApplicationStatus(
       state,
-      action: PayloadAction<{ id: string; status: Application['status'] }>,
+      action: PayloadAction<{ id: string; status: Application["status"] }>,
     ) {
       const app = state.items.find((i) => i.id === action.payload.id);
       if (app) {

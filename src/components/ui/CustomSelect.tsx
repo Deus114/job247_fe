@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 interface SelectOption {
   value: string;
@@ -24,7 +24,7 @@ export default function CustomSelect({
   options,
   placeholder,
   onChange,
-  className = '',
+  className = "",
   icon,
   compact = false,
   outlined = false,
@@ -34,14 +34,17 @@ export default function CustomSelect({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const selectedLabel = options.find((o) => o.value === value)?.label || placeholder || t('common.select');
+  const selectedLabel =
+    options.find((o) => o.value === value)?.label ||
+    placeholder ||
+    t("common.select");
 
   const handleSelect = useCallback(
     (val: string) => {
       onChange(val);
       setOpen(false);
     },
-    [onChange]
+    [onChange],
   );
 
   useEffect(() => {
@@ -50,13 +53,13 @@ export default function CustomSelect({
         setOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const btnPadding = outlined || compact ? 'px-3' : 'px-4 py-3.5';
-  const optPadding = compact || outlined ? 'px-3 py-2' : 'px-4 py-2.5';
-  const heightClass = outlined ? 'h-10' : compact ? '' : '';
+  const btnPadding = outlined || compact ? "px-3" : "px-4 py-3.5";
+  const optPadding = compact || outlined ? "px-3 py-2" : "px-4 py-2.5";
+  const heightClass = outlined ? "h-10" : compact ? "" : "";
 
   return (
     <div ref={ref} className={`relative ${className}`}>
@@ -76,18 +79,20 @@ export default function CustomSelect({
         className={`w-full flex items-center gap-2 ${btnPadding} ${heightClass} text-sm rounded-xl border transition-all cursor-pointer text-left whitespace-nowrap ${
           outlined
             ? open
-              ? 'bg-background-50 border-primary-300 ring-2 ring-primary-100'
-              : 'bg-background-50 border-background-200/70 hover:border-primary-300'
+              ? "bg-background-50 border-primary-300 ring-2 ring-primary-100"
+              : "bg-background-50 border-background-200/70 hover:border-primary-300"
             : open
-              ? 'bg-background-50 border-primary-300 ring-2 ring-primary-100'
-              : 'bg-background-100/60 border-transparent hover:bg-background-50 hover:border-background-200'
-        } ${value ? 'text-foreground-900' : 'text-foreground-500'}`}
+              ? "bg-background-50 border-primary-300 ring-2 ring-primary-100"
+              : "bg-background-100/60 border-transparent hover:bg-background-50 hover:border-background-200"
+        } ${value ? "text-foreground-900" : "text-foreground-500"}`}
       >
-        {icon && <i className={`${icon} text-foreground-400 flex-shrink-0`}></i>}
+        {icon && (
+          <i className={`${icon} text-foreground-400 flex-shrink-0`}></i>
+        )}
         <span className="flex-1 truncate">{selectedLabel}</span>
         <i
           className={`ri-arrow-down-s-line text-foreground-400 flex-shrink-0 transition-transform duration-200 ${
-            open ? 'rotate-180' : ''
+            open ? "rotate-180" : ""
           }`}
         ></i>
       </button>
@@ -103,16 +108,20 @@ export default function CustomSelect({
                 onClick={() => handleSelect(option.value)}
                 className={`w-full flex items-center gap-3 ${optPadding} text-sm text-left transition-colors cursor-pointer whitespace-nowrap ${
                   isSelected
-                    ? 'bg-primary-50 text-primary-700 font-medium'
-                    : 'text-foreground-700 hover:bg-background-100'
+                    ? "bg-primary-50 text-primary-700 font-medium"
+                    : "text-foreground-700 hover:bg-background-100"
                 }`}
               >
                 <div
                   className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors ${
-                    isSelected ? 'bg-primary-500' : 'border border-background-300'
+                    isSelected
+                      ? "bg-primary-500"
+                      : "border border-background-300"
                   }`}
                 >
-                  {isSelected && <i className="ri-check-line text-[10px] text-white"></i>}
+                  {isSelected && (
+                    <i className="ri-check-line text-[10px] text-white"></i>
+                  )}
                 </div>
                 <span className="truncate">{option.label}</span>
               </button>

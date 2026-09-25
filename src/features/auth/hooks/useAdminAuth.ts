@@ -1,11 +1,13 @@
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { adminLogoutRequest } from "@/api/adminAuth";
+import { ADMIN_ACCESS_TOKEN_KEY } from "@/api/adminAuthTokens";
 import {
   adminLogin,
   adminLogout,
   updateAdminProfile,
   setAdminSessionUser,
-} from '@/store/slices/adminAuthSlice';
-import type { AdminSessionUser } from '@/types/adminAuth';
+} from "@/store/slices/adminAuthSlice";
+import type { AdminSessionUser } from "@/types/adminAuth";
 
 /** Domain hook for admin portal session. */
 export function useAdminAuth() {
@@ -27,6 +29,9 @@ export function useAdminAuth() {
       dispatch(adminLogin(payload));
     },
     logout: () => {
+      const token =
+        accessToken || localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
+      void adminLogoutRequest(token);
       dispatch(adminLogout());
     },
     updateProfile: (patch: Partial<AdminSessionUser>) => {

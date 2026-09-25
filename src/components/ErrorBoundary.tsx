@@ -1,5 +1,5 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { withTranslation, WithTranslation } from 'react-i18next';
+import { Component, type ErrorInfo, type ReactNode } from "react";
+import { withTranslation, WithTranslation } from "react-i18next";
 
 interface Props extends WithTranslation {
   children: ReactNode;
@@ -14,18 +14,18 @@ interface State {
 class ErrorBoundaryComponent extends Component<Props, State> {
   state: State = {
     hasError: false,
-    message: '',
+    message: "",
   };
 
   static getDerivedStateFromError(error: Error): State {
     return {
       hasError: true,
-      message: error.message || 'Unexpected error',
+      message: error.message || "Unexpected error",
     };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('ErrorBoundary caught:', error, info);
+    console.error("ErrorBoundary caught:", error, info);
   }
 
   private handleReload = () => {
@@ -41,15 +41,17 @@ class ErrorBoundaryComponent extends Component<Props, State> {
               <i className="ri-error-warning-line text-2xl text-red-500" />
             </div>
             <h2 className="text-xl font-heading font-bold text-foreground-950 mb-2">
-              {this.props.fallbackTitle || this.props.t('common.error')}
+              {this.props.fallbackTitle || this.props.t("common.error")}
             </h2>
-            <p className="text-sm text-foreground-600 mb-6">{this.state.message}</p>
+            <p className="text-sm text-foreground-600 mb-6">
+              {this.state.message}
+            </p>
             <button
               type="button"
               onClick={this.handleReload}
               className="px-5 py-2.5 rounded-full bg-primary-500 text-white text-sm font-medium hover:bg-primary-600 cursor-pointer"
             >
-              {this.props.t('common.reload')}
+              {this.props.t("common.reload")}
             </button>
           </div>
         </div>

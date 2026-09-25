@@ -1,12 +1,12 @@
-import axios from '@/api/axios.customize';
-import { withApiFallback } from '@/api/withApiFallback';
+import axios from "@/api/axios.customize";
+import { withApiFallback } from "@/api/withApiFallback";
 import {
   mockJobs,
   mockCategories,
   mockEducationLevels,
   mockLocations,
-} from '@/mocks/jobs';
-import type { Job, CategoryItem, EducationLevelItem } from '@/types/job';
+} from "@/mocks/jobs";
+import type { Job, CategoryItem, EducationLevelItem } from "@/types/job";
 
 export interface JobsCatalog {
   jobs: Job[];
@@ -26,7 +26,7 @@ function mockCatalog(): JobsCatalog {
 
 export async function fetchJobsCatalog(): Promise<JobsCatalog> {
   return withApiFallback(
-    () => axios.get<JobsCatalog, JobsCatalog>('/api/jobs/catalog'),
+    () => axios.get<JobsCatalog, JobsCatalog>("/api/jobs/catalog"),
     mockCatalog,
   );
 }

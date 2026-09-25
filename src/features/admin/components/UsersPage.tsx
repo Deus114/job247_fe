@@ -1,243 +1,551 @@
-import { useTranslation } from 'react-i18next';
-import { useState, useMemo, useEffect } from 'react';
-import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { addAdminUser, updateAdminUser, deleteAdminUser, restoreAdminUser, permanentDeleteAdminUser, toggleAdminUserStatus } from '@/store/slices/adminUserSlice';
-import type { AdminUser } from '@/types/adminUser';
-import CustomSelect from '@/components/ui/CustomSelect';
-import SortHeader from '@/components/ui/SortHeader';
-import ColumnVisibilityDropdown from '@/components/ui/ColumnVisibilityDropdown';
-import Pagination from '@/components/ui/Pagination';
-import { useTableActionMenu, TableActionMenu } from '@/components/ui/TableActionMenu';
+import { useTranslation } from "react-i18next";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  type ChangeEvent,
+} from "react";
+import {
+  fetchAdminUsers,
+  fetchAdminUserById,
+  createAdminUser,
+  updateAdminUser,
+  softDeleteAdminUser,
+  restoreAdminUser,
+  permanentDeleteAdminUser,
+  fetchRoles,
+  AdminAuthError,
+  resolveAdminAuthErrorMessage,
+} from "@/api";
+import type { AdminRole, AdminSessionUser } from "@/types/adminAuth";
+import { AdminAvatar } from "@/features/admin";
+import SortHeader from "@/components/ui/SortHeader";
+import ColumnVisibilityDropdown from "@/components/ui/ColumnVisibilityDropdown";
+import Pagination from "@/components/ui/Pagination";
+import CustomSelect from "@/components/ui/CustomSelect";
+import {
+  useTableActionMenu,
+  TableActionMenu,
+} from "@/components/ui/TableActionMenu";
+import { toast } from "@/lib/toast";
+import { formatDateTime } from "@/lib/formatDate";
 
-type SortField = 'fullName' | 'email' | 'createdAt' | 'lastLogin';
+type SortField = "username" | "name" | "createdAt";
+
+type FormState = {
+  username: string;
+  password: string;
+  currentPassword: string;
+  newPassword: string;
+  name: string;
+  roleId: string;
+  active: boolean;
+};
+
+const emptyForm = (): FormState => ({
+  username: "",
+  password: "",
+  currentPassword: "",
+  newPassword: "",
+  name: "",
+  roleId: "",
+  active: true,
+});
 
 export default function UsersPage() {
-  const { t } = useTranslation();
-  const dispatch = useAppDispatch();
-  const allUsers = useAppSelector((state) => state.adminUsers.items);
-  const allRoles = useAppSelector((state) => state.roles.roles);
-  const { openId, pos, menuRef, toggle, close } = useTableActionMenu<string>();
-  const [viewMode, setViewMode] = useState<'active' | 'trash'>('active');
-  const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
-  const [confirmSoftDelete, setConfirmSoftDelete] = useState<string | null>(null);
-  const [confirmPermanentDelete, setConfirmPermanentDelete] = useState<string | null>(null);
-  const [detailUser, setDetailUser] = useState<AdminUser | null>(null);
-  const [imagePreview, setImagePreview] = useState('');
-  const [sortField, setSortField] = useState<SortField>('createdAt');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
 
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(['account','email','roles','status','createdAt','lastLogin','actions']);
+  const [viewMode, setViewMode] = useState<"active" | "trash">("active");
+  const [search, setSearch] = useState("");
+  const [keyword, setKeyword] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [activeFilter, setActiveFilter] = useState("");
+  const [roles, setRoles] = useState<AdminRole[]>([]);
+  const [items, setItems] = useState<AdminSessionUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [trashCount, setTrashCount] = useState(0);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<AdminSessionUser | null>(null);
+  const [detail, setDetail] = useState<AdminSessionUser | null>(null);
+  const [confirmSoftDelete, setConfirmSoftDelete] = useState<number | null>(
+    null,
+  );
+  const [confirmPermanentDelete, setConfirmPermanentDelete] = useState<
+    number | null
+  >(null);
+  const { openId, pos, menuRef, toggle, close } = useTableActionMenu<number>();
+  const [form, setForm] = useState<FormState>(emptyForm());
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState("");
+
+  const [sortField, setSortField] = useState<SortField>("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [visibleColumns, setVisibleColumns] = useState([
+    "account",
+    "role",
+    "active",
+    "createdAt",
+    "actions",
+  ]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(10);
 
   const handleSort = (field: string) => {
-    if (sortField === field) setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'));
-    else { setSortField(field as SortField); setSortOrder('asc'); }
+    if (sortField === field) setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+    else {
+      setSortField(field as SortField);
+      setSortOrder("asc");
+    }
   };
 
-  const [form, setForm] = useState({
-    fullName: '', email: '', password: '', phone: '',
-    roleIds: [] as string[], status: 'active' as 'active' | 'inactive', avatar: '',
-  });
+  const loadRoles = useCallback(async () => {
+    try {
+      const res = await fetchRoles({
+        active: true,
+        deleted: false,
+        page: 1,
+        size: 100,
+        sort: "name,asc",
+      });
+      setRoles(res.data);
+    } catch {
+      setRoles([]);
+    }
+  }, []);
 
-  const visibleUsers = useMemo(() => {
-    return viewMode === 'active' ? allUsers.filter((u) => !u.deletedAt) : allUsers.filter((u) => !!u.deletedAt);
-  }, [allUsers, viewMode]);
+  const loadList = useCallback(async () => {
+    setLoading(true);
+    setLoadError("");
+    try {
+      const roleId = Number(roleFilter);
+      const res = await fetchAdminUsers({
+        keyword: keyword || undefined,
+        roleId: Number.isFinite(roleId) && roleId > 0 ? roleId : undefined,
+        active:
+          activeFilter === "true"
+            ? true
+            : activeFilter === "false"
+              ? false
+              : undefined,
+        deleted: viewMode === "trash",
+        page: currentPage,
+        size: pageSize,
+        sort: `${sortField},${sortOrder}`,
+      });
+      setItems(res.data);
+      setTotalItems(res.pagination.total);
+      setTotalPages(Math.max(1, res.pagination.last_page));
+    } catch (error) {
+      const message =
+        error instanceof AdminAuthError
+          ? resolveAdminAuthErrorMessage(error, t)
+          : t("apiErrors.adminUserLoadFailed");
+      setLoadError(message);
+      setItems([]);
+      setTotalItems(0);
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    keyword,
+    roleFilter,
+    activeFilter,
+    viewMode,
+    currentPage,
+    pageSize,
+    sortField,
+    sortOrder,
+    t,
+  ]);
 
-  const activeRoles = useMemo(() => allRoles.filter((r) => !r.deletedAt && r.isActive !== false), [allRoles]);
+  const loadTrashCount = useCallback(async () => {
+    try {
+      const res = await fetchAdminUsers({ deleted: true, page: 1, size: 1 });
+      setTrashCount(res.pagination.total);
+    } catch {
+      setTrashCount(0);
+    }
+  }, []);
 
-  const filteredUsers = useMemo(() => {
-    let list = visibleUsers.filter((u) => {
-      const matchSearch = !search || u.fullName.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()) || (u.phone && u.phone.includes(search));
-      const matchRole = roleFilter === 'all' || (u.roleIds || []).includes(roleFilter);
-      const matchStatus = statusFilter === 'all' || u.status === statusFilter;
-      const matchDateFrom = !dateFrom || u.createdAt >= dateFrom;
-      const matchDateTo = !dateTo || u.createdAt <= dateTo;
-      return matchSearch && matchRole && matchStatus && matchDateFrom && matchDateTo;
-    });
-    list = [...list].sort((a, b) => {
-      const aVal = (a[sortField] ?? '') as string;
-      const bVal = (b[sortField] ?? '') as string;
-      return sortOrder === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-    });
-    return list;
-  }, [visibleUsers, search, roleFilter, statusFilter, dateFrom, dateTo, sortField, sortOrder]);
+  useEffect(() => {
+    void loadRoles();
+  }, [loadRoles]);
 
-  const paginatedUsers = useMemo(() => {
-    return filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  }, [filteredUsers, currentPage, pageSize]);
+  useEffect(() => {
+    void loadList();
+  }, [loadList]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  useEffect(() => {
+    void loadTrashCount();
+  }, [loadTrashCount, viewMode]);
 
-  useEffect(() => { setCurrentPage(1); }, [search, roleFilter, statusFilter, dateFrom, dateTo, viewMode, pageSize]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [keyword, roleFilter, activeFilter, viewMode, pageSize, sortField, sortOrder]);
 
-  const statusSelectOptions = [
-    { value: 'all', label: t('adminUi.filters.allStatuses') },
-    { value: 'active', label: t('adminUi.status.active') },
-    { value: 'inactive', label: t('adminUi.status.inactive') },
-  ];
+  const activeItem = useMemo(
+    () => items.find((item) => item.id === openId) ?? null,
+    [items, openId],
+  );
 
-  const roleSelectOptions = useMemo(() => {
-    const opts = [{ value: 'all', label: t('adminUi.filters.allRoles') }];
-    activeRoles.forEach((r) => opts.push({ value: r.id, label: r.name }));
-    return opts;
-  }, [activeRoles, t]);
+  const roleOptions = useMemo(() => {
+    const options = roles.map((role) => ({
+      value: String(role.id),
+      label: role.name,
+    }));
+    if (
+      editing?.role?.id &&
+      !options.some((option) => option.value === String(editing.role.id))
+    ) {
+      options.unshift({
+        value: String(editing.role.id),
+        label: editing.role.name,
+      });
+    }
+    return options;
+  }, [roles, editing]);
 
-  const getRoleLabel = (roleId: string) => {
-    return activeRoles.find((r) => r.id === roleId)?.name || roleId;
+  const roleFilterOptions = useMemo(
+    () => [
+      { value: "", label: t("adminUi.filters.allRoles") },
+      ...roles.map((role) => ({ value: String(role.id), label: role.name })),
+    ],
+    [roles, t],
+  );
+
+  const activeFilterOptions = useMemo(
+    () => [
+      { value: "", label: t("adminUi.filters.allStatuses") },
+      { value: "true", label: t("adminUi.jobs.on") },
+      { value: "false", label: t("adminUi.jobs.off") },
+    ],
+    [t],
+  );
+
+  const resetAvatar = (preview = "") => {
+    setAvatarFile(null);
+    setAvatarPreview(preview);
   };
 
   const openAdd = () => {
-    setEditingUser(null);
-    setForm({ fullName: '', email: '', password: '', phone: '', roleIds: [], status: 'active', avatar: '' });
-    setImagePreview('');
+    setEditing(null);
+    setForm(emptyForm());
+    resetAvatar();
     setModalOpen(true);
   };
 
-  const openEdit = (user: AdminUser) => {
-    setEditingUser(user);
-    setForm({
-      fullName: user.fullName, email: user.email, password: '',
-      phone: user.phone || '', roleIds: [...user.roleIds],
-      status: user.status, avatar: user.avatar || '',
-    });
-    setImagePreview(user.avatar || '');
-    setModalOpen(true);
+  const openEdit = async (user: AdminSessionUser) => {
     close();
+    try {
+      const fresh = await fetchAdminUserById(user.id);
+      setEditing(fresh);
+      setForm({
+        username: fresh.username,
+        password: "",
+        currentPassword: "",
+        newPassword: "",
+        name: fresh.name,
+        roleId: fresh.role?.id ? String(fresh.role.id) : "",
+        active: fresh.active,
+      });
+      resetAvatar(fresh.avatar || "");
+    } catch {
+      setEditing(user);
+      setForm({
+        username: user.username,
+        password: "",
+        currentPassword: "",
+        newPassword: "",
+        name: user.name,
+        roleId: user.role?.id ? String(user.role.id) : "",
+        active: user.active,
+      });
+      resetAvatar(user.avatar || "");
+    }
+    setModalOpen(true);
   };
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result as string;
-        setImagePreview(dataUrl);
-        setForm({ ...form, avatar: dataUrl });
-      };
-      reader.readAsDataURL(file);
+  const openDetail = async (user: AdminSessionUser) => {
+    setDetail(user);
+    try {
+      const fresh = await fetchAdminUserById(user.id);
+      setDetail((current) => (current?.id === user.id ? fresh : current));
+    } catch {
+      /* keep the list row */
     }
   };
 
-  const toggleRoleInForm = (roleId: string) => {
-    setForm((prev) => ({
-      ...prev,
-      roleIds: prev.roleIds.includes(roleId)
-        ? prev.roleIds.filter((id) => id !== roleId)
-        : [...prev.roleIds, roleId],
-    }));
+  const handleAvatarChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
   };
 
-  const handleSave = () => {
-    if (!form.fullName.trim() || !form.email.trim()) return;
-    if (!editingUser && !form.password.trim()) return;
-    if (form.roleIds.length === 0) return;
+  const passwordChangeStarted = Boolean(
+    form.currentPassword.trim() || form.newPassword.trim(),
+  );
+  const passwordChangeValid =
+    !passwordChangeStarted ||
+    Boolean(form.currentPassword.trim() && form.newPassword.trim());
 
-    if (editingUser) {
-      const updates: Partial<AdminUser> & { id: string } = {
-        id: editingUser.id,
-        fullName: form.fullName.trim(),
-        email: form.email.trim(),
-        roleIds: form.roleIds,
-        status: form.status,
-        phone: form.phone.trim() || undefined,
-        avatar: form.avatar || undefined,
-      };
-      if (form.password.trim()) {
-        updates.password = form.password.trim();
+  const canSave = Boolean(
+    form.username.trim() &&
+      form.name.trim() &&
+      form.roleId &&
+      (editing ? passwordChangeValid : form.password.trim()),
+  );
+
+  const handleSave = async () => {
+    if (!canSave || saving) return;
+    setSaving(true);
+    try {
+      if (editing) {
+        await updateAdminUser(editing.id, {
+          username: form.username,
+          name: form.name,
+          roleId: Number(form.roleId),
+          active: form.active,
+          currentPassword: form.currentPassword,
+          newPassword: form.newPassword,
+          avatarFile,
+        });
+        toast.success(t("adminUi.users.saved"));
+      } else {
+        await createAdminUser({
+          username: form.username,
+          password: form.password,
+          name: form.name,
+          roleId: Number(form.roleId),
+          active: form.active,
+          avatarFile,
+        });
+        toast.success(t("adminUi.users.created"));
       }
-      dispatch(updateAdminUser(updates));
-    } else {
-      const newUser: AdminUser = {
-        id: `admin-${Date.now()}`,
-        fullName: form.fullName.trim(),
-        email: form.email.trim(),
-        password: form.password.trim(),
-        roleIds: form.roleIds,
-        status: form.status,
-        phone: form.phone.trim() || undefined,
-        avatar: form.avatar || undefined,
-        createdAt: new Date().toISOString().split('T')[0],
-      };
-      dispatch(addAdminUser(newUser));
+      setModalOpen(false);
+      await loadList();
+      await loadTrashCount();
+    } catch (error) {
+      toast.error(
+        error instanceof AdminAuthError
+          ? resolveAdminAuthErrorMessage(error, t)
+          : t("apiErrors.adminUserSaveFailed"),
+      );
+    } finally {
+      setSaving(false);
     }
-    setModalOpen(false);
   };
 
-  const clearFilters = () => {
-    setSearch(''); setRoleFilter('all'); setStatusFilter('all'); setDateFrom(''); setDateTo('');
+  const toggleActive = async (user: AdminSessionUser) => {
+    try {
+      const fresh = await fetchAdminUserById(user.id);
+      await updateAdminUser(user.id, {
+        username: fresh.username,
+        name: fresh.name,
+        roleId: fresh.role.id,
+        active: !fresh.active,
+      });
+      toast.success(
+        fresh.active
+          ? t("adminUi.users.deactivated")
+          : t("adminUi.users.activated"),
+      );
+      await loadList();
+    } catch (error) {
+      toast.error(
+        error instanceof AdminAuthError
+          ? resolveAdminAuthErrorMessage(error, t)
+          : t("apiErrors.adminUserSaveFailed"),
+      );
+    }
   };
 
-  const hasActiveFilters = search || roleFilter !== 'all' || statusFilter !== 'all' || dateFrom || dateTo;
-  const activeCount = allUsers.filter((u) => !u.deletedAt).length;
-  const trashCount = allUsers.filter((u) => !!u.deletedAt).length;
-  const activeItem = paginatedUsers.find((x) => x.id === openId);
+  const runSoftDelete = async (id: number) => {
+    try {
+      await softDeleteAdminUser(id);
+      toast.success(t("adminUi.users.deleted"));
+      setConfirmSoftDelete(null);
+      await loadList();
+      await loadTrashCount();
+    } catch (error) {
+      toast.error(
+        error instanceof AdminAuthError
+          ? resolveAdminAuthErrorMessage(error, t)
+          : t("apiErrors.adminUserDeleteFailed"),
+      );
+    }
+  };
 
-  const allColumns = [
-    { key: 'account', label: t('adminUi.columns.account') },
-    { key: 'email', label: 'Email' },
-    { key: 'roles', label: t('adminUi.columns.roles') },
-    { key: 'status', label: t('adminUi.columns.status') },
-    { key: 'createdAt', label: t('adminUi.columns.createdAt') },
-    { key: 'lastLogin', label: t('adminUi.columns.lastLogin') },
-    ...(viewMode === 'trash' ? [{ key: 'deletedAt', label: t('adminUi.columns.deletedAt') }] : []),
-    { key: 'actions', label: t('adminUi.columns.actions') },
-  ];
+  const runRestore = async (id: number) => {
+    try {
+      await restoreAdminUser(id);
+      toast.success(t("adminUi.users.restored"));
+      close();
+      await loadList();
+      await loadTrashCount();
+    } catch (error) {
+      toast.error(
+        error instanceof AdminAuthError
+          ? resolveAdminAuthErrorMessage(error, t)
+          : t("apiErrors.adminUserRestoreFailed"),
+      );
+    }
+  };
 
+  const runPermanentDelete = async (id: number) => {
+    try {
+      await permanentDeleteAdminUser(id);
+      toast.success(t("adminUi.users.deletedPermanent"));
+      setConfirmPermanentDelete(null);
+      await loadList();
+      await loadTrashCount();
+    } catch (error) {
+      toast.error(
+        error instanceof AdminAuthError
+          ? resolveAdminAuthErrorMessage(error, t)
+          : t("apiErrors.adminUserDeleteFailed"),
+      );
+    }
+  };
+
+  const hasFilters = Boolean(keyword || search || roleFilter || activeFilter);
+  const inputClass =
+    "w-full px-4 py-2.5 text-sm bg-background-50 border border-background-200/70 rounded-xl focus:outline-none focus:border-primary-300 min-h-[44px]";
 
   return (
     <div>
       <div className="flex flex-col gap-4 mb-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-heading font-bold text-foreground-950">{t('adminUi.pageTitles.users')}</h2>
-            <p className="text-sm text-foreground-500 mt-1">{viewMode === 'active' ? `${filteredUsers.length} / ${activeCount} ${t('adminUi.users.accounts')}` : `${filteredUsers.length} / ${trashCount} ${t('adminUi.jobs.deleted')}`}</p>
+            <h2 className="text-xl font-heading font-bold text-foreground-950">
+              {t("adminUi.pageTitles.users")}
+            </h2>
+            <p className="text-sm text-foreground-500 mt-1">
+              {viewMode === "active"
+                ? `${totalItems} ${t("adminUi.users.accounts")}`
+                : `${totalItems} ${t("adminUi.jobs.deleted")}`}
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <ColumnVisibilityDropdown columns={allColumns} visibleKeys={visibleColumns} onChange={setVisibleColumns} />
-            {viewMode === 'active' && (
-              <button onClick={openAdd} className="px-4 py-2 bg-primary-500 text-white rounded-xl text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap flex items-center gap-2">
-                <i className="ri-add-line"></i> {t('adminUi.users.addAccount')}
+          <div className="flex flex-wrap items-center gap-2">
+            <ColumnVisibilityDropdown
+              columns={[
+                { key: "account", label: t("adminUi.columns.name") },
+                { key: "role", label: t("adminUi.columns.role") },
+                { key: "active", label: t("adminUi.columns.active") },
+                { key: "createdAt", label: t("adminUi.columns.createdAt") },
+                { key: "actions", label: t("adminUi.columns.actions") },
+              ]}
+              visibleKeys={visibleColumns}
+              onChange={setVisibleColumns}
+            />
+            {viewMode === "active" && (
+              <button
+                type="button"
+                onClick={openAdd}
+                className="inline-flex items-center justify-center gap-2 h-10 px-4 bg-primary-500 text-white rounded-xl text-sm font-medium hover:bg-primary-600 cursor-pointer"
+              >
+                <i className="ri-add-line"></i>
+                {t("adminUi.users.addAccount")}
               </button>
             )}
-            <button onClick={() => { setViewMode('active'); clearFilters(); }} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${viewMode === 'active' ? 'bg-primary-100 text-primary-700' : 'text-foreground-500 hover:bg-background-100'}`}>
-              <i className="ri-team-line mr-1"></i>{t('adminUi.actions.active')}</button>
-            <button onClick={() => { setViewMode('trash'); clearFilters(); }} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1 ${viewMode === 'trash' ? 'bg-red-100 text-red-600' : 'text-foreground-500 hover:bg-background-100'}`}>
-              <i className="ri-delete-bin-line mr-1"></i>{t('adminUi.actions.trash')} {trashCount > 0 && <span className="px-1.5 py-0.5 bg-red-500 text-white rounded-full text-[10px]">{trashCount}</span>}
+            <button
+              type="button"
+              onClick={() => setViewMode("active")}
+              className={`px-3 py-2 rounded-lg text-sm font-medium cursor-pointer min-h-[40px] ${
+                viewMode === "active"
+                  ? "bg-primary-100 text-primary-700"
+                  : "text-foreground-500 hover:bg-background-100"
+              }`}
+            >
+              {t("adminUi.actions.active")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("trash")}
+              className={`px-3 py-2 rounded-lg text-sm font-medium cursor-pointer min-h-[40px] inline-flex items-center gap-1 ${
+                viewMode === "trash"
+                  ? "bg-red-100 text-red-600"
+                  : "text-foreground-500 hover:bg-background-100"
+              }`}
+            >
+              <i className="ri-delete-bin-line"></i>
+              {t("adminUi.actions.trash")}
+              {trashCount > 0 && (
+                <span className="px-1.5 py-0.5 bg-red-500 text-white rounded-full text-[10px]">
+                  {trashCount}
+                </span>
+              )}
             </button>
           </div>
         </div>
 
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap">
-            <div className="relative flex-1 w-full sm:max-w-[220px]">
-              <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-foreground-400 text-sm"></i>
-              <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('adminUi.users.searchPlaceholder')} className="w-full pl-9 pr-4 py-2 text-sm bg-background-50 border border-background-200/70 rounded-xl focus:outline-none focus:border-primary-300 transition-colors" />
-            </div>
-            <CustomSelect value={roleFilter} options={roleSelectOptions} onChange={setRoleFilter} compact className="w-full sm:w-[160px]" />
-            <CustomSelect value={statusFilter} options={statusSelectOptions} onChange={setStatusFilter} compact className="w-full sm:w-[160px]" />
-            <div className="flex items-center gap-2">
-              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="px-3 py-2 text-sm bg-background-50 border border-background-200/70 rounded-xl focus:outline-none focus:border-primary-300" title={t('adminUi.jobs.dateFrom')} />
-              <span className="text-xs text-foreground-400">{t('adminUi.jobs.to')}</span>
-              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="px-3 py-2 text-sm bg-background-50 border border-background-200/70 rounded-xl focus:outline-none focus:border-primary-300" title={t('adminUi.jobs.dateTo')} />
-            </div>
-            {hasActiveFilters && (
-              <button onClick={clearFilters} className="px-3 py-2 text-sm text-foreground-500 hover:text-foreground-700 hover:bg-background-100 rounded-xl transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1">
-                <i className="ri-filter-off-line"></i>{t('adminUi.actions.clearFilters')}</button>
-            )}
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
+          <div className="relative flex-1 w-full sm:max-w-xs">
+            <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-foreground-400 text-sm"></i>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") setKeyword(search.trim());
+              }}
+              placeholder={t("adminUi.users.searchPlaceholder")}
+              className="w-full pl-9 pr-4 py-2 text-sm bg-background-50 border border-background-200/70 rounded-xl focus:outline-none focus:border-primary-300 min-h-[44px]"
+            />
           </div>
+          <CustomSelect
+            outlined
+            value={roleFilter}
+            onChange={setRoleFilter}
+            options={roleFilterOptions}
+            className="w-full sm:w-48"
+          />
+          <CustomSelect
+            outlined
+            value={activeFilter}
+            onChange={setActiveFilter}
+            options={activeFilterOptions}
+            className="w-full sm:w-40"
+          />
+          {hasFilters && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setKeyword("");
+                setRoleFilter("");
+                setActiveFilter("");
+              }}
+              className="px-3 py-2 text-sm text-foreground-500 hover:bg-background-100 rounded-xl cursor-pointer min-h-[44px]"
+            >
+              <i className="ri-filter-off-line mr-1"></i>
+              {t("adminUi.actions.clearFilters")}
+            </button>
+          )}
         </div>
       </div>
 
-      {viewMode === 'trash' && (
+      {viewMode === "trash" && (
         <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
-          <p className="text-sm text-yellow-700"><i className="ri-information-line mr-1"></i>{t('adminUi.users.trashInfo')}</p>
+          <p className="text-sm text-yellow-700">
+            <i className="ri-information-line mr-1"></i>
+            {t("adminUi.users.trashInfo")}
+          </p>
+        </div>
+      )}
+
+      {loadError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+          {loadError}
         </div>
       )}
 
@@ -246,237 +554,503 @@ export default function UsersPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-background-200/70">
-                <SortHeader label={t('adminUi.columns.account').toUpperCase()} field="fullName" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} />
-                <SortHeader label="EMAIL" field="email" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} />
-                <th className="text-left px-5 py-3 text-xs font-semibold text-foreground-500">{t('adminUi.columns.roles').toUpperCase()}</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-foreground-500">{t('adminUi.columns.status').toUpperCase()}</th>
-                <SortHeader label={t('adminUi.columns.createdAt').toUpperCase()} field="createdAt" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} />
-                <SortHeader label={t('adminUi.columns.lastLogin').toUpperCase()} field="lastLogin" currentField={sortField} currentOrder={sortOrder} onSort={handleSort} />
-                {viewMode === 'trash' && <th className="text-left px-5 py-3 text-xs font-semibold text-foreground-500">{t('adminUi.columns.deletedAt').toUpperCase()}</th>}
-                <th className="text-right px-5 py-3 text-xs font-semibold text-foreground-500">{t('adminUi.columns.actions').toUpperCase()}</th>
+                {visibleColumns.includes("account") && (
+                  <SortHeader
+                    label={t("adminUi.columns.name").toUpperCase()}
+                    field="name"
+                    currentField={sortField}
+                    currentOrder={sortOrder}
+                    onSort={handleSort}
+                    className="whitespace-nowrap"
+                  />
+                )}
+                {visibleColumns.includes("role") && (
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-foreground-500 whitespace-nowrap">
+                    {t("adminUi.columns.role").toUpperCase()}
+                  </th>
+                )}
+                {visibleColumns.includes("active") && (
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-foreground-500 whitespace-nowrap">
+                    {t("adminUi.columns.active").toUpperCase()}
+                  </th>
+                )}
+                {visibleColumns.includes("createdAt") && (
+                  <SortHeader
+                    label={t("adminUi.columns.createdAt").toUpperCase()}
+                    field="createdAt"
+                    currentField={sortField}
+                    currentOrder={sortOrder}
+                    onSort={handleSort}
+                    className="whitespace-nowrap"
+                  />
+                )}
+                {visibleColumns.includes("actions") && (
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-foreground-500 whitespace-nowrap">
+                    {t("adminUi.columns.actions").toUpperCase()}
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
-              {paginatedUsers.map((u) => (
-                <tr key={u.id} className="border-b border-background-100 hover:bg-background-50 transition-colors">
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-3">
-                      {u.avatar ? (
-                        <img src={u.avatar} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
-                      ) : (
-                        <div className="w-9 h-9 rounded-full bg-background-200 flex items-center justify-center flex-shrink-0"><i className="ri-user-line text-sm text-foreground-400"></i></div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-foreground-900 font-medium text-sm truncate">{u.fullName}</p>
-                        <p className="text-xs text-foreground-500">{u.phone || t('adminUi.users.noPhone')}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 text-foreground-600 whitespace-nowrap">{u.email}</td>
-                  <td className="px-5 py-3 whitespace-nowrap">
-                    <div className="flex flex-wrap gap-1">
-                      {(u.roleIds || []).map((rid) => (
-                        <span key={rid} className="px-2 py-0.5 bg-secondary-100 text-secondary-700 rounded-full text-[11px] font-medium">{getRoleLabel(rid)}</span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 whitespace-nowrap">
-                    {viewMode === 'active' ? (
-                      <button onClick={() => dispatch(toggleAdminUserStatus(u.id))} className={`px-2.5 py-1 text-xs font-medium rounded-full cursor-pointer transition-colors ${u.status === 'active' ? 'bg-accent-100 text-accent-600 hover:bg-accent-200' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}>
-                        {u.status === 'active' ? t('adminUi.status.active') : t('adminUi.status.inactive')}
-                      </button>
-                    ) : (
-                      <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${u.status === 'active' ? 'bg-accent-100 text-accent-600' : 'bg-red-100 text-red-600'}`}>{u.status === 'active' ? t('adminUi.status.active') : t('adminUi.status.inactive')}</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3 text-foreground-500 whitespace-nowrap text-xs">{u.createdAt}</td>
-                  <td className="px-5 py-3 text-foreground-500 whitespace-nowrap text-xs">{u.lastLogin || t('adminUi.common.notAvailable')}</td>
-                  {viewMode === 'trash' && (
-                    <td className="px-5 py-3 text-foreground-500 whitespace-nowrap text-xs">{u.deletedAt ? new Date(u.deletedAt).toLocaleDateString('vi-VN') : ''}</td>
-                  )}
-                  <td className="px-5 py-3 text-right whitespace-nowrap relative">
-                    {confirmSoftDelete === u.id && viewMode === 'active' ? (
-                      <div className="flex items-center gap-2 justify-end">
-                        <button onClick={() => { dispatch(deleteAdminUser(u.id)); setConfirmSoftDelete(null); }} className="px-2.5 py-1 bg-red-500 text-white rounded-lg text-xs font-medium hover:bg-red-600 cursor-pointer">{t('adminUi.jobs.confirmDelete')}</button>
-                        <button onClick={() => setConfirmSoftDelete(null)} className="px-2.5 py-1 border border-background-300 rounded-lg text-xs text-foreground-600 hover:bg-background-100 cursor-pointer">{t('adminUi.actions.cancel')}</button>
-                      </div>
-                    ) : confirmPermanentDelete === u.id && viewMode === 'trash' ? (
-                      <div className="flex items-center gap-2 justify-end">
-                        <button onClick={() => { dispatch(permanentDeleteAdminUser(u.id)); setConfirmPermanentDelete(null); }} className="px-2.5 py-1 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700 cursor-pointer">{t('adminUi.jobs.deletePermanent')}</button>
-                        <button onClick={() => setConfirmPermanentDelete(null)} className="px-2.5 py-1 border border-background-300 rounded-lg text-xs text-foreground-600 hover:bg-background-100 cursor-pointer">{t('adminUi.actions.cancel')}</button>
-                      </div>
-                    ) : (
-                      <button type="button" onClick={(e) => toggle(u.id, e)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-background-100 transition-colors cursor-pointer"><i className="ri-more-2-fill text-foreground-500"></i></button>
-                    )}
+              {loading ? (
+                <tr>
+                  <td
+                    colSpan={visibleColumns.length}
+                    className="px-5 py-12 text-center text-foreground-500"
+                  >
+                    <i className="ri-loader-4-line animate-spin mr-2"></i>
+                    {t("common.loading")}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                items.map((user) => (
+                  <tr
+                    key={user.id}
+                    className="border-b border-background-100 hover:bg-background-50"
+                  >
+                    {visibleColumns.includes("account") && (
+                      <td className="px-5 py-3">
+                        <button
+                          type="button"
+                          onClick={() => void openDetail(user)}
+                          className="flex items-center gap-3 text-left cursor-pointer"
+                        >
+                          <AdminAvatar src={user.avatar} name={user.name} />
+                          <span className="min-w-0">
+                            <span className="block font-medium text-foreground-900 truncate">
+                              {user.name}
+                            </span>
+                            <span className="block text-xs text-foreground-500 truncate">
+                              {user.username}
+                            </span>
+                          </span>
+                        </button>
+                      </td>
+                    )}
+                    {visibleColumns.includes("role") && (
+                      <td className="px-5 py-3 whitespace-nowrap text-foreground-700">
+                        {user.role?.name || "—"}
+                      </td>
+                    )}
+                    {visibleColumns.includes("active") && (
+                      <td className="px-5 py-3 whitespace-nowrap">
+                        {viewMode === "active" ? (
+                          <button
+                            type="button"
+                            onClick={() => void toggleActive(user)}
+                            className={`px-2.5 py-1 text-xs font-medium rounded-full cursor-pointer min-h-[32px] ${
+                              user.active
+                                ? "bg-accent-100 text-accent-600"
+                                : "bg-red-100 text-red-600"
+                            }`}
+                          >
+                            {user.active
+                              ? t("adminUi.jobs.on")
+                              : t("adminUi.jobs.off")}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-foreground-400">—</span>
+                        )}
+                      </td>
+                    )}
+                    {visibleColumns.includes("createdAt") && (
+                      <td className="px-5 py-3 text-foreground-600 whitespace-nowrap text-xs">
+                        {formatDateTime(user.createdAt, lang)}
+                      </td>
+                    )}
+                    {visibleColumns.includes("actions") && (
+                      <td className="px-5 py-3 text-right">
+                        {confirmSoftDelete === user.id && viewMode === "active" ? (
+                          <div className="flex items-center gap-2 justify-end">
+                            <button
+                              type="button"
+                              onClick={() => void runSoftDelete(user.id)}
+                              className="px-2.5 py-1 bg-red-500 text-white rounded-lg text-xs font-medium cursor-pointer min-h-[36px]"
+                            >
+                              {t("adminUi.jobs.confirmDelete")}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmSoftDelete(null)}
+                              className="px-2.5 py-1 border border-background-300 rounded-lg text-xs cursor-pointer min-h-[36px]"
+                            >
+                              {t("adminUi.actions.cancel")}
+                            </button>
+                          </div>
+                        ) : confirmPermanentDelete === user.id &&
+                          viewMode === "trash" ? (
+                          <div className="flex items-center gap-2 justify-end">
+                            <button
+                              type="button"
+                              onClick={() => void runPermanentDelete(user.id)}
+                              className="px-2.5 py-1 bg-red-600 text-white rounded-lg text-xs font-medium cursor-pointer min-h-[36px]"
+                            >
+                              {t("adminUi.jobs.deletePermanent")}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmPermanentDelete(null)}
+                              className="px-2.5 py-1 border border-background-300 rounded-lg text-xs cursor-pointer min-h-[36px]"
+                            >
+                              {t("adminUi.actions.cancel")}
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => toggle(user.id, e)}
+                            className="w-10 h-10 inline-flex items-center justify-center rounded-lg hover:bg-background-100 cursor-pointer"
+                          >
+                            <i className="ri-more-2-fill text-foreground-500"></i>
+                          </button>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
-        {filteredUsers.length === 0 && (
-          <div className="p-12 text-center">
-            <div className="w-16 h-16 mx-auto rounded-full bg-background-100 flex items-center justify-center mb-4"><i className="ri-user-search-line text-2xl text-foreground-400"></i></div>
-            <p className="text-sm text-foreground-500">{viewMode === 'active' ? (hasActiveFilters ? t('adminUi.users.noAccountsFiltered') : t('adminUi.users.noAccountsFound')) : t('adminUi.jobs.trashEmpty')}</p>
+        {!loading && items.length === 0 && !loadError && (
+          <div className="p-12 text-center text-sm text-foreground-500">
+            {viewMode === "trash"
+              ? t("adminUi.users.trashEmpty")
+              : hasFilters
+                ? t("adminUi.users.noAccountsFiltered")
+                : t("adminUi.users.noAccountsFound")}
           </div>
         )}
-        {filteredUsers.length > 0 && (
+        {totalItems > 0 && (
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
             pageSize={pageSize}
-            totalItems={filteredUsers.length}
+            totalItems={totalItems}
             onPageChange={setCurrentPage}
-            onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setCurrentPage(1);
+            }}
           />
         )}
       </div>
 
-      {/* Detail Modal */}
-      {detailUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setDetailUser(null)}></div>
-          <div className="relative bg-background-50 border border-background-200 rounded-2xl p-6 w-full max-w-lg mx-4 shadow-lg max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-heading font-semibold text-foreground-950">{t('adminUi.users.accountDetail')}</h3>
-              <button onClick={() => setDetailUser(null)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-background-100 transition-colors cursor-pointer"><i className="ri-close-line"></i></button>
-            </div>
-            <div className="flex flex-col items-center mb-5">
-              {detailUser.avatar ? (
-                <img src={detailUser.avatar} alt="" className="w-20 h-20 rounded-full object-cover mb-3" />
-              ) : (
-                <div className="w-20 h-20 rounded-full bg-background-200 flex items-center justify-center mb-3"><i className="ri-user-line text-2xl text-foreground-400"></i></div>
-              )}
-              <h4 className="text-lg font-semibold text-foreground-950">{detailUser.fullName}</h4>
-              <div className="flex flex-wrap gap-1 mt-2">
-                {(detailUser.roleIds || []).map((rid) => (
-                  <span key={rid} className="px-2.5 py-1 bg-accent-100 text-accent-700 rounded-full text-xs font-medium">{getRoleLabel(rid)}</span>
-                ))}
+      {detail && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setDetail(null)}
+          ></div>
+          <div className="relative bg-background-50 border border-background-200 rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 w-full max-w-lg shadow-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between gap-3 mb-5">
+              <div className="flex items-center gap-3 min-w-0">
+                <AdminAvatar src={detail.avatar} name={detail.name} />
+                <div className="min-w-0">
+                  <h3 className="text-lg font-heading font-semibold text-foreground-950 truncate">
+                    {detail.name}
+                  </h3>
+                  <p className="text-xs text-foreground-500 truncate">
+                    {detail.username}
+                  </p>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setDetail(null)}
+                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-background-100 cursor-pointer"
+              >
+                <i className="ri-close-line"></i>
+              </button>
             </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between py-2 border-b border-background-100"><span className="text-sm text-foreground-500">ID</span><span className="text-sm font-medium text-foreground-800">{detailUser.id}</span></div>
-              <div className="flex items-center justify-between py-2 border-b border-background-100"><span className="text-sm text-foreground-500">Email</span><span className="text-sm font-medium text-foreground-800">{detailUser.email}</span></div>
-              <div className="flex items-center justify-between py-2 border-b border-background-100"><span className="text-sm text-foreground-500">{t('adminUi.columns.phone')}</span><span className="text-sm font-medium text-foreground-800">{detailUser.phone || t('adminUi.common.notUpdated')}</span></div>
-              <div className="flex items-center justify-between py-2 border-b border-background-100"><span className="text-sm text-foreground-500">{t('adminUi.columns.status')}</span><span className={`px-2.5 py-1 text-xs font-medium rounded-full ${detailUser.status === 'active' ? 'bg-accent-100 text-accent-600' : 'bg-red-100 text-red-600'}`}>{detailUser.status === 'active' ? t('adminUi.status.active') : t('adminUi.status.inactive')}</span></div>
-              <div className="flex items-center justify-between py-2 border-b border-background-100"><span className="text-sm text-foreground-500">{t('adminUi.columns.createdAt')}</span><span className="text-sm font-medium text-foreground-800">{detailUser.createdAt}</span></div>
-              <div className="flex items-center justify-between py-2 border-b border-background-100"><span className="text-sm text-foreground-500">{t('adminUi.users.lastLogin')}</span><span className="text-sm font-medium text-foreground-800">{detailUser.lastLogin || t('adminUi.common.notAvailable')}</span></div>
-            </div>
-            <div className="flex items-center gap-3 mt-6">
-              <button onClick={() => setDetailUser(null)} className="flex-1 py-2.5 border border-background-300 text-foreground-700 rounded-xl text-sm font-medium hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap">{t('adminUi.jobs.close')}</button>
-              {viewMode === 'active' && (
-                <button onClick={() => { setDetailUser(null); openEdit(detailUser); }} className="flex-1 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap">{t('adminUi.jobs.edit')}</button>
-              )}
-              {viewMode === 'trash' && (
-                <button onClick={() => { dispatch(restoreAdminUser(detailUser.id)); setDetailUser(null); }} className="flex-1 py-2.5 bg-accent-500 text-white rounded-xl text-sm font-semibold hover:bg-accent-600 transition-colors cursor-pointer whitespace-nowrap">{t('adminUi.jobs.restore')}</button>
+            <dl className="space-y-3 text-sm">
+              <div className="flex justify-between gap-4">
+                <dt className="text-foreground-500">{t("adminUi.columns.role")}</dt>
+                <dd className="text-foreground-800 text-right">
+                  {detail.role?.name || "—"}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-foreground-500">{t("adminUi.roles.fullAccess")}</dt>
+                <dd className="text-foreground-800">
+                  {detail.role?.fullAccess
+                    ? t("adminUi.roles.fullAccess")
+                    : t("adminUi.roles.limited")}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-foreground-500">{t("adminUi.columns.active")}</dt>
+                <dd className="text-foreground-800">
+                  {detail.active ? t("adminUi.jobs.on") : t("adminUi.jobs.off")}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-foreground-500">{t("adminUi.columns.createdAt")}</dt>
+                <dd className="text-foreground-800">
+                  {formatDateTime(detail.createdAt, lang)}
+                </dd>
+              </div>
+            </dl>
+            <div className="flex gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setDetail(null)}
+                className="flex-1 py-2.5 border border-background-300 rounded-xl text-sm font-medium cursor-pointer min-h-[44px]"
+              >
+                {t("adminUi.jobs.close")}
+              </button>
+              {viewMode === "active" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDetail(null);
+                    void openEdit(detail);
+                  }}
+                  className="flex-1 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-semibold cursor-pointer min-h-[44px]"
+                >
+                  {t("adminUi.jobs.edit")}
+                </button>
               )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Add/Edit Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setModalOpen(false)}></div>
-          <div className="relative bg-background-50 border border-background-200 rounded-2xl p-6 w-full max-w-lg mx-4 shadow-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-heading font-semibold text-foreground-950">{editingUser ? t('adminUi.users.editAccount') : t('adminUi.users.addAccount')}</h3>
-              <button onClick={() => setModalOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-background-100 transition-colors cursor-pointer"><i className="ri-close-line"></i></button>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => !saving && setModalOpen(false)}
+          ></div>
+          <div className="relative bg-background-50 border border-background-200 rounded-t-2xl sm:rounded-2xl w-full max-w-lg shadow-lg max-h-[92vh] overflow-y-auto p-5">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <h3 className="text-lg font-heading font-semibold text-foreground-950">
+                {editing
+                  ? t("adminUi.users.editAccount")
+                  : t("adminUi.users.addAccount")}
+              </h3>
+              <button
+                type="button"
+                onClick={() => !saving && setModalOpen(false)}
+                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-background-100 cursor-pointer"
+              >
+                <i className="ri-close-line"></i>
+              </button>
             </div>
             <div className="space-y-4">
-              {/* Avatar */}
-              <div>
-                <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('adminUi.users.avatar')}</label>
-                <div className="flex items-center gap-4">
-                  {imagePreview ? (
-                    <div className="relative">
-                      <img src={imagePreview} alt="" className="w-16 h-16 rounded-full object-cover" />
-                      <button onClick={() => { setImagePreview(''); setForm({ ...form, avatar: '' }); }} className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors cursor-pointer"><i className="ri-close-line text-[10px]"></i></button>
-                    </div>
-                  ) : (
-                    <div className="w-16 h-16 rounded-full bg-background-200 flex items-center justify-center"><i className="ri-user-line text-xl text-foreground-400"></i></div>
-                  )}
-                  <label className="px-3 py-2 border border-background-300 rounded-xl text-sm text-foreground-600 hover:bg-background-100 transition-colors cursor-pointer">
-                    <i className="ri-upload-line mr-1"></i> {t('adminUi.users.uploadAvatar')}
-                    <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+              <div className="flex items-center gap-4">
+                <AdminAvatar
+                  src={avatarPreview}
+                  name={form.name || form.username || "A"}
+                  sizeClass="w-16 h-16"
+                />
+                <label className="inline-flex items-center justify-center px-4 min-h-[44px] rounded-xl border border-background-300 text-sm font-medium cursor-pointer hover:bg-background-100">
+                  {t("adminUi.users.uploadAvatar")}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                  />
+                </label>
+              </div>
+              <label className="block">
+                <span className="text-sm font-medium text-foreground-700">
+                  {t("adminUi.users.username")}
+                </span>
+                <input
+                  value={form.username}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, username: e.target.value }))
+                  }
+                  autoComplete="off"
+                  className={`${inputClass} mt-1.5`}
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-foreground-700">
+                  {t("adminUi.columns.name")}
+                </span>
+                <input
+                  value={form.name}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  className={`${inputClass} mt-1.5`}
+                />
+              </label>
+              {editing ? (
+                <>
+                  <label className="block">
+                    <span className="text-sm font-medium text-foreground-700">
+                      {t("adminUi.users.currentPassword")}
+                    </span>
+                    <input
+                      type="password"
+                      value={form.currentPassword}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          currentPassword: e.target.value,
+                        }))
+                      }
+                      autoComplete="current-password"
+                      placeholder={t("adminUi.users.passwordChangeHint")}
+                      className={`${inputClass} mt-1.5`}
+                    />
                   </label>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('adminUi.columns.fullName')} *</label>
-                  <input type="text" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} className="w-full px-4 py-2.5 text-sm bg-background-50 border border-background-200/70 rounded-xl focus:outline-none focus:border-primary-300 transition-colors" placeholder={t('adminUi.columns.fullName')} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground-700 mb-1.5">Email *</label>
-                  <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-4 py-2.5 text-sm bg-background-50 border border-background-200/70 rounded-xl focus:outline-none focus:border-primary-300 transition-colors" placeholder="email@example.com" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('adminUi.users.password')} {!editingUser && '*'}</label>
-                  <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="w-full px-4 py-2.5 text-sm bg-background-50 border border-background-200/70 rounded-xl focus:outline-none focus:border-primary-300 transition-colors" placeholder={editingUser ? t('adminUi.users.passwordOptional') : t('adminUi.users.passwordPlaceholder')} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('adminUi.columns.phone')}</label>
-                  <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full px-4 py-2.5 text-sm bg-background-50 border border-background-200/70 rounded-xl focus:outline-none focus:border-primary-300 transition-colors" placeholder="0912345678" />
-                </div>
-              </div>
-
+                  <label className="block">
+                    <span className="text-sm font-medium text-foreground-700">
+                      {t("adminUi.users.newPassword")}
+                    </span>
+                    <input
+                      type="password"
+                      value={form.newPassword}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          newPassword: e.target.value,
+                        }))
+                      }
+                      autoComplete="new-password"
+                      placeholder={t("adminUi.users.passwordChangeHint")}
+                      className={`${inputClass} mt-1.5`}
+                    />
+                  </label>
+                </>
+              ) : (
+                <label className="block">
+                  <span className="text-sm font-medium text-foreground-700">
+                    {t("adminUi.users.password")}
+                  </span>
+                  <input
+                    type="password"
+                    value={form.password}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, password: e.target.value }))
+                    }
+                    autoComplete="new-password"
+                    placeholder={t("adminUi.users.passwordPlaceholder")}
+                    className={`${inputClass} mt-1.5`}
+                  />
+                </label>
+              )}
               <div>
-                <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('adminUi.users.rolesSelected', { count: form.roleIds.length })}</label>
-                <div className="grid grid-cols-2 gap-2 max-h-[180px] overflow-y-auto p-2 border border-background-200/70 rounded-xl">
-                  {activeRoles.map((role) => (
-                    <label key={role.id} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${form.roleIds.includes(role.id) ? 'bg-primary-50 border border-primary-200' : 'hover:bg-background-100 border border-transparent'}`}>
-                      <input type="checkbox" checked={form.roleIds.includes(role.id)} onChange={() => toggleRoleInForm(role.id)} className="w-4 h-4 rounded border-background-300 text-primary-500 focus:ring-primary-200 cursor-pointer" />
-                      <div>
-                        <p className="text-sm font-medium text-foreground-800">{role.name}</p>
-                        <p className="text-xs text-foreground-400">{role.description}</p>
-                      </div>
-                    </label>
-                  ))}
-                </div>
+                <span className="block text-sm font-medium text-foreground-700 mb-1.5">
+                  {t("adminUi.columns.role")}
+                </span>
+                <CustomSelect
+                  outlined
+                  value={form.roleId}
+                  onChange={(value) =>
+                    setForm((prev) => ({ ...prev, roleId: value }))
+                  }
+                  options={roleOptions}
+                  placeholder={t("common.select")}
+                  className="w-full"
+                />
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('adminUi.columns.status')}</label>
-                <CustomSelect value={form.status} options={[{ value: 'active', label: t('adminUi.status.active') }, { value: 'inactive', label: t('adminUi.status.inactive') }]} onChange={(v) => setForm({ ...form, status: v as 'active' | 'inactive' })} />
-              </div>
+              <label className="flex items-center gap-3 min-h-[44px] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.active}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, active: e.target.checked }))
+                  }
+                  className="h-4 w-4 accent-primary-500"
+                />
+                <span className="text-sm font-medium text-foreground-800">
+                  {t("adminUi.columns.active")}
+                </span>
+              </label>
             </div>
-            <div className="flex items-center gap-3 mt-6">
-              <button onClick={() => setModalOpen(false)} className="flex-1 py-2.5 border border-background-300 text-foreground-700 rounded-xl text-sm font-medium hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap">{t('adminUi.actions.cancel')}</button>
-              <button onClick={handleSave} disabled={!form.fullName.trim() || !form.email.trim() || (!editingUser && !form.password.trim()) || form.roleIds.length === 0} className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${form.fullName.trim() && form.email.trim() && (editingUser || form.password.trim()) && form.roleIds.length > 0 ? 'bg-primary-500 text-white hover:bg-primary-600' : 'bg-background-200 text-foreground-400 cursor-not-allowed'}`}>
-                {editingUser ? t('adminUi.jobs.saveChanges') : t('adminUi.users.addAccount')}
+            <div className="flex gap-3 mt-5">
+              <button
+                type="button"
+                onClick={() => !saving && setModalOpen(false)}
+                className="flex-1 py-2.5 border border-background-300 rounded-xl text-sm font-medium cursor-pointer min-h-[44px]"
+              >
+                {t("adminUi.actions.cancel")}
+              </button>
+              <button
+                type="button"
+                disabled={!canSave || saving}
+                onClick={() => void handleSave()}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold min-h-[44px] flex items-center justify-center gap-2 ${
+                  canSave && !saving
+                    ? "bg-primary-500 text-white hover:bg-primary-600 cursor-pointer"
+                    : "bg-background-200 text-foreground-400 cursor-not-allowed"
+                }`}
+              >
+                {saving && <i className="ri-loader-4-line animate-spin"></i>}
+                {editing
+                  ? t("adminUi.jobs.saveChanges")
+                  : t("adminUi.users.addAccount")}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <TableActionMenu open={openId != null && !!activeItem} pos={pos} menuRef={menuRef}>
-        {activeItem && viewMode === 'active' ? (
+      <TableActionMenu
+        open={openId != null && !!activeItem}
+        pos={pos}
+        menuRef={menuRef}
+      >
+        {activeItem && viewMode === "active" ? (
           <>
-            <button type="button" onClick={() => { setDetailUser(activeItem); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
-              <i className="ri-eye-line text-primary-500"></i>{t('adminUi.jobs.viewDetails')}</button>
-            <button type="button" onClick={() => openEdit(activeItem)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
-              <i className="ri-edit-line text-accent-500"></i>{t('adminUi.jobs.edit')}</button>
-            <button type="button" onClick={() => { dispatch(toggleAdminUserStatus(activeItem.id)); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
-              <i className={`${activeItem.status === 'active' ? 'ri-lock-line' : 'ri-lock-unlock-line'} text-yellow-500`}></i> {activeItem.status === 'active' ? t('adminUi.users.deactivate') : t('adminUi.users.activate')}
+            <button
+              type="button"
+              onClick={() => {
+                void openDetail(activeItem);
+                close();
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-background-100 cursor-pointer"
+            >
+              <i className="ri-eye-line text-primary-500"></i>
+              {t("adminUi.jobs.viewDetails")}
             </button>
-            <button type="button" onClick={() => { setConfirmSoftDelete(activeItem.id); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
-              <i className="ri-delete-bin-line"></i>{t('adminUi.jobs.confirmDelete')}</button>
+            <button
+              type="button"
+              onClick={() => void openEdit(activeItem)}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-background-100 cursor-pointer"
+            >
+              <i className="ri-edit-line text-accent-500"></i>
+              {t("adminUi.jobs.edit")}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmSoftDelete(activeItem.id);
+                close();
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 cursor-pointer"
+            >
+              <i className="ri-delete-bin-line"></i>
+              {t("adminUi.jobs.confirmDelete")}
+            </button>
           </>
         ) : activeItem ? (
           <>
-            <button type="button" onClick={() => { dispatch(restoreAdminUser(activeItem.id)); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-accent-600 hover:bg-accent-50 transition-colors cursor-pointer">
-              <i className="ri-arrow-go-back-line"></i>{t('adminUi.jobs.restore')}</button>
-            <button type="button" onClick={() => { setDetailUser(activeItem); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors cursor-pointer">
-              <i className="ri-eye-line text-primary-500"></i>{t('adminUi.jobs.viewDetails')}</button>
-            <button type="button" onClick={() => { setConfirmPermanentDelete(activeItem.id); close(); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
-              <i className="ri-delete-bin-6-line"></i>{t('adminUi.jobs.deletePermanent')}</button>
+            <button
+              type="button"
+              onClick={() => void runRestore(activeItem.id)}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-accent-600 hover:bg-accent-50 cursor-pointer"
+            >
+              <i className="ri-arrow-go-back-line"></i>
+              {t("adminUi.jobs.restore")}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmPermanentDelete(activeItem.id);
+                close();
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 cursor-pointer"
+            >
+              <i className="ri-delete-bin-6-line"></i>
+              {t("adminUi.jobs.deletePermanent")}
+            </button>
           </>
         ) : null}
       </TableActionMenu>

@@ -1,2 +1,2 @@
-export { useAuth } from './hooks/useAuth';
-export { useAdminAuth } from './hooks/useAdminAuth';
+export { useAuth } from "./hooks/useAuth";
+export { useAdminAuth } from "./hooks/useAdminAuth";

@@ -1,16 +1,21 @@
-import { useState, useMemo } from 'react';
-import { Link, Navigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { useAuth } from '@/features/auth';
-import { useApplications, ViewApplicationModal, EditApplicationModal, ConfirmCancelModal } from '@/features/applications';
-import { useJobs } from '@/features/jobs';
-import type { Application } from '@/types/application';
+import { useState, useMemo } from "react";
+import { Link, Navigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { useAuth } from "@/features/auth";
+import {
+  useApplications,
+  ViewApplicationModal,
+  EditApplicationModal,
+  ConfirmCancelModal,
+} from "@/features/applications";
+import { useJobs } from "@/features/jobs";
+import type { Application } from "@/types/application";
 
 const statusColor: Record<string, string> = {
-  pending: 'bg-secondary-100 text-secondary-700',
-  reviewing: 'bg-accent-100 text-accent-700',
-  accepted: 'bg-green-100 text-green-700',
-  rejected: 'bg-red-100 text-red-700',
+  pending: "bg-secondary-100 text-secondary-700",
+  reviewing: "bg-accent-100 text-accent-700",
+  accepted: "bg-green-100 text-green-700",
+  rejected: "bg-red-100 text-red-700",
 };
 
 export default function MyApplicationsPage() {
@@ -23,7 +28,10 @@ export default function MyApplicationsPage() {
   const [editApp, setEditApp] = useState<Application | null>(null);
   const [cancelApp, setCancelApp] = useState<Application | null>(null);
 
-  const jobsMap = useMemo(() => new Map(allJobs.map((j) => [j.id, j])), [allJobs]);
+  const jobsMap = useMemo(
+    () => new Map(allJobs.map((j) => [j.id, j])),
+    [allJobs],
+  );
 
   const myApplications = useMemo(() => {
     if (!user) return [];
@@ -34,7 +42,7 @@ export default function MyApplicationsPage() {
     );
   }, [applications, user]);
 
-  if (user?.role === 'employer') {
+  if (user?.role === "employer") {
     return <Navigate to="/" replace />;
   }
 
@@ -50,10 +58,13 @@ export default function MyApplicationsPage() {
       <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-8">
         <div className="mb-6">
           <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground-950 mb-2">
-            {t('applications.title')}
+            {t("applications.title")}
           </h1>
           <p className="text-sm text-foreground-600">
-            {t('applications.desc', 'Theo dõi trạng thái, xem và chỉnh sửa các đơn ứng tuyển của bạn')}
+            {t(
+              "applications.desc",
+              "Theo dõi trạng thái, xem và chỉnh sửa các đơn ứng tuyển của bạn",
+            )}
           </p>
         </div>
 
@@ -63,16 +74,16 @@ export default function MyApplicationsPage() {
               <i className="ri-send-plane-line text-3xl text-foreground-400"></i>
             </div>
             <h3 className="text-lg font-heading font-semibold text-foreground-950 mb-2">
-              {t('applications.empty')}
+              {t("applications.empty")}
             </h3>
             <p className="text-sm text-foreground-500 mb-6">
-              {t('applications.emptyDesc')}
+              {t("applications.emptyDesc")}
             </p>
             <Link
               to="/jobs"
               className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
             >
-              <i className="ri-search-line"></i> {t('applications.browseJobs')}
+              <i className="ri-search-line"></i> {t("applications.browseJobs")}
             </Link>
           </div>
         ) : (
@@ -82,16 +93,16 @@ export default function MyApplicationsPage() {
                 <thead>
                   <tr className="border-b border-background-200/70 bg-background-100/50">
                     <th className="px-5 py-3.5 text-xs font-semibold text-foreground-600 uppercase tracking-wider">
-                      {t('job.jobTitle', 'Công việc')}
+                      {t("job.jobTitle", "Công việc")}
                     </th>
                     <th className="px-5 py-3.5 text-xs font-semibold text-foreground-600 uppercase tracking-wider hidden md:table-cell">
-                      {t('applications.appliedDate')}
+                      {t("applications.appliedDate")}
                     </th>
                     <th className="px-5 py-3.5 text-xs font-semibold text-foreground-600 uppercase tracking-wider">
-                      {t('applications.status')}
+                      {t("applications.status")}
                     </th>
                     <th className="px-5 py-3.5 text-xs font-semibold text-foreground-600 uppercase tracking-wider text-right">
-                      {t('applications.actions')}
+                      {t("applications.actions")}
                     </th>
                   </tr>
                 </thead>
@@ -99,7 +110,10 @@ export default function MyApplicationsPage() {
                   {myApplications.map((app) => {
                     const job = jobsMap.get(app.jobId);
                     return (
-                      <tr key={app.id} className="hover:bg-background-100/50 transition-colors">
+                      <tr
+                        key={app.id}
+                        className="hover:bg-background-100/50 transition-colors"
+                      >
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-lg bg-background-100 border border-background-200/70 flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -117,23 +131,30 @@ export default function MyApplicationsPage() {
                               <p className="text-sm font-semibold text-foreground-900">
                                 {app.jobTitle}
                               </p>
-                              <p className="text-xs text-foreground-500">{app.companyName}</p>
+                              <p className="text-xs text-foreground-500">
+                                {app.companyName}
+                              </p>
                             </div>
                           </div>
                         </td>
                         <td className="px-5 py-4 hidden md:table-cell">
                           <span className="text-sm text-foreground-600">
-                            {new Date(app.appliedAt).toLocaleDateString('vi-VN')}
+                            {new Date(app.appliedAt).toLocaleDateString(
+                              "vi-VN",
+                            )}
                           </span>
                         </td>
                         <td className="px-5 py-4">
                           <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full whitespace-nowrap ${statusColor[app.status] || 'bg-background-100 text-foreground-600'}`}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full whitespace-nowrap ${statusColor[app.status] || "bg-background-100 text-foreground-600"}`}
                           >
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${app.status === 'pending' ? 'bg-secondary-500' : app.status === 'reviewing' ? 'bg-accent-500' : app.status === 'accepted' ? 'bg-green-500' : 'bg-red-500'}`}
+                              className={`w-1.5 h-1.5 rounded-full ${app.status === "pending" ? "bg-secondary-500" : app.status === "reviewing" ? "bg-accent-500" : app.status === "accepted" ? "bg-green-500" : "bg-red-500"}`}
                             ></span>
-                            {t(`applications.statuses.${app.status}`, app.status)}
+                            {t(
+                              `applications.statuses.${app.status}`,
+                              app.status,
+                            )}
                           </span>
                         </td>
                         <td className="px-5 py-4">
@@ -141,21 +162,21 @@ export default function MyApplicationsPage() {
                             <button
                               onClick={() => setViewApp(app)}
                               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-background-100 text-foreground-500 hover:text-primary-500 transition-colors cursor-pointer"
-                              title={t('applications.view')}
+                              title={t("applications.view")}
                             >
                               <i className="ri-eye-line text-lg"></i>
                             </button>
                             <button
                               onClick={() => setEditApp(app)}
                               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-background-100 text-foreground-500 hover:text-accent-500 transition-colors cursor-pointer"
-                              title={t('applications.edit')}
+                              title={t("applications.edit")}
                             >
                               <i className="ri-edit-line text-lg"></i>
                             </button>
                             <button
                               onClick={() => setCancelApp(app)}
                               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-foreground-500 hover:text-red-500 transition-colors cursor-pointer"
-                              title={t('applications.cancel')}
+                              title={t("applications.cancel")}
                             >
                               <i className="ri-close-circle-line text-lg"></i>
                             </button>
@@ -163,7 +184,10 @@ export default function MyApplicationsPage() {
                               <Link
                                 to={`/jobs/${job.id}`}
                                 className="w-8 h-8 hidden md:flex items-center justify-center rounded-lg hover:bg-background-100 text-foreground-400 hover:text-foreground-600 transition-colors cursor-pointer"
-                                title={t('job.viewDetail', 'Xem tin tuyển dụng')}
+                                title={t(
+                                  "job.viewDetail",
+                                  "Xem tin tuyển dụng",
+                                )}
                               >
                                 <i className="ri-external-link-line text-base"></i>
                               </Link>
@@ -193,8 +217,8 @@ export default function MyApplicationsPage() {
       />
 
       <ConfirmCancelModal
-        jobTitle={cancelApp?.jobTitle || ''}
-        companyName={cancelApp?.companyName || ''}
+        jobTitle={cancelApp?.jobTitle || ""}
+        companyName={cancelApp?.companyName || ""}
         isOpen={cancelApp !== null}
         onClose={() => setCancelApp(null)}
         onConfirm={handleCancelConfirm}

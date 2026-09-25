@@ -20,7 +20,12 @@ export default function DonutChart({
 
   return (
     <div className="flex items-center gap-6">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="flex-shrink-0">
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        className="flex-shrink-0"
+      >
         {/* Background circle */}
         <circle
           cx={center}
@@ -85,7 +90,9 @@ export default function DonutChart({
                 style={{ backgroundColor: item.color }}
               ></span>
               <span className="text-xs text-foreground-600">{item.label}</span>
-              <span className="text-xs font-semibold text-foreground-900 ml-auto">{item.value}</span>
+              <span className="text-xs font-semibold text-foreground-900 ml-auto">
+                {item.value}
+              </span>
             </div>
           ))}
         </div>

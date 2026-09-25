@@ -1,15 +1,15 @@
-import { useState, useEffect, type SubmitEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { useAdminAuth } from '@/features/auth';
+import { useState, useEffect, type SubmitEvent } from "react";
+import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { useAdminAuth } from "@/features/auth";
 import {
   adminLoginRequest,
   AdminAuthError,
   resolveAdminAuthErrorMessage,
-} from '@/api';
-import { toast } from '@/lib/toast';
-import { useAppSelector } from '@/store/hooks';
-import LanguageSwitcher from '@/components/ui/LanguageSwitcher';
+} from "@/api";
+import { toast } from "@/lib/toast";
+import { useAppSelector } from "@/store/hooks";
+import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
 
 interface FormError {
   message: string;
@@ -19,16 +19,18 @@ export default function AdminLoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isAuthenticated, login: adminLoginUser } = useAdminAuth();
-  const adminLoginBgUrl = useAppSelector((state) => state.businessConfig.config.adminLoginBgUrl);
-  const [userName, setUserName] = useState('');
-  const [password, setPassword] = useState('');
+  const adminLoginBgUrl = useAppSelector(
+    (state) => state.businessConfig.config.adminLoginBgUrl,
+  );
+  const [userName, setUserName] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<FormError | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/admin/dashboard', { replace: true });
+      navigate("/admin/dashboard", { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -37,7 +39,7 @@ export default function AdminLoginPage() {
     setError(null);
 
     if (!userName.trim() || !password) {
-      setError({ message: t('validation.required') });
+      setError({ message: t("validation.required") });
       return;
     }
 
@@ -53,15 +55,15 @@ export default function AdminLoginPage() {
         accessToken: result.accessToken,
         refreshToken: result.refreshToken,
       });
-      toast.success(result.message.trim() || t('adminLogin.welcome'));
-      navigate('/admin/dashboard', { replace: true });
+      toast.success(result.message.trim() || t("adminLogin.welcome"));
+      navigate("/admin/dashboard", { replace: true });
     } catch (err) {
       if (err instanceof AdminAuthError) {
         setError({
           message: resolveAdminAuthErrorMessage(err, t),
         });
       } else {
-        setError({ message: t('adminLogin.invalidCredentials') });
+        setError({ message: t("adminLogin.invalidCredentials") });
       }
     } finally {
       setLoading(false);
@@ -93,7 +95,7 @@ export default function AdminLoginPage() {
               Jobs<span className="text-primary-200">247</span>
             </h1>
             <p className="text-white/55 text-sm leading-relaxed max-w-[260px]">
-              {t('adminLogin.subtitle')}
+              {t("adminLogin.subtitle")}
             </p>
           </div>
         </div>
@@ -108,7 +110,9 @@ export default function AdminLoginPage() {
             <h1 className="text-2xl font-heading font-bold text-foreground-950">
               Jobs<span className="text-primary-500">247</span> Admin
             </h1>
-            <p className="text-sm text-foreground-500 mt-2">{t('adminLogin.subtitle')}</p>
+            <p className="text-sm text-foreground-500 mt-2">
+              {t("adminLogin.subtitle")}
+            </p>
           </div>
 
           <div className="bg-background-50 border border-background-200/70 rounded-2xl p-7 md:p-8 shadow-xl shadow-background-200/20">
@@ -116,8 +120,12 @@ export default function AdminLoginPage() {
               <div className="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center mb-4">
                 <i className="ri-shield-user-line text-xl text-primary-600"></i>
               </div>
-              <h2 className="text-xl font-heading font-bold text-foreground-950">{t('adminLogin.title')}</h2>
-              <p className="text-sm text-foreground-500 mt-1">{t('adminLogin.welcomeDesc')}</p>
+              <h2 className="text-xl font-heading font-bold text-foreground-950">
+                {t("adminLogin.title")}
+              </h2>
+              <p className="text-sm text-foreground-500 mt-1">
+                {t("adminLogin.welcomeDesc")}
+              </p>
             </div>
 
             {error && (
@@ -129,7 +137,9 @@ export default function AdminLoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('adminLogin.username')}</label>
+                <label className="block text-sm font-medium text-foreground-700 mb-1.5">
+                  {t("adminLogin.username")}
+                </label>
                 <div className="relative">
                   <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-foreground-400">
                     <div className="w-5 h-5 flex items-center justify-center">
@@ -145,14 +155,16 @@ export default function AdminLoginPage() {
                     }}
                     required
                     className="w-full pl-10 pr-4 py-3 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-xl focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100 transition-all"
-                    placeholder={t('adminLogin.usernamePlaceholder')}
+                    placeholder={t("adminLogin.usernamePlaceholder")}
                     autoComplete="username"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('adminLogin.password')}</label>
+                <label className="block text-sm font-medium text-foreground-700 mb-1.5">
+                  {t("adminLogin.password")}
+                </label>
                 <div className="relative">
                   <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-foreground-400">
                     <div className="w-5 h-5 flex items-center justify-center">
@@ -160,7 +172,7 @@ export default function AdminLoginPage() {
                     </div>
                   </div>
                   <input
-                    type={showPassword ? 'text' : 'password'}
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value);
@@ -168,7 +180,7 @@ export default function AdminLoginPage() {
                     }}
                     required
                     className="w-full pl-10 pr-10 py-3 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-xl focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100 transition-all"
-                    placeholder={t('adminLogin.passwordPlaceholder')}
+                    placeholder={t("adminLogin.passwordPlaceholder")}
                     autoComplete="current-password"
                   />
                   <button
@@ -177,7 +189,13 @@ export default function AdminLoginPage() {
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-foreground-400 hover:text-foreground-600 transition-colors cursor-pointer"
                   >
                     <div className="w-5 h-5 flex items-center justify-center">
-                      <i className={showPassword ? 'ri-eye-off-line text-sm' : 'ri-eye-line text-sm'}></i>
+                      <i
+                        className={
+                          showPassword
+                            ? "ri-eye-off-line text-sm"
+                            : "ri-eye-line text-sm"
+                        }
+                      ></i>
                     </div>
                   </button>
                 </div>
@@ -191,11 +209,12 @@ export default function AdminLoginPage() {
                 {loading ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    {t('common.loading')}
+                    {t("common.loading")}
                   </>
                 ) : (
                   <>
-                    <i className="ri-login-box-line"></i> {t('adminLogin.loginButton')}
+                    <i className="ri-login-box-line"></i>{" "}
+                    {t("adminLogin.loginButton")}
                   </>
                 )}
               </button>
@@ -205,11 +224,15 @@ export default function AdminLoginPage() {
           <div className="mt-5 space-y-3">
             <p className="text-center text-xs text-foreground-400 flex items-center justify-center gap-1.5">
               <i className="ri-shield-check-line text-accent-500"></i>
-              {t('adminLogin.protectedArea')}
+              {t("adminLogin.protectedArea")}
             </p>
             <div className="text-center">
-              <a href="/" className="text-xs text-foreground-500 hover:text-primary-500 transition-colors inline-flex items-center gap-1 cursor-pointer">
-                <i className="ri-arrow-left-line text-xs"></i> {t('adminLogin.backToHome')}
+              <a
+                href="/"
+                className="text-xs text-foreground-500 hover:text-primary-500 transition-colors inline-flex items-center gap-1 cursor-pointer"
+              >
+                <i className="ri-arrow-left-line text-xs"></i>{" "}
+                {t("adminLogin.backToHome")}
               </a>
             </div>
           </div>

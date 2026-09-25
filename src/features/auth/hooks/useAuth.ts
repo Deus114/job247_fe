@@ -1,7 +1,7 @@
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { login, logout, updateProfile } from '@/store/slices/authSlice';
-import { clearAccessToken } from '@/api';
-import type { AuthUser } from '@/types';
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { login, logout, updateProfile } from "@/store/slices/authSlice";
+import { clearAccessToken } from "@/api";
+import type { AuthUser } from "@/types";
 
 /** Domain hook for end-user auth session. */
 export function useAuth() {
@@ -11,8 +11,8 @@ export function useAuth() {
   return {
     user,
     isAuthenticated,
-    isEmployer: user?.role === 'employer',
-    isCandidate: user?.role === 'user',
+    isEmployer: user?.role === "employer",
+    isCandidate: user?.role === "user",
     login: (next: AuthUser) => {
       dispatch(login(next));
     },

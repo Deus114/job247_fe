@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 export default function CTASection() {
   const { t } = useTranslation();
@@ -17,16 +17,16 @@ export default function CTASection() {
 
       <div className="relative z-10 w-full max-w-[1440px] mx-auto px-4 md:px-8 text-center">
         <h2 className="text-2xl md:text-4xl font-heading font-bold text-white mb-4">
-          {t('home.cta')}
+          {t("home.cta")}
         </h2>
         <p className="text-base md:text-lg text-white/80 max-w-xl mx-auto mb-8">
-          {t('home.ctaDesc')}
+          {t("home.ctaDesc")}
         </p>
         <Link
           to="/register"
           className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-primary-500 rounded-full text-sm font-semibold hover:bg-background-100 transition-colors whitespace-nowrap cursor-pointer shadow-lg"
         >
-          {t('home.ctaButton')}
+          {t("home.ctaButton")}
           <i className="ri-arrow-right-line"></i>
         </Link>
       </div>

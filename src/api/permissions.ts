@@ -2,17 +2,15 @@ import axios from "@/api/axios.customize";
 import { isAxiosError } from "axios";
 import { env } from "@/config/env";
 import { isAdminApiSuccess, AdminAuthError } from "@/api/adminAuth";
-import { normalizeIndustryGroup } from "@/api/industryGroups";
-import type { ApiResponse } from "@/types/adminAuth";
 import type {
-  Industry,
-  IndustryListParams,
-  IndustryWritePayload,
-  PaginatedList,
-  ApiPagination,
-} from "@/types/catalog";
+  AdminPermission,
+  AdminPermissionListParams,
+  AdminPermissionWritePayload,
+  ApiResponse,
+} from "@/types/adminAuth";
+import type { ApiPagination, PaginatedList } from "@/types/catalog";
 
-function throwIndustryError(fallbackKey: string, error: unknown): never {
+function throwPermissionError(fallbackKey: string, error: unknown): never {
   if (error instanceof AdminAuthError) throw error;
 
   if (isAxiosError(error)) {
@@ -41,29 +39,20 @@ function asRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
-export function normalizeIndustry(raw: unknown): Industry | null {
+export function normalizeAdminPermission(raw: unknown): AdminPermission | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
   const id = Number(r.id);
   if (!Number.isFinite(id)) return null;
 
-  const group = normalizeIndustryGroup(r.industryGroup);
-  const industryGroupId =
-    Number(r.industryGroupId) ||
-    group?.id ||
-    Number(asRecord(r.industryGroup).id) ||
-    0;
-
   return {
     id,
-    industryGroup: group,
-    industryGroupId,
-    nameVi: String(r.nameVi ?? ""),
-    nameEn: String(r.nameEn ?? ""),
-    descriptionVi: String(r.descriptionVi ?? ""),
-    descriptionEn: String(r.descriptionEn ?? ""),
-    sortOrder: Number(r.sortOrder) || 0,
-    image: String(r.image ?? ""),
+    name: String(r.name ?? ""),
+    description: String(r.description ?? ""),
+    module: String(r.module ?? ""),
+    path: String(r.path ?? ""),
+    method: String(r.method ?? "").toUpperCase(),
+    type: String(r.type ?? "ACTION").toUpperCase(),
     active: r.active !== false,
     createdAt: String(r.createdAt ?? ""),
     updatedAt: String(r.updatedAt ?? ""),
@@ -82,38 +71,10 @@ function normalizePagination(raw: unknown): ApiPagination {
   };
 }
 
-function buildWriteFormData(payload: IndustryWritePayload): FormData {
-  const body = new FormData();
-  body.append("industryGroupId", String(payload.industryGroupId));
-  body.append("nameVi", payload.nameVi.trim());
-  body.append("nameEn", payload.nameEn.trim());
-  if (payload.descriptionVi != null) {
-    body.append("descriptionVi", payload.descriptionVi.trim());
-  }
-  if (payload.descriptionEn != null) {
-    body.append("descriptionEn", payload.descriptionEn.trim());
-  }
-  if (payload.sortOrder != null && Number.isFinite(payload.sortOrder)) {
-    body.append("sortOrder", String(payload.sortOrder));
-  }
-  if (payload.active != null) {
-    body.append("active", String(payload.active));
-  }
-
-  // Exclusive: imageFile XOR image
-  if (payload.imageFile) {
-    body.append("imageFile", payload.imageFile);
-  } else if (payload.image != null && payload.image.trim() !== "") {
-    body.append("image", payload.image.trim());
-  }
-
-  return body;
-}
-
 function assertSuccessData(
   res: ApiResponse<unknown>,
   fallbackKey: string,
-): Industry {
+): AdminPermission {
   if (!isAdminApiSuccess(res.statusCode)) {
     throw new AdminAuthError(fallbackKey, res.statusCode, res.message);
   }
@@ -123,31 +84,40 @@ function assertSuccessData(
     raw && typeof raw === "object" && "data" in (raw as object)
       ? (raw as { data?: unknown }).data
       : undefined;
-  const item = normalizeIndustry(raw) ?? normalizeIndustry(nested);
+  const item =
+    normalizeAdminPermission(raw) ?? normalizeAdminPermission(nested);
 
   if (!item) {
     return {
       id: 0,
-      industryGroup: null,
-      industryGroupId: 0,
-      nameVi: "",
-      nameEn: "",
-      descriptionVi: "",
-      descriptionEn: "",
-      sortOrder: 0,
-      image: "",
+      name: "",
+      description: "",
+      module: "",
+      path: "",
+      method: "",
+      type: "ACTION",
       active: true,
-      createdAt: "",
-      updatedAt: "",
     };
   }
   return item;
 }
 
-/** GET /admin/industries */
-export async function fetchIndustries(
-  params: IndustryListParams = {},
-): Promise<PaginatedList<Industry>> {
+function buildWriteBody(payload: AdminPermissionWritePayload) {
+  return {
+    name: payload.name.trim(),
+    description: payload.description?.trim() ?? "",
+    module: payload.module.trim(),
+    path: payload.path.trim(),
+    method: payload.method.trim().toUpperCase(),
+    type: payload.type.trim().toUpperCase(),
+    active: payload.active !== false,
+  };
+}
+
+/** GET /admin/permissions */
+export async function fetchPermissions(
+  params: AdminPermissionListParams = {},
+): Promise<PaginatedList<AdminPermission>> {
   requireBackend();
 
   try {
@@ -156,14 +126,15 @@ export async function fetchIndustries(
       size: params.size ?? 10,
     };
     if (params.keyword?.trim()) query.keyword = params.keyword.trim();
+    if (params.module?.trim()) query.module = params.module.trim();
+    if (params.method?.trim())
+      query.method = params.method.trim().toUpperCase();
+    if (params.type?.trim()) query.type = params.type.trim().toUpperCase();
     if (params.active != null) query.active = params.active;
     if (params.deleted != null) query.deleted = params.deleted;
-    if (params.industryGroupId != null) {
-      query.industryGroupId = params.industryGroupId;
-    }
     if (params.sort?.trim()) query.sort = params.sort.trim();
 
-    const res = (await axios.get("/admin/industries", {
+    const res = (await axios.get("/admin/permissions", {
       params: query,
     })) as ApiResponse<{ data?: unknown; pagination?: unknown } | unknown[]>;
 
@@ -172,7 +143,7 @@ export async function fetchIndustries(
     }
     if (!isAdminApiSuccess(res.statusCode)) {
       throw new AdminAuthError(
-        "apiErrors.industryLoadFailed",
+        "apiErrors.permissionLoadFailed",
         res.statusCode,
         res.message,
       );
@@ -186,101 +157,91 @@ export async function fetchIndustries(
         : [];
 
     const data = rowsRaw
-      .map(normalizeIndustry)
-      .filter((item): item is Industry => item != null);
+      .map(normalizeAdminPermission)
+      .filter((item): item is AdminPermission => item != null);
 
-    const pagination = normalizePagination(envelope.pagination);
-
-    return { data, pagination };
+    return { data, pagination: normalizePagination(envelope.pagination) };
   } catch (error) {
-    throwIndustryError("apiErrors.industryLoadFailed", error);
+    throwPermissionError("apiErrors.permissionLoadFailed", error);
   }
 }
 
-/** GET /admin/industries/:id */
-export async function fetchIndustryById(id: number): Promise<Industry> {
+/** GET /admin/permissions/:id */
+export async function fetchPermissionById(
+  id: number,
+): Promise<AdminPermission> {
   requireBackend();
 
   try {
     const res = (await axios.get(
-      `/admin/industries/${id}`,
+      `/admin/permissions/${id}`,
     )) as ApiResponse<unknown>;
 
     if (!res || typeof res !== "object") {
       throw new AdminAuthError("apiErrors.invalidResponse");
     }
-    return assertSuccessData(res, "apiErrors.industryLoadFailed");
+    return assertSuccessData(res, "apiErrors.permissionLoadFailed");
   } catch (error) {
-    throwIndustryError("apiErrors.industryLoadFailed", error);
+    throwPermissionError("apiErrors.permissionLoadFailed", error);
   }
 }
 
-/** POST /admin/industries — multipart/form-data */
-export async function createIndustry(
-  payload: IndustryWritePayload,
-): Promise<Industry> {
+/** POST /admin/permissions */
+export async function createPermission(
+  payload: AdminPermissionWritePayload,
+): Promise<AdminPermission> {
   requireBackend();
-
-  if (
-    !payload.industryGroupId ||
-    !payload.nameVi.trim() ||
-    !payload.nameEn.trim()
-  ) {
-    throw new AdminAuthError("apiErrors.industryNameRequired");
+  if (!payload.name.trim() || !payload.module.trim() || !payload.path.trim()) {
+    throw new AdminAuthError("apiErrors.permissionRequired");
   }
 
   try {
     const res = (await axios.post(
-      "/admin/industries",
-      buildWriteFormData(payload),
+      "/admin/permissions",
+      buildWriteBody(payload),
     )) as ApiResponse<unknown>;
 
     if (!res || typeof res !== "object") {
       throw new AdminAuthError("apiErrors.invalidResponse");
     }
-    return assertSuccessData(res, "apiErrors.industrySaveFailed");
+    return assertSuccessData(res, "apiErrors.permissionSaveFailed");
   } catch (error) {
-    throwIndustryError("apiErrors.industrySaveFailed", error);
+    throwPermissionError("apiErrors.permissionSaveFailed", error);
   }
 }
 
-/** PUT /admin/industries/:id — multipart/form-data */
-export async function updateIndustry(
+/** PUT /admin/permissions/:id */
+export async function updatePermission(
   id: number,
-  payload: IndustryWritePayload,
-): Promise<Industry> {
+  payload: AdminPermissionWritePayload,
+): Promise<AdminPermission> {
   requireBackend();
-
-  if (
-    !payload.industryGroupId ||
-    !payload.nameVi.trim() ||
-    !payload.nameEn.trim()
-  ) {
-    throw new AdminAuthError("apiErrors.industryNameRequired");
+  if (!payload.name.trim() || !payload.module.trim() || !payload.path.trim()) {
+    throw new AdminAuthError("apiErrors.permissionRequired");
   }
 
   try {
     const res = (await axios.put(
-      `/admin/industries/${id}`,
-      buildWriteFormData(payload),
+      `/admin/permissions/${id}`,
+      buildWriteBody(payload),
     )) as ApiResponse<unknown>;
 
     if (!res || typeof res !== "object") {
       throw new AdminAuthError("apiErrors.invalidResponse");
     }
-    return assertSuccessData(res, "apiErrors.industrySaveFailed");
+    return assertSuccessData(res, "apiErrors.permissionSaveFailed");
   } catch (error) {
-    throwIndustryError("apiErrors.industrySaveFailed", error);
+    throwPermissionError("apiErrors.permissionSaveFailed", error);
   }
 }
 
-/** DELETE /admin/industries/:id — soft delete */
-export async function softDeleteIndustry(id: number): Promise<void> {
+/** DELETE /admin/permissions/:id — soft delete */
+export async function softDeletePermission(id: number): Promise<void> {
   requireBackend();
 
   try {
     const res = (await axios.delete(
-      `/admin/industries/${id}`,
+      `/admin/permissions/${id}`,
     )) as ApiResponse<unknown>;
 
     if (!res || typeof res !== "object") {
@@ -288,23 +249,23 @@ export async function softDeleteIndustry(id: number): Promise<void> {
     }
     if (!isAdminApiSuccess(res.statusCode)) {
       throw new AdminAuthError(
-        "apiErrors.industryDeleteFailed",
+        "apiErrors.permissionDeleteFailed",
         res.statusCode,
         res.message,
       );
     }
   } catch (error) {
-    throwIndustryError("apiErrors.industryDeleteFailed", error);
+    throwPermissionError("apiErrors.permissionDeleteFailed", error);
   }
 }
 
-/** PATCH /admin/industries/:id/restore */
-export async function restoreIndustry(id: number): Promise<void> {
+/** PATCH /admin/permissions/:id/restore */
+export async function restorePermission(id: number): Promise<void> {
   requireBackend();
 
   try {
     const res = (await axios.patch(
-      `/admin/industries/${id}/restore`,
+      `/admin/permissions/${id}/restore`,
     )) as ApiResponse<unknown>;
 
     if (!res || typeof res !== "object") {
@@ -312,23 +273,23 @@ export async function restoreIndustry(id: number): Promise<void> {
     }
     if (!isAdminApiSuccess(res.statusCode)) {
       throw new AdminAuthError(
-        "apiErrors.industryRestoreFailed",
+        "apiErrors.permissionRestoreFailed",
         res.statusCode,
         res.message,
       );
     }
   } catch (error) {
-    throwIndustryError("apiErrors.industryRestoreFailed", error);
+    throwPermissionError("apiErrors.permissionRestoreFailed", error);
   }
 }
 
-/** DELETE /admin/industries/:id/permanent */
-export async function permanentDeleteIndustry(id: number): Promise<void> {
+/** DELETE /admin/permissions/:id/permanent */
+export async function permanentDeletePermission(id: number): Promise<void> {
   requireBackend();
 
   try {
     const res = (await axios.delete(
-      `/admin/industries/${id}/permanent`,
+      `/admin/permissions/${id}/permanent`,
     )) as ApiResponse<unknown>;
 
     if (!res || typeof res !== "object") {
@@ -336,12 +297,12 @@ export async function permanentDeleteIndustry(id: number): Promise<void> {
     }
     if (!isAdminApiSuccess(res.statusCode)) {
       throw new AdminAuthError(
-        "apiErrors.industryDeleteFailed",
+        "apiErrors.permissionDeleteFailed",
         res.statusCode,
         res.message,
       );
     }
   } catch (error) {
-    throwIndustryError("apiErrors.industryDeleteFailed", error);
+    throwPermissionError("apiErrors.permissionDeleteFailed", error);
   }
 }

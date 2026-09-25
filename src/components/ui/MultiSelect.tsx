@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 interface SelectOption {
   value: string;
@@ -19,7 +19,7 @@ export default function MultiSelect({
   options,
   placeholder,
   onChange,
-  className = '',
+  className = "",
 }: MultiSelectProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -43,8 +43,8 @@ export default function MultiSelect({
         setOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
   return (
@@ -54,18 +54,20 @@ export default function MultiSelect({
         onClick={() => setOpen(!open)}
         className={`w-full flex items-center gap-2 px-4 py-3.5 text-sm rounded-xl border transition-all cursor-pointer text-left ${
           open
-            ? 'bg-background-50 border-primary-300 ring-2 ring-primary-100'
-            : 'bg-background-100/60 border-transparent hover:bg-background-50 hover:border-background-200'
+            ? "bg-background-50 border-primary-300 ring-2 ring-primary-100"
+            : "bg-background-100/60 border-transparent hover:bg-background-50 hover:border-background-200"
         }`}
       >
-        <span className={`flex-1 truncate ${values.length > 0 ? 'text-foreground-900' : 'text-foreground-500'}`}>
+        <span
+          className={`flex-1 truncate ${values.length > 0 ? "text-foreground-900" : "text-foreground-500"}`}
+        >
           {values.length > 0
-            ? selectedLabels.join(', ')
-            : (placeholder || t('common.select'))}
+            ? selectedLabels.join(", ")
+            : placeholder || t("common.select")}
         </span>
         <i
           className={`ri-arrow-down-s-line text-foreground-400 flex-shrink-0 transition-transform duration-200 ${
-            open ? 'rotate-180' : ''
+            open ? "rotate-180" : ""
           }`}
         ></i>
       </button>
@@ -81,16 +83,20 @@ export default function MultiSelect({
                 onClick={() => toggleOption(option.value)}
                 className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-colors cursor-pointer whitespace-nowrap ${
                   isSelected
-                    ? 'bg-primary-50 text-primary-700 font-medium'
-                    : 'text-foreground-700 hover:bg-background-100'
+                    ? "bg-primary-50 text-primary-700 font-medium"
+                    : "text-foreground-700 hover:bg-background-100"
                 }`}
               >
                 <div
                   className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors ${
-                    isSelected ? 'bg-primary-500' : 'border border-background-300'
+                    isSelected
+                      ? "bg-primary-500"
+                      : "border border-background-300"
                   }`}
                 >
-                  {isSelected && <i className="ri-check-line text-[10px] text-white"></i>}
+                  {isSelected && (
+                    <i className="ri-check-line text-[10px] text-white"></i>
+                  )}
                 </div>
                 <span className="truncate">{option.label}</span>
               </button>

@@ -1,5 +1,5 @@
-import { Link, useLocation } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { Link, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 export default function NotFound() {
   const { t } = useTranslation();
@@ -20,10 +20,10 @@ export default function NotFound() {
         </div>
 
         <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground-950 mb-2">
-          {t('notFound.title')}
+          {t("notFound.title")}
         </h1>
         <p className="text-sm md:text-base text-foreground-500 mb-2">
-          {t('notFound.description')}
+          {t("notFound.description")}
         </p>
         <p className="text-xs font-mono text-foreground-400 mb-8 break-all">
           {location.pathname}
@@ -35,7 +35,7 @@ export default function NotFound() {
             className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors"
           >
             <i className="ri-home-line"></i>
-            {t('notFound.backHome')}
+            {t("notFound.backHome")}
           </Link>
           <button
             type="button"
@@ -43,7 +43,7 @@ export default function NotFound() {
             className="inline-flex items-center justify-center gap-2 px-6 py-2.5 border border-background-200 text-foreground-700 rounded-xl text-sm font-medium hover:bg-background-100 transition-colors cursor-pointer"
           >
             <i className="ri-arrow-left-line"></i>
-            {t('common.back')}
+            {t("common.back")}
           </button>
         </div>
       </div>

@@ -1,5 +1,5 @@
-import en from './en/translation';
-import vi from './vi/translation';
+import en from "./en/translation";
+import vi from "./vi/translation";
 
 const messages = {
   vi: { translation: vi },

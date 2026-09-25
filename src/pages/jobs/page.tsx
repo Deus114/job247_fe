@@ -1,10 +1,15 @@
-import { useState, useEffect, useMemo, type SubmitEvent } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { JobCard, FilterModal, type FilterState, useJobs } from '@/features/jobs';
-import SkeletonCard from '@/components/ui/SkeletonCard';
-import type { Job } from '@/types/job';
-import CustomSelect from '@/components/ui/CustomSelect';
+import { useState, useEffect, useMemo, type SubmitEvent } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import {
+  JobCard,
+  FilterModal,
+  type FilterState,
+  useJobs,
+} from "@/features/jobs";
+import SkeletonCard from "@/components/ui/SkeletonCard";
+import type { Job } from "@/types/job";
+import CustomSelect from "@/components/ui/CustomSelect";
 
 const JOBS_PER_PAGE = 9;
 
@@ -25,62 +30,95 @@ function getSalaryAvg(job: Job): number {
 export default function JobsPage() {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { jobs: jobsFromStore, loading, categories: rawCategories, educationLevels: rawEducationLevels, locations } = useJobs();
-  const categories = (rawCategories || []).filter((c: { name: string; isActive?: boolean }) => c.isActive !== false).map((c: { name: string }) => c.name);
-  const educationLevels = (rawEducationLevels || []).filter((e: { name: string; isActive?: boolean }) => e.isActive !== false).map((e: { name: string }) => e.name);
+  const {
+    jobs: jobsFromStore,
+    loading,
+    categories: rawCategories,
+    educationLevels: rawEducationLevels,
+    locations,
+  } = useJobs();
+  const categories = (rawCategories || [])
+    .filter((c: { name: string; isActive?: boolean }) => c.isActive !== false)
+    .map((c: { name: string }) => c.name);
+  const educationLevels = (rawEducationLevels || [])
+    .filter((e: { name: string; isActive?: boolean }) => e.isActive !== false)
+    .map((e: { name: string }) => e.name);
 
   const companyNames = useMemo(() => {
-    const set = new Set(jobsFromStore.filter((j) => j.status === 'approved' && !j.deletedAt && j.isActive !== false).map((j) => j.company));
+    const set = new Set(
+      jobsFromStore
+        .filter(
+          (j) =>
+            j.status === "approved" && !j.deletedAt && j.isActive !== false,
+        )
+        .map((j) => j.company),
+    );
     return Array.from(set).sort();
   }, [jobsFromStore]);
 
   const jobTypes = useMemo(() => {
-    const set = new Set(jobsFromStore.filter((j) => j.status === 'approved' && !j.deletedAt && j.isActive !== false).map((j) => j.type));
+    const set = new Set(
+      jobsFromStore
+        .filter(
+          (j) =>
+            j.status === "approved" && !j.deletedAt && j.isActive !== false,
+        )
+        .map((j) => j.type),
+    );
     return Array.from(set);
   }, [jobsFromStore]);
 
-  const [keyword, setKeyword] = useState(searchParams.get('keyword') || '');
+  const [keyword, setKeyword] = useState(searchParams.get("keyword") || "");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [selectedEducations, setSelectedEducations] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
-  const [salaryMin, setSalaryMin] = useState('');
-  const [salaryMax, setSalaryMax] = useState('');
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'salary_desc' | 'salary_asc'>('newest');
+  const [salaryMin, setSalaryMin] = useState("");
+  const [salaryMax, setSalaryMax] = useState("");
+  const [sortBy, setSortBy] = useState<
+    "newest" | "oldest" | "salary_desc" | "salary_asc"
+  >("newest");
   const [currentPage, setCurrentPage] = useState(() => {
-    const page = Number(searchParams.get('page') || '1');
+    const page = Number(searchParams.get("page") || "1");
     return Number.isFinite(page) && page > 0 ? page : 1;
   });
   const [filterModalOpen, setFilterModalOpen] = useState(false);
 
   // Read URL params on mount / when search changes
   useEffect(() => {
-    const cat = searchParams.get('categories') || searchParams.get('category');
-    const loc = searchParams.get('locations');
-    const edu = searchParams.get('educations');
-    const typesParam = searchParams.get('types');
-    const companiesParam = searchParams.get('companies');
-    const kw = searchParams.get('keyword');
-    const sMin = searchParams.get('salaryMin') || '';
-    const sMax = searchParams.get('salaryMax') || '';
-    const sort = searchParams.get('sort') as typeof sortBy;
-    const page = Number(searchParams.get('page') || '1');
+    const cat = searchParams.get("categories") || searchParams.get("category");
+    const loc = searchParams.get("locations");
+    const edu = searchParams.get("educations");
+    const typesParam = searchParams.get("types");
+    const companiesParam = searchParams.get("companies");
+    const kw = searchParams.get("keyword");
+    const sMin = searchParams.get("salaryMin") || "";
+    const sMax = searchParams.get("salaryMax") || "";
+    const sort = searchParams.get("sort") as typeof sortBy;
+    const page = Number(searchParams.get("page") || "1");
 
-    if (cat) setSelectedCategories(cat.split(',').filter(Boolean));
-    if (loc) setSelectedLocations(loc.split(',').filter(Boolean));
-    if (edu) setSelectedEducations(edu.split(',').filter(Boolean));
-    if (typesParam) setSelectedTypes(typesParam.split(',').filter(Boolean));
-    if (companiesParam) setSelectedCompanies(companiesParam.split(',').filter(Boolean));
+    if (cat) setSelectedCategories(cat.split(",").filter(Boolean));
+    if (loc) setSelectedLocations(loc.split(",").filter(Boolean));
+    if (edu) setSelectedEducations(edu.split(",").filter(Boolean));
+    if (typesParam) setSelectedTypes(typesParam.split(",").filter(Boolean));
+    if (companiesParam)
+      setSelectedCompanies(companiesParam.split(",").filter(Boolean));
     if (kw) setKeyword(kw);
     if (sMin) setSalaryMin(sMin);
     if (sMax) setSalaryMax(sMax);
-    if (sort && ['newest', 'oldest', 'salary_desc', 'salary_asc'].includes(sort)) setSortBy(sort);
+    if (
+      sort &&
+      ["newest", "oldest", "salary_desc", "salary_asc"].includes(sort)
+    )
+      setSortBy(sort);
     if (Number.isFinite(page) && page > 0) setCurrentPage(page);
   }, [searchParams]);
 
   const filteredJobs = useMemo(() => {
-    let result = jobsFromStore.filter((j) => j.status === 'approved' && !j.deletedAt && j.isActive !== false);
+    let result = jobsFromStore.filter(
+      (j) => j.status === "approved" && !j.deletedAt && j.isActive !== false,
+    );
 
     if (keyword.trim()) {
       const kw = keyword.toLowerCase().trim();
@@ -88,7 +126,7 @@ export default function JobsPage() {
         (j) =>
           j.title.toLowerCase().includes(kw) ||
           j.company.toLowerCase().includes(kw) ||
-          j.category.toLowerCase().includes(kw)
+          j.category.toLowerCase().includes(kw),
       );
     }
 
@@ -103,13 +141,13 @@ export default function JobsPage() {
     }
     if (selectedEducations.length > 0) {
       result = result.filter((j) => {
-        const jobEdus = j.educationLevel.split(', ').map((e) => e.trim());
+        const jobEdus = j.educationLevel.split(", ").map((e) => e.trim());
         return selectedEducations.some((sel) => jobEdus.includes(sel));
       });
     }
     if (selectedTypes.length > 0) {
       result = result.filter((j) => {
-        const jobTypes = j.type.split(', ').map((t) => t.trim());
+        const jobTypes = j.type.split(", ").map((t) => t.trim());
         return selectedTypes.some((sel) => jobTypes.includes(sel));
       });
     }
@@ -126,31 +164,54 @@ export default function JobsPage() {
     }
 
     switch (sortBy) {
-      case 'newest':
-        result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      case "newest":
+        result.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
         break;
-      case 'oldest':
-        result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      case "oldest":
+        result.sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        );
         break;
-      case 'salary_desc':
+      case "salary_desc":
         result.sort((a, b) => getSalaryAvg(b) - getSalaryAvg(a));
         break;
-      case 'salary_asc':
+      case "salary_asc":
         result.sort((a, b) => getSalaryAvg(a) - getSalaryAvg(b));
         break;
     }
 
     return result;
-  }, [jobsFromStore, keyword, selectedCategories, selectedLocations, selectedEducations, selectedTypes, selectedCompanies, salaryMin, salaryMax, sortBy]);
+  }, [
+    jobsFromStore,
+    keyword,
+    selectedCategories,
+    selectedLocations,
+    selectedEducations,
+    selectedTypes,
+    selectedCompanies,
+    salaryMin,
+    salaryMax,
+    sortBy,
+  ]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredJobs.length / JOBS_PER_PAGE));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredJobs.length / JOBS_PER_PAGE),
+  );
 
   useEffect(() => {
     if (currentPage > totalPages) {
       setCurrentPage(totalPages);
     }
   }, [currentPage, totalPages]);
-  const paginatedJobs = filteredJobs.slice((currentPage - 1) * JOBS_PER_PAGE, currentPage * JOBS_PER_PAGE);
+  const paginatedJobs = filteredJobs.slice(
+    (currentPage - 1) * JOBS_PER_PAGE,
+    currentPage * JOBS_PER_PAGE,
+  );
 
   const activeFilterCount =
     selectedCategories.length +
@@ -172,26 +233,37 @@ export default function JobsPage() {
     sMin: string,
     sMax: string,
     sort: typeof sortBy,
-    page: number
+    page: number,
   ) => {
     const params = new URLSearchParams();
-    if (kw.trim()) params.set('keyword', kw.trim());
-    if (cats.length) params.set('categories', cats.join(','));
-    if (locs.length) params.set('locations', locs.join(','));
-    if (edus.length) params.set('educations', edus.join(','));
-    if (typesArr.length) params.set('types', typesArr.join(','));
-    if (companiesArr.length) params.set('companies', companiesArr.join(','));
-    if (sMin) params.set('salaryMin', sMin);
-    if (sMax) params.set('salaryMax', sMax);
-    if (sort !== 'newest') params.set('sort', sort);
-    if (page > 1) params.set('page', String(page));
+    if (kw.trim()) params.set("keyword", kw.trim());
+    if (cats.length) params.set("categories", cats.join(","));
+    if (locs.length) params.set("locations", locs.join(","));
+    if (edus.length) params.set("educations", edus.join(","));
+    if (typesArr.length) params.set("types", typesArr.join(","));
+    if (companiesArr.length) params.set("companies", companiesArr.join(","));
+    if (sMin) params.set("salaryMin", sMin);
+    if (sMax) params.set("salaryMax", sMax);
+    if (sort !== "newest") params.set("sort", sort);
+    if (page > 1) params.set("page", String(page));
     setSearchParams(params);
   };
 
   const handleSearch = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setCurrentPage(1);
-    syncUrl(keyword, selectedCategories, selectedLocations, selectedEducations, selectedTypes, selectedCompanies, salaryMin, salaryMax, sortBy, 1);
+    syncUrl(
+      keyword,
+      selectedCategories,
+      selectedLocations,
+      selectedEducations,
+      selectedTypes,
+      selectedCompanies,
+      salaryMin,
+      salaryMax,
+      sortBy,
+      1,
+    );
   };
 
   const handleApplyFilters = (filters: FilterState) => {
@@ -203,24 +275,44 @@ export default function JobsPage() {
     setSalaryMin(filters.salaryMin);
     setSalaryMax(filters.salaryMax);
     setCurrentPage(1);
-    syncUrl(keyword, filters.categories, filters.locations, filters.educations, filters.types, filters.companies, filters.salaryMin, filters.salaryMax, sortBy, 1);
+    syncUrl(
+      keyword,
+      filters.categories,
+      filters.locations,
+      filters.educations,
+      filters.types,
+      filters.companies,
+      filters.salaryMin,
+      filters.salaryMax,
+      sortBy,
+      1,
+    );
   };
 
   const handleClearFilter = () => {
-    setKeyword('');
+    setKeyword("");
     setSelectedCategories([]);
     setSelectedLocations([]);
     setSelectedEducations([]);
     setSelectedTypes([]);
     setSelectedCompanies([]);
-    setSalaryMin('');
-    setSalaryMax('');
-    setSortBy('newest');
+    setSalaryMin("");
+    setSalaryMax("");
+    setSortBy("newest");
     setCurrentPage(1);
     setSearchParams({});
   };
 
-  const removeFilter = (key: 'categories' | 'locations' | 'educations' | 'types' | 'companies' | 'salary', value?: string) => {
+  const removeFilter = (
+    key:
+      | "categories"
+      | "locations"
+      | "educations"
+      | "types"
+      | "companies"
+      | "salary",
+    value?: string,
+  ) => {
     let newCats = selectedCategories;
     let newLocs = selectedLocations;
     let newEdus = selectedEducations;
@@ -229,12 +321,20 @@ export default function JobsPage() {
     let newMin = salaryMin;
     let newMax = salaryMax;
 
-    if (key === 'categories' && value) newCats = newCats.filter((v) => v !== value);
-    if (key === 'locations' && value) newLocs = newLocs.filter((v) => v !== value);
-    if (key === 'educations' && value) newEdus = newEdus.filter((v) => v !== value);
-    if (key === 'types' && value) newTypes = newTypes.filter((v) => v !== value);
-    if (key === 'companies' && value) newCompanies = newCompanies.filter((v) => v !== value);
-    if (key === 'salary') { newMin = ''; newMax = ''; }
+    if (key === "categories" && value)
+      newCats = newCats.filter((v) => v !== value);
+    if (key === "locations" && value)
+      newLocs = newLocs.filter((v) => v !== value);
+    if (key === "educations" && value)
+      newEdus = newEdus.filter((v) => v !== value);
+    if (key === "types" && value)
+      newTypes = newTypes.filter((v) => v !== value);
+    if (key === "companies" && value)
+      newCompanies = newCompanies.filter((v) => v !== value);
+    if (key === "salary") {
+      newMin = "";
+      newMax = "";
+    }
 
     setSelectedCategories(newCats);
     setSelectedLocations(newLocs);
@@ -244,20 +344,42 @@ export default function JobsPage() {
     setSalaryMin(newMin);
     setSalaryMax(newMax);
     setCurrentPage(1);
-    syncUrl(keyword, newCats, newLocs, newEdus, newTypes, newCompanies, newMin, newMax, sortBy, 1);
+    syncUrl(
+      keyword,
+      newCats,
+      newLocs,
+      newEdus,
+      newTypes,
+      newCompanies,
+      newMin,
+      newMax,
+      sortBy,
+      1,
+    );
   };
 
   const handleSortChange = (val: typeof sortBy) => {
     setSortBy(val);
     setCurrentPage(1);
-    syncUrl(keyword, selectedCategories, selectedLocations, selectedEducations, selectedTypes, selectedCompanies, salaryMin, salaryMax, val, 1);
+    syncUrl(
+      keyword,
+      selectedCategories,
+      selectedLocations,
+      selectedEducations,
+      selectedTypes,
+      selectedCompanies,
+      salaryMin,
+      salaryMax,
+      val,
+      1,
+    );
   };
 
   const sortOptions = [
-    { value: 'newest', label: t('job.sortNewest') },
-    { value: 'oldest', label: t('job.sortOldest') },
-    { value: 'salary_desc', label: t('job.sortSalaryDesc') },
-    { value: 'salary_asc', label: t('job.sortSalaryAsc') },
+    { value: "newest", label: t("job.sortNewest") },
+    { value: "oldest", label: t("job.sortOldest") },
+    { value: "salary_desc", label: t("job.sortSalaryDesc") },
+    { value: "salary_asc", label: t("job.sortSalaryAsc") },
   ];
 
   return (
@@ -265,19 +387,26 @@ export default function JobsPage() {
       {/* Header + Search */}
       <div className="bg-background-100 border-b border-background-200/70">
         <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-6 md:py-8">
-          <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground-950">{t('nav.jobs')}</h1>
+          <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground-950">
+            {t("nav.jobs")}
+          </h1>
           <p className="text-sm text-foreground-600 mt-1">
-            {loading ? t('common.loading') : `${filteredJobs.length} ${t('job.results')}`}
+            {loading
+              ? t("common.loading")
+              : `${filteredJobs.length} ${t("job.results")}`}
           </p>
 
-          <form onSubmit={handleSearch} className="mt-5 flex flex-col sm:flex-row gap-3">
+          <form
+            onSubmit={handleSearch}
+            className="mt-5 flex flex-col sm:flex-row gap-3"
+          >
             <div className="flex-1 relative">
               <i className="ri-search-line absolute left-4 top-1/2 -translate-y-1/2 text-foreground-400 text-lg"></i>
               <input
                 type="text"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                placeholder={t('hero.searchPlaceholder')}
+                placeholder={t("hero.searchPlaceholder")}
                 className="w-full pl-11 pr-4 py-3 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-xl focus:outline-none focus:border-primary-300 transition-colors"
               />
             </div>
@@ -285,7 +414,7 @@ export default function JobsPage() {
               type="submit"
               className="px-6 py-3 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors whitespace-nowrap cursor-pointer flex items-center gap-2 justify-center"
             >
-              <i className="ri-search-line"></i> {t('job.search')}
+              <i className="ri-search-line"></i> {t("job.search")}
             </button>
           </form>
         </div>
@@ -318,7 +447,7 @@ export default function JobsPage() {
                 >
                   <i className="ri-building-line text-[10px]"></i> {company}
                   <button
-                    onClick={() => removeFilter('companies', company)}
+                    onClick={() => removeFilter("companies", company)}
                     className="cursor-pointer hover:text-primary-900 w-4 h-4 flex items-center justify-center"
                   >
                     <i className="ri-close-line"></i>
@@ -332,7 +461,7 @@ export default function JobsPage() {
                 >
                   {cat}
                   <button
-                    onClick={() => removeFilter('categories', cat)}
+                    onClick={() => removeFilter("categories", cat)}
                     className="cursor-pointer hover:text-primary-900 w-4 h-4 flex items-center justify-center"
                   >
                     <i className="ri-close-line"></i>
@@ -346,7 +475,7 @@ export default function JobsPage() {
                 >
                   {loc}
                   <button
-                    onClick={() => removeFilter('locations', loc)}
+                    onClick={() => removeFilter("locations", loc)}
                     className="cursor-pointer hover:text-accent-900 w-4 h-4 flex items-center justify-center"
                   >
                     <i className="ri-close-line"></i>
@@ -360,7 +489,7 @@ export default function JobsPage() {
                 >
                   {edu}
                   <button
-                    onClick={() => removeFilter('educations', edu)}
+                    onClick={() => removeFilter("educations", edu)}
                     className="cursor-pointer hover:text-secondary-900 w-4 h-4 flex items-center justify-center"
                   >
                     <i className="ri-close-line"></i>
@@ -374,7 +503,7 @@ export default function JobsPage() {
                 >
                   {tp}
                   <button
-                    onClick={() => removeFilter('types', tp)}
+                    onClick={() => removeFilter("types", tp)}
                     className="cursor-pointer hover:text-primary-900 w-4 h-4 flex items-center justify-center"
                   >
                     <i className="ri-close-line"></i>
@@ -383,9 +512,9 @@ export default function JobsPage() {
               ))}
               {(salaryMin || salaryMax) && (
                 <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-accent-50 text-accent-600 text-xs font-medium rounded-full whitespace-nowrap border border-accent-200/50">
-                  {salaryMin || '0'} - {salaryMax || '∞'} triệu
+                  {salaryMin || "0"} - {salaryMax || "∞"} triệu
                   <button
-                    onClick={() => removeFilter('salary')}
+                    onClick={() => removeFilter("salary")}
                     className="cursor-pointer hover:text-accent-900 w-4 h-4 flex items-center justify-center"
                   >
                     <i className="ri-close-line"></i>
@@ -424,18 +553,25 @@ export default function JobsPage() {
             <div className="w-20 h-20 mx-auto rounded-full bg-background-100 flex items-center justify-center mb-5">
               <i className="ri-file-search-line text-3xl text-foreground-400"></i>
             </div>
-            <h3 className="text-lg font-heading font-semibold text-foreground-950 mb-2">{t('job.noResults')}</h3>
-            <p className="text-sm text-foreground-500 mb-6">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
+            <h3 className="text-lg font-heading font-semibold text-foreground-950 mb-2">
+              {t("job.noResults")}
+            </h3>
+            <p className="text-sm text-foreground-500 mb-6">
+              Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm
+            </p>
             <button
               onClick={handleClearFilter}
               className="px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
             >
-              {t('job.clearFilter')}
+              {t("job.clearFilter")}
             </button>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" data-product-shop="">
+            <div
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
+              data-product-shop=""
+            >
               {paginatedJobs.map((job) => (
                 <JobCard key={job.id} job={job} />
               ))}
@@ -446,7 +582,18 @@ export default function JobsPage() {
                 <button
                   onClick={() => {
                     setCurrentPage((p) => Math.max(1, p - 1));
-                    syncUrl(keyword, selectedCategories, selectedLocations, selectedEducations, selectedTypes, selectedCompanies, salaryMin, salaryMax, sortBy, Math.max(1, currentPage - 1));
+                    syncUrl(
+                      keyword,
+                      selectedCategories,
+                      selectedLocations,
+                      selectedEducations,
+                      selectedTypes,
+                      selectedCompanies,
+                      salaryMin,
+                      salaryMax,
+                      sortBy,
+                      Math.max(1, currentPage - 1),
+                    );
                   }}
                   disabled={currentPage === 1}
                   className="w-9 h-9 flex items-center justify-center rounded-lg border border-background-200/70 text-foreground-600 hover:bg-background-100 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
@@ -454,27 +601,51 @@ export default function JobsPage() {
                   <i className="ri-arrow-left-s-line"></i>
                 </button>
 
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <button
-                    key={page}
-                    onClick={() => {
-                      setCurrentPage(page);
-                      syncUrl(keyword, selectedCategories, selectedLocations, selectedEducations, selectedTypes, selectedCompanies, salaryMin, salaryMax, sortBy, page);
-                    }}
-                    className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                      currentPage === page
-                        ? 'bg-primary-500 text-background-50 dark:text-foreground-950'
-                        : 'text-foreground-600 hover:bg-background-100 border border-background-200/70'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (page) => (
+                    <button
+                      key={page}
+                      onClick={() => {
+                        setCurrentPage(page);
+                        syncUrl(
+                          keyword,
+                          selectedCategories,
+                          selectedLocations,
+                          selectedEducations,
+                          selectedTypes,
+                          selectedCompanies,
+                          salaryMin,
+                          salaryMax,
+                          sortBy,
+                          page,
+                        );
+                      }}
+                      className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                        currentPage === page
+                          ? "bg-primary-500 text-background-50 dark:text-foreground-950"
+                          : "text-foreground-600 hover:bg-background-100 border border-background-200/70"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ),
+                )}
 
                 <button
                   onClick={() => {
                     setCurrentPage((p) => Math.min(totalPages, p + 1));
-                    syncUrl(keyword, selectedCategories, selectedLocations, selectedEducations, selectedTypes, selectedCompanies, salaryMin, salaryMax, sortBy, Math.min(totalPages, currentPage + 1));
+                    syncUrl(
+                      keyword,
+                      selectedCategories,
+                      selectedLocations,
+                      selectedEducations,
+                      selectedTypes,
+                      selectedCompanies,
+                      salaryMin,
+                      salaryMax,
+                      sortBy,
+                      Math.min(totalPages, currentPage + 1),
+                    );
                   }}
                   disabled={currentPage === totalPages}
                   className="w-9 h-9 flex items-center justify-center rounded-lg border border-background-200/70 text-foreground-600 hover:bg-background-100 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"

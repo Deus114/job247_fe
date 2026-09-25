@@ -6,8 +6,8 @@ import {
   type MouseEvent,
   type ReactNode,
   type RefObject,
-} from 'react';
-import { createPortal } from 'react-dom';
+} from "react";
+import { createPortal } from "react-dom";
 
 export type TableActionMenuPos = {
   top?: number;
@@ -63,18 +63,18 @@ export function useTableActionMenu<T extends string | number>() {
       close();
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') close();
+      if (event.key === "Escape") close();
     };
     // Close on any scroll so the menu never traps wheel/trackpad on the admin shell.
     const onScroll = () => close();
 
-    document.addEventListener('mousedown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    window.addEventListener('scroll', onScroll, true);
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    window.addEventListener("scroll", onScroll, true);
     return () => {
-      document.removeEventListener('mousedown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('scroll', onScroll, true);
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("scroll", onScroll, true);
     };
   }, [openId, close]);
 
@@ -92,7 +92,7 @@ export function TableActionMenu({
   menuRef: RefObject<HTMLDivElement | null>;
   children: ReactNode;
 }) {
-  if (!open || !pos || typeof document === 'undefined') return null;
+  if (!open || !pos || typeof document === "undefined") return null;
 
   return createPortal(
     <div

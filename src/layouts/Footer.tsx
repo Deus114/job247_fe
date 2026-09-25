@@ -1,12 +1,39 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useState, type SubmitEvent } from 'react';
+import { useState, type SubmitEvent } from "react";
+import { useAppSelector } from "@/store/hooks";
 
 export default function Footer() {
   const { t } = useTranslation();
+  const config = useAppSelector((state) => state.businessConfig.config);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [formError, setFormError] = useState("");
+
+  const siteName = config.name.trim() || "Jobs247";
+  const about =
+    config.footerAboutDesc.trim() ||
+    config.tagline.trim() ||
+    t("footer.aboutDesc");
+  const address = config.footerAddress.trim() || config.address.trim();
+  const phone = config.footerPhone.trim() || config.phone.trim();
+  const mail = config.footerEmail.trim() || config.email.trim();
+  const copyright = config.footerCopyright.trim() || t("footer.copyright");
+
+  const socialLinks = [
+    {
+      href: config.socialFacebook,
+      label: "Facebook",
+      icon: "ri-facebook-fill",
+    },
+    {
+      href: config.socialLinkedin,
+      label: "LinkedIn",
+      icon: "ri-linkedin-fill",
+    },
+    { href: config.socialTwitter, label: "Twitter", icon: "ri-twitter-x-fill" },
+    { href: config.socialYoutube, label: "YouTube", icon: "ri-youtube-fill" },
+  ].filter((item) => item.href.trim());
 
   const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -35,34 +62,52 @@ export default function Footer() {
       <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-12 md:py-16">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-10">
           <div>
-            <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="w-9 h-9 rounded-lg bg-background-50/20 flex items-center justify-center flex-shrink-0">
-                <i className="ri-briefcase-line text-background-50 dark:text-foreground-950 text-lg"></i>
-              </div>
-              <span className="font-heading text-xl font-bold text-background-50 dark:text-foreground-950 whitespace-nowrap">
-                Jobs
-                <span className="text-background-50/70 dark:text-foreground-950/70">
-                  247
+            <Link to="/" className="flex items-center gap-2.5 mb-4">
+              {config.logoUrl ? (
+                <span className="size-12 rounded-xl overflow-hidden flex-shrink-0 leading-none">
+                  <img
+                    src={config.logoUrl}
+                    alt={siteName}
+                    className="size-full object-cover"
+                  />
                 </span>
+              ) : (
+                <div className="size-12 rounded-xl bg-background-50/20 flex items-center justify-center flex-shrink-0">
+                  <i className="ri-briefcase-line text-background-50 dark:text-foreground-950 text-2xl"></i>
+                </div>
+              )}
+              <span className="font-heading text-xl font-bold leading-none text-background-50 dark:text-foreground-950 whitespace-nowrap">
+                {siteName.includes("247") ? (
+                  <>
+                    {siteName.replace(/247.*$/, "")}
+                    <span className="text-background-50/70 dark:text-foreground-950/70">
+                      247
+                    </span>
+                  </>
+                ) : (
+                  siteName
+                )}
               </span>
             </Link>
             <p className="text-sm text-background-50/70 dark:text-foreground-950/70 leading-relaxed mb-5">
-              {t("footer.aboutDesc")}
+              {about}
             </p>
-            <div className="flex gap-3">
-              <a href="#" aria-label="Facebook" className={socialBtnClasses}>
-                <i className="ri-facebook-fill"></i>
-              </a>
-              <a href="#" aria-label="LinkedIn" className={socialBtnClasses}>
-                <i className="ri-linkedin-fill"></i>
-              </a>
-              <a href="#" aria-label="Twitter" className={socialBtnClasses}>
-                <i className="ri-twitter-x-fill"></i>
-              </a>
-              <a href="#" aria-label="YouTube" className={socialBtnClasses}>
-                <i className="ri-youtube-fill"></i>
-              </a>
-            </div>
+            {socialLinks.length > 0 && (
+              <div className="flex gap-3">
+                {socialLinks.map((item) => (
+                  <a
+                    key={item.label}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={item.label}
+                    className={socialBtnClasses}
+                  >
+                    <i className={item.icon}></i>
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
@@ -108,28 +153,34 @@ export default function Footer() {
               {t("footer.contact")}
             </h4>
             <ul className="space-y-3">
-              <li className="flex items-start gap-2.5 text-sm text-background-50/70 dark:text-foreground-950/70">
-                <i className="ri-map-pin-line mt-0.5 flex-shrink-0"></i>
-                <span>123 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh</span>
-              </li>
-              <li>
-                <a
-                  href="tel:+842812345678"
-                  className="flex items-center gap-2.5 text-sm text-background-50/70 dark:text-foreground-950/70 hover:text-background-50 dark:hover:text-foreground-950 transition-colors cursor-pointer"
-                >
-                  <i className="ri-phone-line flex-shrink-0"></i>
-                  <span>+84 28 1234 5678</span>
-                </a>
-              </li>
-              <li>
-                <a
-                  href="mailto:info@jobs247.vn"
-                  className="flex items-center gap-2.5 text-sm text-background-50/70 dark:text-foreground-950/70 hover:text-background-50 dark:hover:text-foreground-950 transition-colors cursor-pointer"
-                >
-                  <i className="ri-mail-line flex-shrink-0"></i>
-                  <span>info@jobs247.vn</span>
-                </a>
-              </li>
+              {address && (
+                <li className="flex items-start gap-2.5 text-sm text-background-50/70 dark:text-foreground-950/70">
+                  <i className="ri-map-pin-line mt-0.5 flex-shrink-0"></i>
+                  <span>{address}</span>
+                </li>
+              )}
+              {phone && (
+                <li>
+                  <a
+                    href={`tel:${phone.replace(/\s/g, "")}`}
+                    className="flex items-center gap-2.5 text-sm text-background-50/70 dark:text-foreground-950/70 hover:text-background-50 dark:hover:text-foreground-950 transition-colors cursor-pointer"
+                  >
+                    <i className="ri-phone-line flex-shrink-0"></i>
+                    <span>{phone}</span>
+                  </a>
+                </li>
+              )}
+              {mail && (
+                <li>
+                  <a
+                    href={`mailto:${mail}`}
+                    className="flex items-center gap-2.5 text-sm text-background-50/70 dark:text-foreground-950/70 hover:text-background-50 dark:hover:text-foreground-950 transition-colors cursor-pointer"
+                  >
+                    <i className="ri-mail-line flex-shrink-0"></i>
+                    <span>{mail}</span>
+                  </a>
+                </li>
+              )}
             </ul>
           </div>
 
@@ -186,7 +237,7 @@ export default function Footer() {
         <div className="mt-12 pt-6 border-t border-background-50/10">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-xs text-background-50/50 dark:text-foreground-950/50 text-center sm:text-left">
-              {t("footer.copyright")}
+              {copyright}
             </p>
             <div className="flex items-center gap-5 flex-wrap justify-center">
               <Link

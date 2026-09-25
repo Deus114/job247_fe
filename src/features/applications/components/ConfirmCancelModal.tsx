@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 
 interface ConfirmCancelModalProps {
   jobTitle: string;
@@ -26,11 +26,15 @@ export default function ConfirmCancelModal({
           <div className="w-14 h-14 mx-auto rounded-full bg-red-100 flex items-center justify-center mb-4">
             <i className="ri-delete-bin-line text-2xl text-red-500"></i>
           </div>
-          <h3 className="text-lg font-heading font-bold text-foreground-950 mb-2">{t('applications.cancelModal.title')}</h3>
+          <h3 className="text-lg font-heading font-bold text-foreground-950 mb-2">
+            {t("applications.cancelModal.title")}
+          </h3>
           <p className="text-sm text-foreground-600">
-            {t('applications.cancelModal.message', { jobTitle, companyName })}
+            {t("applications.cancelModal.message", { jobTitle, companyName })}
           </p>
-          <p className="text-xs text-foreground-400 mt-2">{t('applications.cancelModal.cantUndo')}</p>
+          <p className="text-xs text-foreground-400 mt-2">
+            {t("applications.cancelModal.cantUndo")}
+          </p>
         </div>
 
         <div className="flex gap-3">
@@ -38,13 +42,14 @@ export default function ConfirmCancelModal({
             onClick={onClose}
             className="flex-1 py-2.5 bg-background-100 text-foreground-700 rounded-xl text-sm font-medium hover:bg-background-200/70 transition-colors cursor-pointer whitespace-nowrap"
           >
-            {t('common.cancel')}
+            {t("common.cancel")}
           </button>
           <button
             onClick={onConfirm}
             className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap"
           >
-            <i className="ri-close-line mr-1.5"></i>{t('applications.cancelModal.confirm')}
+            <i className="ri-close-line mr-1.5"></i>
+            {t("applications.cancelModal.confirm")}
           </button>
         </div>
       </div>

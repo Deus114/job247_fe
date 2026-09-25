@@ -16,7 +16,7 @@ export interface Job {
   deadline: string;
   createdAt: string;
   featured: boolean;
-  status: 'pending' | 'approved' | 'rejected';
+  status: "pending" | "approved" | "rejected";
   isActive?: boolean;
   deletedAt?: string;
 }

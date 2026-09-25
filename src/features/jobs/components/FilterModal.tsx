@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useState, useMemo, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 export interface FilterState {
   categories: string[];
@@ -54,16 +54,18 @@ function CheckboxGroup({
               onClick={() => onToggle(item)}
               className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer border text-left ${
                 isSelected
-                  ? 'bg-primary-50 border-primary-300 text-primary-700'
-                  : 'bg-background-50 border-background-200/70 text-foreground-600 hover:border-background-300'
+                  ? "bg-primary-50 border-primary-300 text-primary-700"
+                  : "bg-background-50 border-background-200/70 text-foreground-600 hover:border-background-300"
               }`}
             >
               <div
                 className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors ${
-                  isSelected ? 'bg-primary-500' : 'border border-background-300'
+                  isSelected ? "bg-primary-500" : "border border-background-300"
                 }`}
               >
-                {isSelected && <i className="ri-check-line text-[10px] text-white"></i>}
+                {isSelected && (
+                  <i className="ri-check-line text-[10px] text-white"></i>
+                )}
               </div>
               <span className="truncate">{item}</span>
             </button>
@@ -92,11 +94,11 @@ export default function FilterModal({
 
   const salaryPresets = useMemo(
     () => [
-      { min: '', max: '10', label: t('job.salaryUnder10') },
-      { min: '10', max: '20', label: t('job.salary10to20') },
-      { min: '20', max: '35', label: t('job.salary20to35') },
-      { min: '35', max: '50', label: t('job.salary35to50') },
-      { min: '50', max: '', label: t('job.salaryOver50') },
+      { min: "", max: "10", label: t("job.salaryUnder10") },
+      { min: "10", max: "20", label: t("job.salary10to20") },
+      { min: "20", max: "35", label: t("job.salary20to35") },
+      { min: "35", max: "50", label: t("job.salary35to50") },
+      { min: "50", max: "", label: t("job.salaryOver50") },
     ],
     [t],
   );
@@ -135,7 +137,15 @@ export default function FilterModal({
     local.salaryMin === min && local.salaryMax === max;
 
   const handleClear = () => {
-    const empty = { categories: [], locations: [], educations: [], types: [], companies: [], salaryMin: '', salaryMax: '' };
+    const empty = {
+      categories: [],
+      locations: [],
+      educations: [],
+      types: [],
+      companies: [],
+      salaryMin: "",
+      salaryMax: "",
+    };
     setLocal(empty);
     onClear();
   };
@@ -149,7 +159,10 @@ export default function FilterModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose}></div>
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      ></div>
       <div className="relative bg-background-50 rounded-2xl border border-background-200/70 shadow-2xl w-full max-w-[720px] max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-background-200/70 flex-shrink-0">
@@ -158,8 +171,12 @@ export default function FilterModal({
               <i className="ri-equalizer-line text-primary-600"></i>
             </div>
             <div>
-              <h3 className="text-base font-heading font-bold text-foreground-950">{t('job.filter')}</h3>
-              <p className="text-xs text-foreground-500">{t('job.filterDesc')}</p>
+              <h3 className="text-base font-heading font-bold text-foreground-950">
+                {t("job.filter")}
+              </h3>
+              <p className="text-xs text-foreground-500">
+                {t("job.filterDesc")}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -168,7 +185,8 @@ export default function FilterModal({
                 onClick={handleClear}
                 className="text-xs text-primary-500 hover:text-primary-600 font-medium transition-colors cursor-pointer whitespace-nowrap"
               >
-                <i className="ri-refresh-line mr-1"></i>{t('job.clearFilter')}
+                <i className="ri-refresh-line mr-1"></i>
+                {t("job.clearFilter")}
               </button>
             )}
             <button
@@ -185,55 +203,55 @@ export default function FilterModal({
           {/* Categories */}
           {categories.length > 0 && (
             <CheckboxGroup
-              title={t('postJob.category')}
+              title={t("postJob.category")}
               icon="ri-briefcase-line"
               items={categories}
               selected={local.categories}
-              onToggle={(v) => toggle('categories', v)}
+              onToggle={(v) => toggle("categories", v)}
             />
           )}
 
           {/* Companies */}
           {companies.length > 0 && (
             <CheckboxGroup
-              title={t('job.companies')}
+              title={t("job.companies")}
               icon="ri-building-line"
               items={companies}
               selected={local.companies}
-              onToggle={(v) => toggle('companies', v)}
+              onToggle={(v) => toggle("companies", v)}
             />
           )}
 
           {/* Locations */}
           {locations.length > 0 && (
             <CheckboxGroup
-              title={t('job.location')}
+              title={t("job.location")}
               icon="ri-map-pin-line"
               items={locations}
               selected={local.locations}
-              onToggle={(v) => toggle('locations', v)}
+              onToggle={(v) => toggle("locations", v)}
             />
           )}
 
           {/* Education */}
           {educationLevels.length > 0 && (
             <CheckboxGroup
-              title={t('job.educationLevel')}
+              title={t("job.educationLevel")}
               icon="ri-graduation-cap-line"
               items={educationLevels}
               selected={local.educations}
-              onToggle={(v) => toggle('educations', v)}
+              onToggle={(v) => toggle("educations", v)}
             />
           )}
 
           {/* Job Types */}
           {types.length > 0 && (
             <CheckboxGroup
-              title={t('job.jobType')}
+              title={t("job.jobType")}
               icon="ri-time-line"
               items={types}
               selected={local.types}
-              onToggle={(v) => toggle('types', v)}
+              onToggle={(v) => toggle("types", v)}
             />
           )}
 
@@ -243,7 +261,9 @@ export default function FilterModal({
               <div className="w-7 h-7 rounded-lg bg-accent-100 flex items-center justify-center">
                 <i className="ri-money-dollar-circle-line text-sm text-accent-600"></i>
               </div>
-              <h4 className="text-sm font-semibold text-foreground-950">{t('job.salaryMillionVnd')}</h4>
+              <h4 className="text-sm font-semibold text-foreground-950">
+                {t("job.salaryMillionVnd")}
+              </h4>
             </div>
 
             {/* Presets */}
@@ -254,8 +274,8 @@ export default function FilterModal({
                   onClick={() => applySalaryPreset(preset.min, preset.max)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer border whitespace-nowrap ${
                     isPresetActive(preset.min, preset.max)
-                      ? 'bg-accent-50 border-accent-300 text-accent-700'
-                      : 'bg-background-50 border-background-200/70 text-foreground-600 hover:border-background-300'
+                      ? "bg-accent-50 border-accent-300 text-accent-700"
+                      : "bg-background-50 border-background-200/70 text-foreground-600 hover:border-background-300"
                   }`}
                 >
                   {preset.label}
@@ -266,32 +286,50 @@ export default function FilterModal({
             {/* Custom range */}
             <div className="flex items-center gap-3">
               <div className="flex-1">
-                <label className="text-[11px] text-foreground-500 mb-1 block">{t('job.from')}</label>
+                <label className="text-[11px] text-foreground-500 mb-1 block">
+                  {t("job.from")}
+                </label>
                 <div className="relative">
                   <input
                     type="number"
                     min="0"
                     value={local.salaryMin}
-                    onChange={(e) => setLocal((prev) => ({ ...prev, salaryMin: e.target.value }))}
+                    onChange={(e) =>
+                      setLocal((prev) => ({
+                        ...prev,
+                        salaryMin: e.target.value,
+                      }))
+                    }
                     className="w-full pl-3 pr-8 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-xl focus:outline-none focus:border-primary-300 focus:ring-2 focus:ring-primary-100 transition-all"
                     placeholder="0"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-foreground-400">tr</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-foreground-400">
+                    tr
+                  </span>
                 </div>
               </div>
               <span className="text-foreground-400 mt-5">—</span>
               <div className="flex-1">
-                <label className="text-[11px] text-foreground-500 mb-1 block">{t('job.to')}</label>
+                <label className="text-[11px] text-foreground-500 mb-1 block">
+                  {t("job.to")}
+                </label>
                 <div className="relative">
                   <input
                     type="number"
                     min="0"
                     value={local.salaryMax}
-                    onChange={(e) => setLocal((prev) => ({ ...prev, salaryMax: e.target.value }))}
+                    onChange={(e) =>
+                      setLocal((prev) => ({
+                        ...prev,
+                        salaryMax: e.target.value,
+                      }))
+                    }
                     className="w-full pl-3 pr-8 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-xl focus:outline-none focus:border-primary-300 focus:ring-2 focus:ring-primary-100 transition-all"
                     placeholder="∞"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-foreground-400">tr</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-foreground-400">
+                    tr
+                  </span>
                 </div>
               </div>
             </div>
@@ -301,20 +339,22 @@ export default function FilterModal({
         {/* Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-background-200/70 flex-shrink-0">
           <span className="text-xs text-foreground-500">
-            {activeCount > 0 ? t('job.selectedFilters', { count: activeCount }) : t('job.noFilterSelected')}
+            {activeCount > 0
+              ? t("job.selectedFilters", { count: activeCount })
+              : t("job.noFilterSelected")}
           </span>
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
               className="px-5 py-2.5 rounded-xl text-sm font-medium text-foreground-600 hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap border border-background-200/70"
             >
-              {t('common.cancel')}
+              {t("common.cancel")}
             </button>
             <button
               onClick={handleApply}
               className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-primary-500 text-white hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap shadow-lg shadow-primary-500/15"
             >
-              {t('job.applyFilters')} {activeCount > 0 && `(${activeCount})`}
+              {t("job.applyFilters")} {activeCount > 0 && `(${activeCount})`}
             </button>
           </div>
         </div>

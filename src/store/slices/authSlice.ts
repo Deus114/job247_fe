@@ -1,13 +1,13 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { AuthUser } from '@/types';
-import { readJson } from '@/lib/storage';
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import type { AuthUser } from "@/types";
+import { readJson } from "@/lib/storage";
 
 interface AuthState {
   user: AuthUser | null;
   isAuthenticated: boolean;
 }
 
-const stored = readJson<AuthState>('redux_auth');
+const stored = readJson<AuthState>("redux_auth");
 
 const initialState: AuthState = {
   user: stored?.user ?? null,
@@ -15,7 +15,7 @@ const initialState: AuthState = {
 };
 
 const authSlice = createSlice({
-  name: 'auth',
+  name: "auth",
   initialState,
   reducers: {
     login(state, action: PayloadAction<AuthUser>) {

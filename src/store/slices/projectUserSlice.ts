@@ -1,6 +1,6 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { mockProjectUsers } from '@/mocks/projectUsers';
-import type { ProjectUser } from '@/types/projectUser';
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import { mockProjectUsers } from "@/mocks/projectUsers";
+import type { ProjectUser } from "@/types/projectUser";
 
 interface ProjectUsersState {
   items: ProjectUser[];
@@ -15,7 +15,7 @@ const initialState: ProjectUsersState = {
 };
 
 const projectUserSlice = createSlice({
-  name: 'projectUsers',
+  name: "projectUsers",
   initialState,
   reducers: {
     setProjectUsers(state, action: PayloadAction<ProjectUser[]>) {
@@ -25,7 +25,10 @@ const projectUserSlice = createSlice({
     addProjectUser(state, action: PayloadAction<ProjectUser>) {
       state.items.unshift(action.payload);
     },
-    updateProjectUser(state, action: PayloadAction<Partial<ProjectUser> & { id: string }>) {
+    updateProjectUser(
+      state,
+      action: PayloadAction<Partial<ProjectUser> & { id: string }>,
+    ) {
       const index = state.items.findIndex((u) => u.id === action.payload.id);
       if (index !== -1) {
         state.items[index] = { ...state.items[index], ...action.payload };
@@ -49,7 +52,8 @@ const projectUserSlice = createSlice({
     toggleProjectUserStatus(state, action: PayloadAction<string>) {
       const index = state.items.findIndex((u) => u.id === action.payload);
       if (index !== -1) {
-        state.items[index].status = state.items[index].status === 'active' ? 'inactive' : 'active';
+        state.items[index].status =
+          state.items[index].status === "active" ? "inactive" : "active";
       }
     },
     setLoading(state, action: PayloadAction<boolean>) {
@@ -63,8 +67,14 @@ const projectUserSlice = createSlice({
 });
 
 export const {
-  setProjectUsers, addProjectUser, updateProjectUser, deleteProjectUser,
-  restoreProjectUser, permanentDeleteProjectUser,
-  toggleProjectUserStatus, setLoading, setError,
+  setProjectUsers,
+  addProjectUser,
+  updateProjectUser,
+  deleteProjectUser,
+  restoreProjectUser,
+  permanentDeleteProjectUser,
+  toggleProjectUserStatus,
+  setLoading,
+  setError,
 } = projectUserSlice.actions;
 export default projectUserSlice.reducer;

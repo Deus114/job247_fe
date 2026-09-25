@@ -1,5 +1,9 @@
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { saveJob, removeSavedJob, clearSavedJobs } from '@/store/slices/savedJobsSlice';
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  saveJob,
+  removeSavedJob,
+  clearSavedJobs,
+} from "@/store/slices/savedJobsSlice";
 
 /** Domain hook for saved jobs. */
 export function useSavedJobs() {

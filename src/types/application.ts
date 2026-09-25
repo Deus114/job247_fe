@@ -10,6 +10,6 @@ export interface Application {
   phone: string;
   coverLetter: string;
   cvFileName: string;
-  status: 'pending' | 'reviewing' | 'accepted' | 'rejected';
+  status: "pending" | "reviewing" | "accepted" | "rejected";
   appliedAt: string;
 }

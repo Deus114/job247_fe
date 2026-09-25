@@ -1,4 +1,4 @@
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   addCompany,
   updateCompany,
@@ -9,8 +9,8 @@ import {
   rejectCompany,
   setRevisionNeeded,
   toggleCompanyActive,
-} from '@/store/slices/companySlice';
-import type { Company } from '@/types/company';
+} from "@/store/slices/companySlice";
+import type { Company } from "@/types/company";
 
 /** Domain hook for companies catalog + mutations. */
 export function useCompanies() {

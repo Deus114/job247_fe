@@ -1,16 +1,19 @@
-import { useEffect } from 'react';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { useEffect } from "react";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   setJobs,
   setCategories,
   setEducationLevels,
   setLocations,
   setLoading as setJobLoading,
-} from '@/store/slices/jobSlice';
-import { setCompanies, setLoading as setCompanyLoading } from '@/store/slices/companySlice';
-import { setApplications } from '@/store/slices/applicationsSlice';
-import { fetchJobsCatalog, fetchCompanies, fetchApplications } from '@/api';
-import { env } from '@/config/env';
+} from "@/store/slices/jobSlice";
+import {
+  setCompanies,
+  setLoading as setCompanyLoading,
+} from "@/store/slices/companySlice";
+import { setApplications } from "@/store/slices/applicationsSlice";
+import { fetchJobsCatalog, fetchCompanies, fetchApplications } from "@/api";
+import { env } from "@/config/env";
 
 /**
  * Loads jobs / companies / applications into Redux.
@@ -20,8 +23,12 @@ import { env } from '@/config/env';
 export function useCatalogBootstrap() {
   const dispatch = useAppDispatch();
   const jobsCount = useAppSelector((state) => state.jobs.items.length);
-  const companiesCount = useAppSelector((state) => state.companies.items.length);
-  const applicationsCount = useAppSelector((state) => state.applications.items.length);
+  const companiesCount = useAppSelector(
+    (state) => state.companies.items.length,
+  );
+  const applicationsCount = useAppSelector(
+    (state) => state.applications.items.length,
+  );
 
   useEffect(() => {
     if (env.useMock) {

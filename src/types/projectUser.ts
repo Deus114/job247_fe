@@ -1,4 +1,4 @@
-export type ProjectUserRole = 'candidate' | 'recruiter';
+export type ProjectUserRole = "candidate" | "recruiter";
 
 export interface ProjectUser {
   id: string;
@@ -7,7 +7,7 @@ export interface ProjectUser {
   phone?: string;
   avatar?: string;
   role: ProjectUserRole;
-  status: 'active' | 'inactive';
+  status: "active" | "inactive";
   createdAt: string;
   lastLogin?: string;
   deletedAt?: string;

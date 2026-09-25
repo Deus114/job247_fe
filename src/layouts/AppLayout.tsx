@@ -1,7 +1,7 @@
-import { Outlet } from 'react-router-dom';
-import Navbar from '@/layouts/Navbar';
-import Footer from '@/layouts/Footer';
-import { useCatalogBootstrap } from '@/features/catalog';
+import { Outlet } from "react-router-dom";
+import Navbar from "@/layouts/Navbar";
+import Footer from "@/layouts/Footer";
+import { useCatalogBootstrap } from "@/features/catalog";
 
 export default function AppLayout() {
   useCatalogBootstrap();

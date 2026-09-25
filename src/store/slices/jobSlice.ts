@@ -1,14 +1,14 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { env } from '@/config/env';
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import { env } from "@/config/env";
 import {
   mockJobs,
   mockCategories,
   mockEducationLevels,
   mockLocations,
-} from '@/mocks/jobs';
-import type { Job, CategoryItem, EducationLevelItem } from '@/types/job';
+} from "@/mocks/jobs";
+import type { Job, CategoryItem, EducationLevelItem } from "@/types/job";
 
-export type { Job, CategoryItem, EducationLevelItem } from '@/types/job';
+export type { Job, CategoryItem, EducationLevelItem } from "@/types/job";
 
 interface JobsState {
   items: Job[];
@@ -44,7 +44,7 @@ const initialState: JobsState = env.useMock
     };
 
 const jobSlice = createSlice({
-  name: 'jobs',
+  name: "jobs",
   initialState,
   reducers: {
     setJobs(state, action: PayloadAction<Job[]>) {
@@ -84,7 +84,14 @@ const jobSlice = createSlice({
         state.categories.push(action.payload);
       }
     },
-    updateCategory(state, action: PayloadAction<{ oldName: string; newName: string; image?: string }>) {
+    updateCategory(
+      state,
+      action: PayloadAction<{
+        oldName: string;
+        newName: string;
+        image?: string;
+      }>,
+    ) {
       const { oldName, newName } = action.payload;
       const idx = state.categories.findIndex((c) => c.name === oldName);
       if (idx !== -1) {
@@ -104,7 +111,10 @@ const jobSlice = createSlice({
       const idx = state.categories.findIndex((c) => c.name === name);
       if (idx !== -1) {
         const [removed] = state.categories.splice(idx, 1);
-        state.deletedCategories.push({ ...removed, deletedAt: new Date().toISOString() });
+        state.deletedCategories.push({
+          ...removed,
+          deletedAt: new Date().toISOString(),
+        });
       }
     },
     restoreCategory(state, action: PayloadAction<string>) {
@@ -116,7 +126,9 @@ const jobSlice = createSlice({
       }
     },
     permanentDeleteCategory(state, action: PayloadAction<string>) {
-      state.deletedCategories = state.deletedCategories.filter((c) => c.name !== action.payload);
+      state.deletedCategories = state.deletedCategories.filter(
+        (c) => c.name !== action.payload,
+      );
     },
     // Education reducers
     setEducationLevels(state, action: PayloadAction<EducationLevelItem[]>) {
@@ -127,7 +139,10 @@ const jobSlice = createSlice({
         state.educationLevels.push({ name: action.payload });
       }
     },
-    updateEducationLevel(state, action: PayloadAction<{ oldName: string; newName: string }>) {
+    updateEducationLevel(
+      state,
+      action: PayloadAction<{ oldName: string; newName: string }>,
+    ) {
       const { oldName, newName } = action.payload;
       const idx = state.educationLevels.findIndex((l) => l.name === oldName);
       if (idx !== -1) {
@@ -144,19 +159,26 @@ const jobSlice = createSlice({
       const idx = state.educationLevels.findIndex((l) => l.name === name);
       if (idx !== -1) {
         const [removed] = state.educationLevels.splice(idx, 1);
-        state.deletedEducationLevels.push({ ...removed, deletedAt: new Date().toISOString() });
+        state.deletedEducationLevels.push({
+          ...removed,
+          deletedAt: new Date().toISOString(),
+        });
       }
     },
     restoreEducationLevel(state, action: PayloadAction<string>) {
       const name = action.payload;
-      const idx = state.deletedEducationLevels.findIndex((l) => l.name === name);
+      const idx = state.deletedEducationLevels.findIndex(
+        (l) => l.name === name,
+      );
       if (idx !== -1) {
         const [removed] = state.deletedEducationLevels.splice(idx, 1);
         state.educationLevels.push(removed);
       }
     },
     permanentDeleteEducationLevel(state, action: PayloadAction<string>) {
-      state.deletedEducationLevels = state.deletedEducationLevels.filter((l) => l.name !== action.payload);
+      state.deletedEducationLevels = state.deletedEducationLevels.filter(
+        (l) => l.name !== action.payload,
+      );
     },
     setLocations(state, action: PayloadAction<string[]>) {
       state.locations = action.payload;
@@ -172,31 +194,53 @@ const jobSlice = createSlice({
     toggleJobActive(state, action: PayloadAction<string>) {
       const index = state.items.findIndex((j) => j.id === action.payload);
       if (index !== -1) {
-        state.items[index].isActive = state.items[index].isActive === false ? true : false;
+        state.items[index].isActive =
+          state.items[index].isActive === false ? true : false;
       }
     },
     toggleCategoryActive(state, action: PayloadAction<string>) {
       const name = action.payload;
       const idx = state.categories.findIndex((c) => c.name === name);
       if (idx !== -1) {
-        state.categories[idx].isActive = state.categories[idx].isActive === false ? true : false;
+        state.categories[idx].isActive =
+          state.categories[idx].isActive === false ? true : false;
       }
     },
     toggleEducationLevelActive(state, action: PayloadAction<string>) {
       const name = action.payload;
       const idx = state.educationLevels.findIndex((l) => l.name === name);
       if (idx !== -1) {
-        state.educationLevels[idx].isActive = state.educationLevels[idx].isActive === false ? true : false;
+        state.educationLevels[idx].isActive =
+          state.educationLevels[idx].isActive === false ? true : false;
       }
     },
   },
 });
 
 export const {
-  setJobs, addJob, updateJob, deleteJob, restoreJob, permanentDeleteJob,
-  setCategories, addCategory, updateCategory, softDeleteCategory, restoreCategory, permanentDeleteCategory,
-  setEducationLevels, addEducationLevel, updateEducationLevel, softDeleteEducationLevel, restoreEducationLevel, permanentDeleteEducationLevel,
-  setLocations, setLoading, setError,
-  toggleJobActive, toggleCategoryActive, toggleEducationLevelActive,
+  setJobs,
+  addJob,
+  updateJob,
+  deleteJob,
+  restoreJob,
+  permanentDeleteJob,
+  setCategories,
+  addCategory,
+  updateCategory,
+  softDeleteCategory,
+  restoreCategory,
+  permanentDeleteCategory,
+  setEducationLevels,
+  addEducationLevel,
+  updateEducationLevel,
+  softDeleteEducationLevel,
+  restoreEducationLevel,
+  permanentDeleteEducationLevel,
+  setLocations,
+  setLoading,
+  setError,
+  toggleJobActive,
+  toggleCategoryActive,
+  toggleEducationLevelActive,
 } = jobSlice.actions;
 export default jobSlice.reducer;

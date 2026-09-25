@@ -1,4 +1,4 @@
-/** Admin catalog types. Industry groups + industries use real API; provinces still mock. */
+/** Admin catalog types. Industry groups, industries, education levels, provinces use real API. */
 
 export interface IndustryGroup {
   id: number;
@@ -89,14 +89,59 @@ export interface IndustryWritePayload {
   imageFile?: File | null;
 }
 
+export interface EducationLevel {
+  id: number;
+  nameVi: string;
+  nameEn: string;
+  sortOrder: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EducationLevelListParams {
+  keyword?: string;
+  active?: boolean;
+  deleted?: boolean;
+  page?: number;
+  size?: number;
+  sort?: string;
+}
+
+export interface EducationLevelWritePayload {
+  nameVi: string;
+  nameEn: string;
+  sortOrder?: number;
+  active?: boolean;
+}
+
+export type ProvinceRegion = "NORTH" | "CENTRAL" | "SOUTH";
+
 export interface Province {
-  id: string;
+  id: number;
   name: string;
-  code?: string;
-  region?: "north" | "central" | "south" | string;
-  isActive?: boolean;
-  createdAt?: string;
-  deletedAt?: string;
+  region: ProvinceRegion | string;
+  sortOrder: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProvinceListParams {
+  keyword?: string;
+  region?: ProvinceRegion | string;
+  active?: boolean;
+  deleted?: boolean;
+  page?: number;
+  size?: number;
+  sort?: string;
+}
+
+export interface ProvinceWritePayload {
+  name: string;
+  region: ProvinceRegion | string;
+  sortOrder?: number;
+  active?: boolean;
 }
 
 export function industryGroupDisplayName(
@@ -133,4 +178,50 @@ export function industryDisplayDescription(
   const isEn = lang.toLowerCase().startsWith("en");
   if (isEn) return item.descriptionEn?.trim() || item.descriptionVi || "";
   return item.descriptionVi?.trim() || item.descriptionEn || "";
+}
+
+export function educationLevelDisplayName(
+  item: Pick<EducationLevel, "nameVi" | "nameEn">,
+  lang: string,
+): string {
+  const isEn = lang.toLowerCase().startsWith("en");
+  if (isEn) return item.nameEn?.trim() || item.nameVi || "";
+  return item.nameVi?.trim() || item.nameEn || "";
+}
+
+function foldRegion(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/gi, "d")
+    .toUpperCase()
+    .replace(/[^A-Z]/g, "");
+}
+
+/** Accept enum codes and localized labels (Accept-Language may return "Miền Bắc"). */
+export function normalizeProvinceRegion(
+  value: string | null | undefined,
+): ProvinceRegion | "" {
+  const folded = foldRegion(String(value ?? ""));
+  if (!folded) return "";
+  if (
+    folded === "NORTH" ||
+    folded === "NORTHERN" ||
+    folded === "BAC" ||
+    folded === "MIENBAC"
+  ) {
+    return "NORTH";
+  }
+  if (folded === "CENTRAL" || folded === "TRUNG" || folded === "MIENTRUNG") {
+    return "CENTRAL";
+  }
+  if (
+    folded === "SOUTH" ||
+    folded === "SOUTHERN" ||
+    folded === "NAM" ||
+    folded === "MIENNAM"
+  ) {
+    return "SOUTH";
+  }
+  return "";
 }

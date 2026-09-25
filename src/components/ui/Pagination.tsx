@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 
 interface PaginationProps {
   currentPage: number;
@@ -30,17 +30,17 @@ export default function Pagination({
     } else {
       if (currentPage <= 3) {
         for (let i = 1; i <= 5; i++) pages.push(i);
-        pages.push('...');
+        pages.push("...");
         pages.push(totalPages);
       } else if (currentPage >= totalPages - 2) {
         pages.push(1);
-        pages.push('...');
+        pages.push("...");
         for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
       } else {
         pages.push(1);
-        pages.push('...');
+        pages.push("...");
         for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
-        pages.push('...');
+        pages.push("...");
         pages.push(totalPages);
       }
     }
@@ -51,18 +51,25 @@ export default function Pagination({
     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3 border-t border-background-200/70">
       <div className="flex items-center gap-3">
         <span className="text-xs text-foreground-500">
-          {t('common.showing')} <strong className="text-foreground-700">{start}-{end}</strong> / <strong className="text-foreground-700">{totalItems}</strong> {t('common.items', 'mục')}
+          {t("common.showing")}{" "}
+          <strong className="text-foreground-700">
+            {start}-{end}
+          </strong>{" "}
+          / <strong className="text-foreground-700">{totalItems}</strong>{" "}
+          {t("common.items", "mục")}
         </span>
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-foreground-400">{t('common.perPage')}:</span>
+          <span className="text-xs text-foreground-400">
+            {t("common.perPage")}:
+          </span>
           {pageSizeOptions.map((size) => (
             <button
               key={size}
               onClick={() => onPageSizeChange(size)}
               className={`px-2 py-1 text-xs rounded-lg transition-colors cursor-pointer ${
                 pageSize === size
-                  ? 'bg-primary-100 text-primary-700 font-medium'
-                  : 'text-foreground-500 hover:bg-background-100'
+                  ? "bg-primary-100 text-primary-700 font-medium"
+                  : "text-foreground-500 hover:bg-background-100"
               }`}
             >
               {size}
@@ -80,8 +87,11 @@ export default function Pagination({
           <i className="ri-arrow-left-s-line"></i>
         </button>
         {getPageNumbers().map((p, i) =>
-          p === '...' ? (
-            <span key={`ellipsis-${i}`} className="w-8 h-8 flex items-center justify-center text-sm text-foreground-400">
+          p === "..." ? (
+            <span
+              key={`ellipsis-${i}`}
+              className="w-8 h-8 flex items-center justify-center text-sm text-foreground-400"
+            >
               ...
             </span>
           ) : (
@@ -90,13 +100,13 @@ export default function Pagination({
               onClick={() => onPageChange(p as number)}
               className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                 currentPage === p
-                  ? 'bg-primary-500 text-white'
-                  : 'text-foreground-600 hover:bg-background-100'
+                  ? "bg-primary-500 text-white"
+                  : "text-foreground-600 hover:bg-background-100"
               }`}
             >
               {p}
             </button>
-          )
+          ),
         )}
         <button
           onClick={() => onPageChange(currentPage + 1)}

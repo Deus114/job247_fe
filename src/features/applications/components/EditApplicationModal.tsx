@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect, type SubmitEvent } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useApplications } from '@/features/applications';
-import type { Application } from '@/types/application';
+import { useState, useRef, useEffect, type SubmitEvent } from "react";
+import { useTranslation } from "react-i18next";
+import { useApplications } from "@/features/applications";
+import type { Application } from "@/types/application";
 
 interface EditApplicationModalProps {
   application: Application;
@@ -9,16 +9,20 @@ interface EditApplicationModalProps {
   onClose: () => void;
 }
 
-export default function EditApplicationModal({ application, isOpen, onClose }: EditApplicationModalProps) {
+export default function EditApplicationModal({
+  application,
+  isOpen,
+  onClose,
+}: EditApplicationModalProps) {
   const { t } = useTranslation();
   const { updateApplication } = useApplications();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    coverLetter: '',
+    fullName: "",
+    email: "",
+    phone: "",
+    coverLetter: "",
   });
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -42,7 +46,7 @@ export default function EditApplicationModal({ application, isOpen, onClose }: E
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert(t('job.applyModal.fileTooLarge'));
+        alert(t("job.applyModal.fileTooLarge"));
         return;
       }
       setCvFile(file);
@@ -85,22 +89,22 @@ export default function EditApplicationModal({ application, isOpen, onClose }: E
               <i className="ri-check-line text-3xl text-accent-500"></i>
             </div>
             <h3 className="text-xl font-heading font-bold text-foreground-950 mb-2">
-              {t('applications.editModal.updateSuccess')}
+              {t("applications.editModal.updateSuccess")}
             </h3>
             <p className="text-sm text-foreground-600 mb-6">
-              {t('applications.editModal.updateSuccessDesc')}
+              {t("applications.editModal.updateSuccessDesc")}
             </p>
             <button
               onClick={onClose}
               className="px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
             >
-              {t('common.close')}
+              {t("common.close")}
             </button>
           </div>
         ) : (
           <>
             <h3 className="text-xl font-heading font-bold text-foreground-950 mb-1">
-              {t('applications.editModal.title')}
+              {t("applications.editModal.title")}
             </h3>
             <p className="text-sm text-foreground-600 mb-6">
               {application.jobTitle} - {application.companyName}
@@ -109,42 +113,48 @@ export default function EditApplicationModal({ application, isOpen, onClose }: E
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-foreground-700 mb-1.5">
-                  {t('applications.viewModal.fullName')} *
+                  {t("applications.viewModal.fullName")} *
                 </label>
                 <input
                   type="text"
                   value={formData.fullName}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, fullName: e.target.value })
+                  }
                   required
                   className="w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground-700 mb-1.5">
-                  {t('applications.viewModal.email')} *
+                  {t("applications.viewModal.email")} *
                 </label>
                 <input
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
                   required
                   className="w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground-700 mb-1.5">
-                  {t('applications.viewModal.phone')}
+                  {t("applications.viewModal.phone")}
                 </label>
                 <input
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: e.target.value })
+                  }
                   className="w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground-700 mb-1.5">
-                  {t('applications.viewModal.cv')}
+                  {t("applications.viewModal.cv")}
                 </label>
                 <input
                   ref={fileInputRef}
@@ -159,24 +169,26 @@ export default function EditApplicationModal({ application, isOpen, onClose }: E
                   className="w-full flex items-center justify-between px-4 py-3 text-sm border border-dashed border-background-300 rounded-lg hover:border-primary-300 hover:bg-primary-50/50 transition-colors cursor-pointer"
                 >
                   <span className="text-foreground-600">
-                    {displayCvName || t('applications.editModal.uploadHint')}
+                    {displayCvName || t("applications.editModal.uploadHint")}
                   </span>
                   <i className="ri-upload-cloud-2-line text-lg text-primary-500"></i>
                 </button>
                 {cvFile && (
                   <p className="text-xs text-foreground-400 mt-1">
-                    {t('applications.editModal.newFile')}: {cvFile.name} (
+                    {t("applications.editModal.newFile")}: {cvFile.name} (
                     {(cvFile.size / 1024).toFixed(1)} KB)
                   </p>
                 )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground-700 mb-1.5">
-                  {t('applications.viewModal.coverLetter')}
+                  {t("applications.viewModal.coverLetter")}
                 </label>
                 <textarea
                   value={formData.coverLetter}
-                  onChange={(e) => setFormData({ ...formData, coverLetter: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, coverLetter: e.target.value })
+                  }
                   rows={4}
                   className="w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors resize-none"
                   maxLength={500}
@@ -192,14 +204,14 @@ export default function EditApplicationModal({ application, isOpen, onClose }: E
                   onClick={onClose}
                   className="flex-1 py-2.5 bg-background-100 text-foreground-700 rounded-xl text-sm font-medium hover:bg-background-200/70 transition-colors cursor-pointer whitespace-nowrap"
                 >
-                  {t('common.cancel')}
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="submit"
                   className="flex-1 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
                 >
                   <i className="ri-save-line mr-1.5"></i>
-                  {t('settings.save')}
+                  {t("settings.save")}
                 </button>
               </div>
             </form>

@@ -147,11 +147,7 @@ function parseAuthSessionData(
   const refreshToken = pickToken(data, "refreshToken", "refresh_token");
 
   if (!user || !accessToken) {
-    throw new AdminAuthError(
-      "apiErrors.loginMissingData",
-      statusCode,
-      message,
-    );
+    throw new AdminAuthError("apiErrors.loginMissingData", statusCode, message);
   }
 
   if (!isValidAdminSession(user)) {
@@ -170,6 +166,26 @@ function parseAuthSessionData(
     refreshToken: refreshToken || "",
     message: message || "",
   };
+}
+
+/**
+ * POST /auth/logout
+ * Failures are ignored so the local session can still be cleared.
+ */
+export async function adminLogoutRequest(
+  accessToken?: string | null,
+): Promise<void> {
+  if (!env.apiBaseUrl) return;
+  const token = accessToken || localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
+  if (!token) return;
+
+  try {
+    await axios.post("/auth/logout", undefined, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    // local logout still proceeds
+  }
 }
 
 /** POST /admin/auth/login — body `{ userName, password }` */
@@ -414,9 +430,9 @@ export async function fetchAdminMe(): Promise<AdminSessionUser> {
   }
 
   try {
-    const res = (await axios.get(
-      "/admin/users/me",
-    )) as ApiResponse<AdminSessionUser | Record<string, unknown>>;
+    const res = (await axios.get("/admin/users/me")) as ApiResponse<
+      AdminSessionUser | Record<string, unknown>
+    >;
 
     if (!res || typeof res !== "object") {
       throw new AdminAuthError("apiErrors.invalidResponse");
@@ -490,10 +506,9 @@ export async function updateAdminMe(
   }
 
   try {
-    const res = (await axios.put(
-      "/admin/users/me",
-      body,
-    )) as ApiResponse<AdminSessionUser | Record<string, unknown>>;
+    const res = (await axios.put("/admin/users/me", body)) as ApiResponse<
+      AdminSessionUser | Record<string, unknown>
+    >;
 
     if (!res || typeof res !== "object") {
       throw new AdminAuthError("apiErrors.invalidResponse");

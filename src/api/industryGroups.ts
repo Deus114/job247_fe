@@ -114,8 +114,7 @@ function assertSuccessData(
     raw && typeof raw === "object" && "data" in (raw as object)
       ? (raw as { data?: unknown }).data
       : undefined;
-  const item =
-    normalizeIndustryGroup(raw) ?? normalizeIndustryGroup(nested);
+  const item = normalizeIndustryGroup(raw) ?? normalizeIndustryGroup(nested);
 
   // Write APIs sometimes return success with empty/partial body — treat as OK.
   if (!item) {

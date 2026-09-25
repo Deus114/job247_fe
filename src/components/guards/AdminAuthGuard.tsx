@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAdminAuth } from '@/features/auth';
-import { isValidAdminSession } from '@/types/adminAuth';
-import { ensureAdminSession, type EnsureAdminSessionResult } from '@/api';
-import PageLoader from '@/components/ui/PageLoader';
+import { useEffect, useState } from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { useAdminAuth } from "@/features/auth";
+import { isValidAdminSession } from "@/types/adminAuth";
+import { ensureAdminSession, type EnsureAdminSessionResult } from "@/api";
+import PageLoader from "@/components/ui/PageLoader";
 
 interface AdminAuthGuardProps {
   children: React.ReactNode;
@@ -14,16 +14,18 @@ function applySessionResult(
   ctx: {
     isAuthenticated: boolean;
     accessToken: string | null;
-    admin: ReturnType<typeof useAdminAuth>['admin'];
-    login: ReturnType<typeof useAdminAuth>['login'];
-    logout: ReturnType<typeof useAdminAuth>['logout'];
+    admin: ReturnType<typeof useAdminAuth>["admin"];
+    login: ReturnType<typeof useAdminAuth>["login"];
+    logout: ReturnType<typeof useAdminAuth>["logout"];
   },
 ): boolean {
   if (result.ok === false) {
-    if (result.reason === 'network') {
+    if (result.reason === "network") {
       return (
         ctx.isAuthenticated &&
-        Boolean(ctx.accessToken || localStorage.getItem('admin_access_token')) &&
+        Boolean(
+          ctx.accessToken || localStorage.getItem("admin_access_token"),
+        ) &&
         isValidAdminSession(ctx.admin)
       );
     }
@@ -34,8 +36,8 @@ function applySessionResult(
   ctx.login({
     user: result.user,
     accessToken:
-      localStorage.getItem('admin_access_token') || ctx.accessToken || '',
-    refreshToken: localStorage.getItem('admin_refresh_token') || '',
+      localStorage.getItem("admin_access_token") || ctx.accessToken || "",
+    refreshToken: localStorage.getItem("admin_refresh_token") || "",
   });
   return isValidAdminSession(result.user);
 }
@@ -58,8 +60,8 @@ export default function AdminAuthGuard({ children }: AdminAuthGuardProps) {
 
       const hasLocalSession =
         isAuthenticated ||
-        Boolean(localStorage.getItem('admin_access_token')) ||
-        Boolean(localStorage.getItem('admin_refresh_token'));
+        Boolean(localStorage.getItem("admin_access_token")) ||
+        Boolean(localStorage.getItem("admin_refresh_token"));
 
       if (!hasLocalSession) {
         if (!cancelled) {

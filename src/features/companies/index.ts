@@ -1,2 +1,2 @@
-export { companySizes } from '@/constants/company';
-export { useCompanies } from './hooks/useCompanies';
+export { companySizes } from "@/constants/company";
+export { useCompanies } from "./hooks/useCompanies";

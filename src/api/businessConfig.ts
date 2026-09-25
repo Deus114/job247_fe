@@ -6,10 +6,12 @@ import type { ApiResponse } from "@/types/adminAuth";
 import type {
   AdminBusinessConfigApi,
   BusinessConfig,
+  PublicBusinessConfigApi,
 } from "@/types/businessConfig";
 import {
   buildBusinessConfigUpdateFormData,
   mapAdminBusinessConfigApiToForm,
+  mapPublicBusinessConfigApiToForm,
   type BusinessConfigImageFiles,
 } from "@/types/businessConfig";
 
@@ -28,6 +30,46 @@ function throwBusinessConfigError(fallbackKey: string, error: unknown): never {
   }
 
   throw new AdminAuthError(fallbackKey);
+}
+
+/**
+ * GET /business-config — public site config (no auth required).
+ * Feeds Redux for Navbar/Footer/Hero/login banners/legal pages.
+ */
+export async function fetchPublicBusinessConfig(): Promise<BusinessConfig> {
+  if (!env.apiBaseUrl) {
+    throw new AdminAuthError("apiErrors.missingBackendUrl");
+  }
+
+  try {
+    const res = (await axios.get("/business-config", {
+      skipAuthRefresh: true,
+    })) as ApiResponse<PublicBusinessConfigApi>;
+
+    if (!res || typeof res !== "object") {
+      throw new AdminAuthError("apiErrors.invalidResponse");
+    }
+
+    if (!isAdminApiSuccess(res.statusCode)) {
+      throw new AdminAuthError(
+        "apiErrors.businessConfigLoadFailed",
+        res.statusCode,
+        res.message,
+      );
+    }
+
+    if (!res.data || typeof res.data !== "object") {
+      throw new AdminAuthError(
+        "apiErrors.businessConfigMissingData",
+        res.statusCode,
+        res.message,
+      );
+    }
+
+    return mapPublicBusinessConfigApiToForm(res.data);
+  } catch (error) {
+    throwBusinessConfigError("apiErrors.businessConfigLoadFailed", error);
+  }
 }
 
 /** GET /admin/business-config — admin only; does not feed public pages. */

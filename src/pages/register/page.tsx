@@ -1,38 +1,38 @@
-import { useState, type SubmitEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { useAuth } from '@/features/auth';
-import { registerRequest } from '@/api';
-import { useAppSelector } from '@/store/hooks';
-import { mockBusinessConfig } from '@/mocks/businessConfig';
+import { useState, type SubmitEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { useAuth } from "@/features/auth";
+import { registerRequest } from "@/api";
+import { useAppSelector } from "@/store/hooks";
 
 export default function RegisterPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { login: loginUser } = useAuth();
-  const configuredBg = useAppSelector((state) => state.businessConfig.config.registerBgUrl);
-  const registerBgUrl = configuredBg || mockBusinessConfig.registerBgUrl;
+  const registerBgUrl = useAppSelector(
+    (state) => state.businessConfig.config.registerBgUrl,
+  );
   const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    role: 'user' as 'user' | 'employer',
+    fullName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    role: "user" as "user" | "employer",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (formData.password !== formData.confirmPassword) {
-      setError(t('validation.passwordMismatch'));
+      setError(t("validation.passwordMismatch"));
       return;
     }
     if (formData.password.length < 6) {
-      setError(t('validation.passwordTooShort'));
+      setError(t("validation.passwordTooShort"));
       return;
     }
 
@@ -45,9 +45,9 @@ export default function RegisterPage() {
         role: formData.role,
       });
       loginUser(user);
-      navigate('/');
+      navigate("/");
     } catch {
-      setError(t('common.error'));
+      setError(t("common.error"));
     } finally {
       setLoading(false);
     }
@@ -58,9 +58,17 @@ export default function RegisterPage() {
       <div className="w-full max-w-[1000px] bg-background-50 rounded-2xl border border-background-200/70 overflow-hidden flex flex-col lg:flex-row">
         <div className="flex-1 p-8 md:p-12 order-2 lg:order-1">
           <div className="mb-8">
-            <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground-950">{t('auth.registerTitle')}</h1>
+            <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground-950">
+              {t("auth.registerTitle")}
+            </h1>
             <p className="text-sm text-foreground-600 mt-2">
-              {t('auth.hasAccount')} <Link to="/login" className="text-primary-500 hover:underline font-medium cursor-pointer">{t('auth.loginLink')}</Link>
+              {t("auth.hasAccount")}{" "}
+              <Link
+                to="/login"
+                className="text-primary-500 hover:underline font-medium cursor-pointer"
+              >
+                {t("auth.loginLink")}
+              </Link>
             </p>
           </div>
 
@@ -72,92 +80,194 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('auth.fullName')} *</label>
-              <input type="text" value={formData.fullName} onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                required className="w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors"
-                placeholder="Nguyễn Văn A" />
+              <label className="block text-sm font-medium text-foreground-700 mb-1.5">
+                {t("auth.fullName")} *
+              </label>
+              <input
+                type="text"
+                value={formData.fullName}
+                onChange={(e) =>
+                  setFormData({ ...formData, fullName: e.target.value })
+                }
+                required
+                className="w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors"
+                placeholder="Nguyễn Văn A"
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('auth.email')} *</label>
-              <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                required className="w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors"
-                placeholder="email@example.com" />
+              <label className="block text-sm font-medium text-foreground-700 mb-1.5">
+                {t("auth.email")} *
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                required
+                className="w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors"
+                placeholder="email@example.com"
+              />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('auth.password')} *</label>
+                <label className="block text-sm font-medium text-foreground-700 mb-1.5">
+                  {t("auth.password")} *
+                </label>
                 <div className="relative">
-                  <input type={showPassword ? 'text' : 'password'} value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required className="w-full px-4 py-2.5 pr-10 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors"
-                    placeholder="••••••••" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-400 hover:text-foreground-600 cursor-pointer">
-                    <i className={showPassword ? 'ri-eye-off-line' : 'ri-eye-line'}></i>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
+                    required
+                    className="w-full px-4 py-2.5 pr-10 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-400 hover:text-foreground-600 cursor-pointer"
+                  >
+                    <i
+                      className={
+                        showPassword ? "ri-eye-off-line" : "ri-eye-line"
+                      }
+                    ></i>
                   </button>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('auth.confirmPassword')} *</label>
-                <input type="password" value={formData.confirmPassword} onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  required className="w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors"
-                  placeholder="••••••••" />
+                <label className="block text-sm font-medium text-foreground-700 mb-1.5">
+                  {t("auth.confirmPassword")} *
+                </label>
+                <input
+                  type="password"
+                  value={formData.confirmPassword}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      confirmPassword: e.target.value,
+                    })
+                  }
+                  required
+                  className="w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors"
+                  placeholder="••••••••"
+                />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground-700 mb-1.5">{t('auth.youAre')}</label>
+              <label className="block text-sm font-medium text-foreground-700 mb-1.5">
+                {t("auth.youAre")}
+              </label>
               <div className="flex flex-col sm:flex-row gap-3">
-                <label className={`flex-1 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${formData.role === 'user' ? 'border-primary-300 bg-primary-50' : 'border-background-200/70 hover:bg-background-100'}`}>
-                  <input type="radio" name="role" value="user" checked={formData.role === 'user'} onChange={() => setFormData({ ...formData, role: 'user' })} className="sr-only" />
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${formData.role === 'user' ? 'border-primary-500' : 'border-background-300'}`}>
-                    {formData.role === 'user' && <div className="w-2.5 h-2.5 rounded-full bg-primary-500"></div>}
+                <label
+                  className={`flex-1 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${formData.role === "user" ? "border-primary-300 bg-primary-50" : "border-background-200/70 hover:bg-background-100"}`}
+                >
+                  <input
+                    type="radio"
+                    name="role"
+                    value="user"
+                    checked={formData.role === "user"}
+                    onChange={() => setFormData({ ...formData, role: "user" })}
+                    className="sr-only"
+                  />
+                  <div
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${formData.role === "user" ? "border-primary-500" : "border-background-300"}`}
+                  >
+                    {formData.role === "user" && (
+                      <div className="w-2.5 h-2.5 rounded-full bg-primary-500"></div>
+                    )}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground-950">{t('auth.jobSeeker')}</p>
-                    <p className="text-xs text-foreground-500">{t('auth.jobSeekerDesc')}</p>
+                    <p className="text-sm font-medium text-foreground-950">
+                      {t("auth.jobSeeker")}
+                    </p>
+                    <p className="text-xs text-foreground-500">
+                      {t("auth.jobSeekerDesc")}
+                    </p>
                   </div>
                 </label>
-                <label className={`flex-1 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${formData.role === 'employer' ? 'border-accent-300 bg-accent-50' : 'border-background-200/70 hover:bg-background-100'}`}>
-                  <input type="radio" name="role" value="employer" checked={formData.role === 'employer'} onChange={() => setFormData({ ...formData, role: 'employer' })} className="sr-only" />
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${formData.role === 'employer' ? 'border-accent-500' : 'border-background-300'}`}>
-                    {formData.role === 'employer' && <div className="w-2.5 h-2.5 rounded-full bg-accent-500"></div>}
+                <label
+                  className={`flex-1 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${formData.role === "employer" ? "border-accent-300 bg-accent-50" : "border-background-200/70 hover:bg-background-100"}`}
+                >
+                  <input
+                    type="radio"
+                    name="role"
+                    value="employer"
+                    checked={formData.role === "employer"}
+                    onChange={() =>
+                      setFormData({ ...formData, role: "employer" })
+                    }
+                    className="sr-only"
+                  />
+                  <div
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${formData.role === "employer" ? "border-accent-500" : "border-background-300"}`}
+                  >
+                    {formData.role === "employer" && (
+                      <div className="w-2.5 h-2.5 rounded-full bg-accent-500"></div>
+                    )}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-foreground-950">{t('auth.employer')}</p>
-                    <p className="text-xs text-foreground-500">{t('auth.employerDesc')}</p>
+                    <p className="text-sm font-medium text-foreground-950">
+                      {t("auth.employer")}
+                    </p>
+                    <p className="text-xs text-foreground-500">
+                      {t("auth.employerDesc")}
+                    </p>
                   </div>
                 </label>
               </div>
             </div>
 
             <label className="flex items-start gap-2 cursor-pointer">
-              <input type="checkbox" required className="w-4 h-4 mt-0.5 rounded border-background-300 text-primary-500 focus:ring-primary-400 cursor-pointer" />
+              <input
+                type="checkbox"
+                required
+                className="w-4 h-4 mt-0.5 rounded border-background-300 text-primary-500 focus:ring-primary-400 cursor-pointer"
+              />
               <span className="text-xs text-foreground-600">
-                {t('auth.agreeTermsPrefix')}{' '}
+                {t("auth.agreeTermsPrefix")}{" "}
                 <Link to="/terms" className="text-primary-500 hover:underline">
-                  {t('auth.terms')}
-                </Link>{' '}
-                {t('common.and')}{' '}
-                <Link to="/privacy" className="text-primary-500 hover:underline">
-                  {t('auth.privacy')}
+                  {t("auth.terms")}
+                </Link>{" "}
+                {t("common.and")}{" "}
+                <Link
+                  to="/privacy"
+                  className="text-primary-500 hover:underline"
+                >
+                  {t("auth.privacy")}
                 </Link>
               </span>
             </label>
 
-            <button type="submit" disabled={loading} className="w-full py-3 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60">
-              {loading ? t('common.loading') : t('auth.registerButton')}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
+            >
+              {loading ? t("common.loading") : t("auth.registerButton")}
             </button>
           </form>
         </div>
 
-        <div className="lg:w-1/2 relative hidden lg:block order-1 lg:order-2">
-          <img
-            src={registerBgUrl}
-            alt="Register"
-            className="w-full h-full object-cover"
-          />
+        <div className="lg:w-1/2 relative hidden lg:block order-1 lg:order-2 bg-gradient-to-br from-accent-700 to-accent-500">
+          {registerBgUrl ? (
+            <img
+              src={registerBgUrl}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+          ) : null}
           <div className="absolute inset-0 bg-gradient-to-t from-accent-500/80 to-accent-500/20 flex flex-col justify-end p-10">
-            <h2 className="text-3xl font-heading font-bold text-white mb-3">{t('auth.welcomeRegister')}</h2>
-            <p className="text-white/80 text-sm leading-relaxed">{t('auth.welcomeRegisterDesc')}</p>
+            <h2 className="text-3xl font-heading font-bold text-white mb-3">
+              {t("auth.welcomeRegister")}
+            </h2>
+            <p className="text-white/80 text-sm leading-relaxed">
+              {t("auth.welcomeRegisterDesc")}
+            </p>
           </div>
         </div>
       </div>

@@ -9,8 +9,8 @@ interface LineChartProps {
 export default function LineChart({
   data,
   height = 200,
-  strokeColor = 'var(--primary-500)',
-  fillColor = 'var(--primary-100)',
+  strokeColor = "var(--primary-500)",
+  fillColor = "var(--primary-100)",
   showValues = true,
 }: LineChartProps) {
   if (data.length === 0) return null;
@@ -18,12 +18,16 @@ export default function LineChart({
   const maxValue = Math.max(...data.map((d) => d.value), 1);
   const padding = { top: 24, right: 16, bottom: 40, left: 16 };
   const chartWidth = 600;
-  const stepX = data.length > 1 ? (chartWidth - padding.left - padding.right) / (data.length - 1) : 0;
+  const stepX =
+    data.length > 1
+      ? (chartWidth - padding.left - padding.right) / (data.length - 1)
+      : 0;
 
   const getX = (index: number) => padding.left + index * stepX;
-  const getY = (value: number) => padding.top + height - (value / maxValue) * height;
+  const getY = (value: number) =>
+    padding.top + height - (value / maxValue) * height;
 
-  const points = data.map((d, i) => `${getX(i)},${getY(d.value)}`).join(' ');
+  const points = data.map((d, i) => `${getX(i)},${getY(d.value)}`).join(" ");
   const areaPoints = `${getX(0)},${padding.top + height} ${points} ${getX(data.length - 1)},${padding.top + height}`;
 
   return (
@@ -42,16 +46,12 @@ export default function LineChart({
           y2={padding.top + height * (1 - ratio)}
           stroke="oklch(var(--background-300))"
           strokeWidth="1"
-          strokeDasharray={ratio === 0 ? '0' : '4 4'}
+          strokeDasharray={ratio === 0 ? "0" : "4 4"}
         />
       ))}
 
       {/* Area fill */}
-      <polygon
-        points={areaPoints}
-        fill={fillColor}
-        opacity={0.3}
-      />
+      <polygon points={areaPoints} fill={fillColor} opacity={0.3} />
 
       {/* Line */}
       <polyline

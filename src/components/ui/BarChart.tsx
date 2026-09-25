@@ -10,7 +10,7 @@ export default function BarChart({
   data,
   maxValue,
   height = 200,
-  barColor = 'var(--primary-500)',
+  barColor = "var(--primary-500)",
   showValues = true,
 }: BarChartProps) {
   const max = maxValue ?? Math.max(...data.map((d) => d.value), 1);
@@ -35,7 +35,7 @@ export default function BarChart({
           y2={padding.top + height * (1 - ratio)}
           stroke="oklch(var(--background-300))"
           strokeWidth="1"
-          strokeDasharray={ratio === 0 ? '0' : '4 4'}
+          strokeDasharray={ratio === 0 ? "0" : "4 4"}
         />
       ))}
 
@@ -77,7 +77,9 @@ export default function BarChart({
               fill="oklch(var(--foreground-500))"
               fontSize="11"
             >
-              {item.label.length > 10 ? `${item.label.slice(0, 10)}...` : item.label}
+              {item.label.length > 10
+                ? `${item.label.slice(0, 10)}...`
+                : item.label}
             </text>
           </g>
         );

@@ -1,11 +1,11 @@
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   addApplication,
   updateApplication,
   removeApplication,
   updateApplicationStatus,
-} from '@/store/slices/applicationsSlice';
-import type { Application } from '@/types/application';
+} from "@/store/slices/applicationsSlice";
+import type { Application } from "@/types/application";
 
 /** Domain hook for job applications. */
 export function useApplications() {
@@ -23,7 +23,7 @@ export function useApplications() {
     removeApplication: (id: string) => {
       dispatch(removeApplication(id));
     },
-    updateApplicationStatus: (id: string, status: Application['status']) => {
+    updateApplicationStatus: (id: string, status: Application["status"]) => {
       dispatch(updateApplicationStatus({ id, status }));
     },
   };

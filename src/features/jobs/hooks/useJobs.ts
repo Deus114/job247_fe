@@ -1,4 +1,4 @@
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   addJob,
   updateJob,
@@ -6,15 +6,14 @@ import {
   restoreJob,
   permanentDeleteJob,
   toggleJobActive,
-} from '@/store/slices/jobSlice';
-import type { Job } from '@/types/job';
+} from "@/store/slices/jobSlice";
+import type { Job } from "@/types/job";
 
 /** Domain hook for jobs catalog + mutations. */
 export function useJobs() {
   const dispatch = useAppDispatch();
-  const { items, categories, educationLevels, locations, loading } = useAppSelector(
-    (state) => state.jobs,
-  );
+  const { items, categories, educationLevels, locations, loading } =
+    useAppSelector((state) => state.jobs);
 
   return {
     jobs: items,

@@ -1,7 +1,7 @@
-import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
-import messages from './local/index';
-import { getInitialLanguage, persistLanguage } from './langStorage';
+import i18n from "i18next";
+import { initReactI18next } from "react-i18next";
+import messages from "./local/index";
+import { getInitialLanguage, persistLanguage } from "./langStorage";
 
 const initialLng = getInitialLanguage();
 persistLanguage(initialLng);
@@ -9,9 +9,9 @@ persistLanguage(initialLng);
 export const i18nReady = i18n.use(initReactI18next).init({
   lng: initialLng,
   fallbackLng: initialLng,
-  supportedLngs: ['vi', 'en'],
-  ns: ['translation'],
-  defaultNS: 'translation',
+  supportedLngs: ["vi", "en"],
+  ns: ["translation"],
+  defaultNS: "translation",
   resources: messages,
   interpolation: {
     escapeValue: false,
@@ -19,7 +19,7 @@ export const i18nReady = i18n.use(initReactI18next).init({
   react: {
     useSuspense: false,
   },
-  load: 'currentOnly',
+  load: "currentOnly",
   initAsync: false,
 });
 

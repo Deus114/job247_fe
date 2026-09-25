@@ -43,8 +43,8 @@ export interface BusinessConfig {
   updatedAt: string;
 }
 
-/** Raw payload from GET /admin/business-config */
-export interface AdminBusinessConfigApi {
+/** Raw payload from public GET /business-config (no auth). */
+export interface PublicBusinessConfigApi {
   id: number;
   siteName: string | null;
   tagline: string | null;
@@ -57,7 +57,6 @@ export interface AdminBusinessConfigApi {
   logo: string | null;
   homeBanner: string | null;
   userLoginBackground: string | null;
-  adminLoginBackground: string | null;
   userRegisterBanner: string | null;
   footerAbout: string | null;
   footerCopyright: string | null;
@@ -73,6 +72,10 @@ export interface AdminBusinessConfigApi {
   metaTitle: string | null;
   metaDescription: string | null;
   metaKeywords: string | null;
+}
+
+export interface AdminBusinessConfigApi extends PublicBusinessConfigApi {
+  adminLoginBackground: string | null;
   smtpHost: string | null;
   smtpPort: number | null;
   smtpUsername: string | null;
@@ -140,11 +143,12 @@ export function createEmptyBusinessConfig(): BusinessConfig {
   };
 }
 
-/** Map API DTO → admin form. Null fields become empty strings / 0. */
-export function mapAdminBusinessConfigApiToForm(
-  data: AdminBusinessConfigApi,
+/** Map public GET /business-config → app config (admin-only fields stay empty). */
+export function mapPublicBusinessConfigApiToForm(
+  data: PublicBusinessConfigApi,
 ): BusinessConfig {
   return {
+    ...createEmptyBusinessConfig(),
     id: data.id != null ? String(data.id) : "",
     name: str(data.siteName),
     tagline: str(data.tagline),
@@ -155,10 +159,8 @@ export function mapAdminBusinessConfigApiToForm(
     longitude: numOrZero(data.longitude),
     taxCode: str(data.taxCode),
     logoUrl: str(data.logo),
-    faviconUrl: "",
     homeBannerUrl: str(data.homeBanner),
     loginBgUrl: str(data.userLoginBackground),
-    adminLoginBgUrl: str(data.adminLoginBackground),
     registerBgUrl: str(data.userRegisterBanner),
     metaTitle: str(data.metaTitle),
     metaDescription: str(data.metaDescription),
@@ -174,6 +176,16 @@ export function mapAdminBusinessConfigApiToForm(
     socialYoutube: str(data.youtubeUrl),
     privacyPolicyHtml: str(data.privacyPolicy),
     termsOfServiceHtml: str(data.termsOfService),
+  };
+}
+
+/** Map admin GET/PUT DTO → admin form. Null fields become empty strings / 0. */
+export function mapAdminBusinessConfigApiToForm(
+  data: AdminBusinessConfigApi,
+): BusinessConfig {
+  return {
+    ...mapPublicBusinessConfigApiToForm(data),
+    adminLoginBgUrl: str(data.adminLoginBackground),
     smtpHost: str(data.smtpHost),
     smtpPort: numOrZero(data.smtpPort),
     smtpUsername: str(data.smtpUsername),
