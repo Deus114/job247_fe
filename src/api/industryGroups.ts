@@ -7,6 +7,8 @@ import type {
   IndustryGroup,
   IndustryGroupListParams,
   IndustryGroupWritePayload,
+  PublicIndustry,
+  PublicIndustryGroup,
   PaginatedList,
   ApiPagination,
 } from "@/types/catalog";
@@ -325,5 +327,84 @@ export async function permanentDeleteIndustryGroup(id: number): Promise<void> {
     }
   } catch (error) {
     throwIndustryGroupError("apiErrors.industryGroupDeleteFailed", error);
+  }
+}
+
+function normalizePublicIndustry(raw: unknown): PublicIndustry | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const id = Number(r.id);
+  if (!Number.isFinite(id)) return null;
+  return {
+    id,
+    name: String(r.name ?? ""),
+    description: String(r.description ?? ""),
+    sortOrder: Number(r.sortOrder) || 0,
+    image: String(r.image ?? ""),
+  };
+}
+
+function normalizePublicIndustryGroup(
+  raw: unknown,
+): PublicIndustryGroup | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const id = Number(r.id);
+  if (!Number.isFinite(id)) return null;
+  const industries = Array.isArray(r.industries)
+    ? r.industries
+        .map(normalizePublicIndustry)
+        .filter((item): item is PublicIndustry => item != null)
+    : [];
+  return {
+    id,
+    name: String(r.name ?? ""),
+    description: String(r.description ?? ""),
+    sortOrder: Number(r.sortOrder) || 0,
+    image: String(r.image ?? ""),
+    industries,
+  };
+}
+
+/** GET /industry-groups — public catalog with nested industries. */
+export async function fetchPublicIndustryGroups(
+  params: { page?: number; size?: number; sort?: string } = {},
+): Promise<PaginatedList<PublicIndustryGroup>> {
+  requireBackend();
+
+  try {
+    const res = (await axios.get("/industry-groups", {
+      params: {
+        page: params.page ?? 1,
+        size: params.size ?? 100,
+        sort: params.sort ?? "sortOrder,ASC",
+      },
+    })) as ApiResponse<{ data?: unknown; pagination?: unknown } | unknown[]>;
+
+    if (!res || typeof res !== "object") {
+      throw new AdminAuthError("apiErrors.invalidResponse");
+    }
+    if (!isAdminApiSuccess(res.statusCode)) {
+      throw new AdminAuthError(
+        "apiErrors.industryGroupLoadFailed",
+        res.statusCode,
+        res.message,
+      );
+    }
+
+    const envelope = asRecord(res.data);
+    const rowsRaw = Array.isArray(res.data)
+      ? res.data
+      : Array.isArray(envelope.data)
+        ? envelope.data
+        : [];
+
+    const data = rowsRaw
+      .map(normalizePublicIndustryGroup)
+      .filter((item): item is PublicIndustryGroup => item != null);
+
+    return { data, pagination: normalizePagination(envelope.pagination) };
+  } catch (error) {
+    throwIndustryGroupError("apiErrors.industryGroupLoadFailed", error);
   }
 }

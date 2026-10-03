@@ -1,63 +1,263 @@
-import { useState, useEffect, type SubmitEvent } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { useAuth } from "@/features/auth";
-import { useJobs } from "@/features/jobs";
-import { useCompanies, companySizes } from "@/features/companies";
+import {
+  AdminAuthError,
+  fetchEmployerCompanyById,
+  fetchPublicIndustryGroups,
+  fetchPublicProvinces,
+  resolveAdminAuthErrorMessage,
+  updateEmployerCompany,
+} from "@/api";
 import CustomSelect from "@/components/ui/CustomSelect";
+import ImageUploadField from "@/components/ui/ImageUploadField";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import MultiSelect from "@/components/ui/MultiSelect";
+import { useAuth } from "@/features/auth";
+import { companySizeValues } from "@/features/companies";
+import { usePageShell } from "@/layouts/usePageShell";
+import { toast } from "@/lib/toast";
+import type { PublicIndustryGroup, PublicProvince } from "@/types/catalog";
+import type { EmployerCompany } from "@/types/company";
+import { useEffect, useMemo, useState, type SubmitEvent } from "react";
+import { useTranslation } from "react-i18next";
+import { useNavigate, useParams } from "react-router-dom";
+
+const emptyForm = {
+  name: "",
+  industryIds: [] as string[],
+  size: "",
+  provinceId: "",
+  address: "",
+  website: "",
+  email: "",
+  phone: "",
+  taxCode: "",
+  description: "",
+};
+
+function remoteImageUrl(value: string): string | undefined {
+  const url = value.trim();
+  if (!url || url.startsWith("blob:") || url.startsWith("data:")) {
+    return undefined;
+  }
+  return url;
+}
 
 export default function EditCompanyPage() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { companies, loading, updateCompany } = useCompanies();
-  const { categories: rawCategories } = useJobs();
+  const { cms, className: shell } = usePageShell();
+  const companyId = Number(id);
 
-  const categories = (rawCategories || []).map((c: { name: string }) => c.name);
-  const company = companies.find((c) => c.id === id);
-
-  const [formData, setFormData] = useState({
-    name: "",
-    nameEn: "",
-    industry: "",
-    size: "",
-    location: "",
-    address: "",
-    website: "",
-    contactEmail: "",
-    contactPhone: "",
-    taxCode: "",
-    description: "",
-  });
+  const [company, setCompany] = useState<EmployerCompany | null>(null);
+  const [loadingCompany, setLoadingCompany] = useState(true);
+  const [formData, setFormData] = useState(emptyForm);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [logoUrl, setLogoUrl] = useState("");
+  const [bannerUrl, setBannerUrl] = useState("");
+  const [industryGroups, setIndustryGroups] = useState<PublicIndustryGroup[]>(
+    [],
+  );
+  const [provinces, setProvinces] = useState<PublicProvince[]>([]);
+  const [catalogError, setCatalogError] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [saved, setSaved] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  // Ensure errors is always an object
   const safeErrors = errors || {};
+  const membership = useMemo(
+    () =>
+      user?.companies?.find((item) => item.companyId === companyId) ?? null,
+    [user?.companies, companyId],
+  );
+  const canEdit =
+    membership?.role === "OWNER" || membership?.role === "ADMIN";
+
+  const industryGroupsOptions = useMemo(
+    () =>
+      industryGroups.map((group) => ({
+        label: group.name,
+        options: group.industries.map((item) => ({
+          value: String(item.id),
+          label: item.name,
+        })),
+      })),
+    [industryGroups],
+  );
+
+  const provinceOptions = useMemo(
+    () => [
+      {
+        value: "",
+        label: `${t("common.select")} ${t("job.location").toLowerCase()}`,
+      },
+      ...provinces.map((item) => ({
+        value: String(item.id),
+        label: item.name,
+      })),
+    ],
+    [provinces, t],
+  );
 
   useEffect(() => {
-    if (company) {
-      setFormData({
-        name: company.name,
-        nameEn: company.nameEn || "",
-        industry: company.industry,
-        size: company.size,
-        location: company.location,
-        address: company.address,
-        website: company.website || "",
-        contactEmail: company.contactEmail,
-        contactPhone: company.contactPhone,
-        taxCode: company.taxCode,
-        description: company.description,
+    let cancelled = false;
+    void Promise.all([
+      fetchPublicIndustryGroups({ page: 1, size: 200 }),
+      fetchPublicProvinces({ page: 1, size: 200 }),
+    ])
+      .then(([groupsRes, provincesRes]) => {
+        if (cancelled) return;
+        setIndustryGroups(groupsRes.data);
+        setProvinces(provincesRes.data);
+        setCatalogError("");
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setCatalogError(
+          error instanceof AdminAuthError
+            ? resolveAdminAuthErrorMessage(error, t)
+            : t("company.catalogLoadFailed"),
+        );
       });
-    }
-  }, [company]);
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
 
-  if (loading) {
+  useEffect(() => {
+    if (!Number.isFinite(companyId) || companyId <= 0) {
+      setCompany(null);
+      setLoadingCompany(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingCompany(true);
+    void fetchEmployerCompanyById(companyId)
+      .then((data) => {
+        if (cancelled) return;
+        setCompany(data);
+        setFormData({
+          name: data.name,
+          industryIds: data.industries.map((item) => String(item.id)),
+          size: data.size,
+          provinceId: data.provinceId ? String(data.provinceId) : "",
+          address: data.address,
+          website: data.website || "",
+          email: data.email,
+          phone: data.phone,
+          taxCode: data.taxCode,
+          description: data.description,
+        });
+        setLogoUrl(data.logo || "");
+        setBannerUrl(data.backgroundImage || "");
+        setLogoFile(null);
+        setBannerFile(null);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setCompany(null);
+        toast.error(
+          error instanceof AdminAuthError
+            ? resolveAdminAuthErrorMessage(error, t)
+            : t("apiErrors.employerCompanyLoadFailed"),
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCompany(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [companyId, t]);
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    if (errors[name]) setErrors({ ...errors, [name]: "" });
+    setSubmitError("");
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData({ ...formData, [name]: value });
+    if (errors[name]) setErrors({ ...errors, [name]: "" });
+    setSubmitError("");
+  };
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.name.trim()) {
+      newErrors.name = t("company.validation.nameRequired");
+    }
+    if (formData.industryIds.length === 0) {
+      newErrors.industryIds = t("validation.selectOption");
+    }
+    if (!formData.size) newErrors.size = t("validation.selectOption");
+    if (!formData.provinceId) {
+      newErrors.provinceId = t("validation.selectOption");
+    }
+    if (!formData.address.trim()) {
+      newErrors.address = t("company.validation.addressRequired");
+    }
+    if (!formData.email.trim()) newErrors.email = t("validation.required");
+    if (!formData.phone.trim()) newErrors.phone = t("validation.required");
+    if (!formData.taxCode.trim()) newErrors.taxCode = t("validation.required");
+    if (!formData.description.trim()) {
+      newErrors.description = t("company.validation.descRequired");
+    }
+    if (formData.description.length > 500) {
+      newErrors.description = t("validation.maxLength", { max: 500 });
+    }
+    if (formData.website && !/^https?:\/\/.+/.test(formData.website)) {
+      newErrors.website = t("validation.urlInvalid");
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!company || !validate()) return;
+
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      const result = await updateEmployerCompany(company.id, {
+        name: formData.name.trim(),
+        industryIds: formData.industryIds.map(Number).filter(Number.isFinite),
+        size: formData.size,
+        provinceId: Number(formData.provinceId),
+        address: formData.address.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        taxCode: formData.taxCode.trim(),
+        description: formData.description.trim(),
+        website: formData.website.trim() || undefined,
+        logoFile,
+        logo: logoFile ? undefined : remoteImageUrl(logoUrl),
+        backgroundImageFile: bannerFile,
+        backgroundImage: bannerFile ? undefined : remoteImageUrl(bannerUrl),
+      });
+      toast.success(result.message || t("company.updateSuccess"));
+      navigate(`/employer/companies/${company.id}`, { replace: true });
+    } catch (error) {
+      setSubmitError(
+        error instanceof AdminAuthError
+          ? resolveAdminAuthErrorMessage(error, t)
+          : t("apiErrors.employerCompanyUpdateFailed"),
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loadingCompany) {
     return (
-      <div className="min-h-screen pt-[70px] flex items-center justify-center bg-background-100">
+      <div className={`${shell} flex items-center justify-center`}>
         <LoadingSpinner />
       </div>
     );
@@ -65,22 +265,20 @@ export default function EditCompanyPage() {
 
   if (!company) {
     return (
-      <div className="min-h-screen pt-[70px] flex items-center justify-center bg-background-100">
+      <div className={`${shell} flex items-center justify-center`}>
         <div className="text-center p-10 max-w-md">
           <div className="w-20 h-20 mx-auto rounded-full bg-background-200 flex items-center justify-center mb-5">
             <i className="ri-building-line text-3xl text-foreground-400"></i>
           </div>
           <h2 className="text-xl font-heading font-bold text-foreground-950 mb-2">
-            {t("company.notFound", "Không tìm thấy công ty")}
+            {t("company.notFound")}
           </h2>
           <p className="text-sm text-foreground-600 mb-6">
-            {t(
-              "company.notFoundDesc",
-              "Công ty này không tồn tại hoặc đã bị xóa.",
-            )}
+            {t("company.notFoundDesc")}
           </p>
           <button
-            onClick={() => navigate("/companies/manage")}
+            type="button"
+            onClick={() => navigate("/employer/companies")}
             className="px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
           >
             {t("common.back")}
@@ -90,9 +288,9 @@ export default function EditCompanyPage() {
     );
   }
 
-  if (!user || user.id !== company.createdBy) {
+  if (!user || !canEdit) {
     return (
-      <div className="min-h-screen pt-[70px] flex items-center justify-center bg-background-100">
+      <div className={`${shell} flex items-center justify-center`}>
         <div className="text-center p-10 max-w-md">
           <div className="w-20 h-20 mx-auto rounded-full bg-red-50 flex items-center justify-center mb-5">
             <i className="ri-forbid-line text-3xl text-red-500"></i>
@@ -107,7 +305,8 @@ export default function EditCompanyPage() {
             )}
           </p>
           <button
-            onClick={() => navigate("/companies/manage")}
+            type="button"
+            onClick={() => navigate("/employer/companies")}
             className="px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
           >
             {t("common.back")}
@@ -117,151 +316,41 @@ export default function EditCompanyPage() {
     );
   }
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-    if (errors[name]) setErrors({ ...errors, [name]: "" });
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData({ ...formData, [name]: value });
-    if (errors[name]) setErrors({ ...errors, [name]: "" });
-  };
-
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.name.trim())
-      newErrors.name = t("company.validation.nameRequired");
-    if (!formData.industry) newErrors.industry = t("validation.selectOption");
-    if (!formData.size) newErrors.size = t("validation.selectOption");
-    if (!formData.location.trim())
-      newErrors.location = t("validation.required");
-    if (!formData.address.trim())
-      newErrors.address = t("company.validation.addressRequired");
-    if (!formData.contactEmail.trim())
-      newErrors.contactEmail = t("validation.required");
-    if (!formData.contactPhone.trim())
-      newErrors.contactPhone = t("validation.required");
-    if (!formData.taxCode.trim()) newErrors.taxCode = t("validation.required");
-    if (!formData.description.trim())
-      newErrors.description = t("company.validation.descRequired");
-    if (formData.description.length > 500)
-      newErrors.description = t("validation.maxLength", { max: 500 });
-    if (formData.website && !/^https?:\/\/.+/.test(formData.website))
-      newErrors.website = t("validation.urlInvalid");
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!validate()) return;
-
-    updateCompany({
-      ...company,
-      name: formData.name.trim(),
-      nameEn: formData.nameEn.trim() || formData.name.trim(),
-      description: formData.description.trim(),
-      industry: formData.industry,
-      size: formData.size,
-      location: formData.location.trim(),
-      address: formData.address.trim(),
-      website: formData.website.trim(),
-      contactEmail: formData.contactEmail.trim(),
-      contactPhone: formData.contactPhone.trim(),
-      taxCode: formData.taxCode.trim(),
-      status: company.status === "needs_revision" ? "pending" : company.status,
-      adminNote: undefined,
-      updatedAt: new Date().toISOString().split("T")[0],
-    });
-    setSaved(true);
-  };
-
-  if (saved) {
-    return (
-      <div className="min-h-screen pt-[70px] flex items-center justify-center bg-background-100">
-        <div className="text-center p-10 max-w-md">
-          <div className="w-20 h-20 mx-auto rounded-full bg-accent-100 flex items-center justify-center mb-5">
-            <i className="ri-check-line text-4xl text-accent-500"></i>
-          </div>
-          <h2 className="text-2xl font-heading font-bold text-foreground-950 mb-3">
-            {t("company.updateSuccess", "Đã cập nhật!")}
-          </h2>
-          <p className="text-sm text-foreground-600 mb-2">
-            {t("company.updated", "Thông tin công ty")}{" "}
-            <strong>{formData.name}</strong>{" "}
-            {t("company.wasUpdated", "đã được cập nhật")}.
-          </p>
-          {company.status === "needs_revision" && (
-            <p className="text-xs text-yellow-600 bg-yellow-50 rounded-lg px-4 py-2 mb-6">
-              {t(
-                "company.resubmitted",
-                "Hồ sơ đã được gửi lại để admin xét duyệt.",
-              )}
-            </p>
-          )}
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              onClick={() => navigate(`/companies/${company.id}`)}
-              className="px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
-            >
-              {t("company.viewProfile", "Xem hồ sơ")}
-            </button>
-            <button
-              onClick={() => navigate("/companies/manage")}
-              className="px-6 py-2.5 border border-background-300 text-foreground-700 rounded-full text-sm font-medium hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap"
-            >
-              {t("company.myCompanies")}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen pt-[70px] bg-background-100">
-      <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12">
-        <div className="max-w-3xl mx-auto">
+    <div className={shell || undefined}>
+      <div
+        className={
+          cms ? "" : "w-full max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12"
+        }
+      >
+        <div className={cms ? "" : "max-w-3xl mx-auto"}>
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-1">
               <button
-                onClick={() => navigate(-1)}
-                className="w-9 h-9 flex items-center justify-center rounded-full border border-background-200 text-foreground-500 hover:bg-background-50 transition-colors cursor-pointer"
+                type="button"
+                onClick={() => navigate(`/employer/companies/${company.id}`)}
+                className="w-10 h-10 flex items-center justify-center rounded-xl border border-background-200 text-foreground-500 hover:bg-background-50 transition-colors cursor-pointer"
               >
                 <i className="ri-arrow-left-line"></i>
               </button>
-              <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground-950">
+              <h1 className="text-xl font-heading font-bold text-foreground-950">
                 {t("company.edit")}
               </h1>
             </div>
-            <p className="text-sm text-foreground-600 mt-1 ml-12">
+            <p className="text-sm text-foreground-600 mt-1 ml-13">
               {t("company.updateInfo", "Cập nhật thông tin công ty")}{" "}
               <strong>{company.name}</strong>
             </p>
           </div>
 
-          {company.adminNote && (
-            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
-                  <i className="ri-error-warning-line text-yellow-600"></i>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-yellow-800 mb-1">
-                    {t("company.revisionRequest", "Yêu cầu chỉnh sửa từ Admin")}
-                  </p>
-                  <p className="text-sm text-yellow-700">{company.adminNote}</p>
-                  <p className="text-xs text-yellow-600 mt-2">
-                    {t(
-                      "company.revisionInstr",
-                      "Vui lòng cập nhật thông tin theo góp ý trên và gửi lại để được xét duyệt.",
-                    )}
-                  </p>
-                </div>
-              </div>
+          {catalogError && (
+            <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-600">
+              {catalogError}
+            </div>
+          )}
+          {submitError && (
+            <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-600">
+              {submitError}
             </div>
           )}
 
@@ -275,9 +364,9 @@ export default function EditCompanyPage() {
                 {t("company.basicInfo", "Thông tin cơ bản")}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-foreground-700 mb-1.5">
-                    Tên công ty (Tiếng Việt) *
+                    {t("company.name")} *
                   </label>
                   <input
                     type="text"
@@ -285,7 +374,6 @@ export default function EditCompanyPage() {
                     value={formData.name}
                     onChange={handleChange}
                     className={`w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border rounded-lg focus:outline-none focus:border-primary-300 transition-colors ${safeErrors.name ? "border-red-400" : "border-background-200/70"}`}
-                    placeholder="VD: Công ty Cổ phần ABC"
                   />
                   {safeErrors.name && (
                     <p className="text-xs text-red-500 mt-1">
@@ -295,54 +383,45 @@ export default function EditCompanyPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground-700 mb-1.5">
-                    Tên công ty (Tiếng Anh)
+                    {t("company.industry")} *
                   </label>
-                  <input
-                    type="text"
-                    name="nameEn"
-                    value={formData.nameEn}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors"
-                    placeholder="VD: ABC Corporation"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground-700 mb-1.5">
-                    Ngành nghề *
-                  </label>
-                  <CustomSelect
-                    value={formData.industry}
-                    onChange={(v) => handleSelectChange("industry", v)}
-                    options={[
-                      { value: "", label: "Chọn ngành nghề" },
-                      ...categories.map((cat) => ({ value: cat, label: cat })),
-                    ]}
-                    placeholder="Chọn ngành nghề"
+                  <MultiSelect
+                    values={formData.industryIds}
+                    onChange={(values) => {
+                      setFormData({ ...formData, industryIds: values });
+                      if (errors.industryIds) {
+                        setErrors({ ...errors, industryIds: "" });
+                      }
+                    }}
+                    groups={industryGroupsOptions}
+                    placeholder={`${t("common.select")} ${t("company.industry").toLowerCase()}`}
                     className={
-                      safeErrors.industry ? "[&>button]:border-red-400" : ""
+                      safeErrors.industryIds ? "[&>button]:border-red-400" : ""
                     }
                   />
-                  {safeErrors.industry && (
+                  {safeErrors.industryIds && (
                     <p className="text-xs text-red-500 mt-1">
-                      {safeErrors.industry}
+                      {safeErrors.industryIds}
                     </p>
                   )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground-700 mb-1.5">
-                    Quy mô *
+                    {t("company.size")} *
                   </label>
                   <CustomSelect
                     value={formData.size}
                     onChange={(v) => handleSelectChange("size", v)}
                     options={[
-                      { value: "", label: "Chọn quy mô" },
-                      ...companySizes.map((s) => ({
+                      {
+                        value: "",
+                        label: `${t("common.select")} ${t("company.size").toLowerCase()}`,
+                      },
+                      ...companySizeValues.map((s) => ({
                         value: s,
-                        label: `${s} nhân viên`,
+                        label: t(`company.sizeOptions.${s}`, s),
                       })),
                     ]}
-                    placeholder="Chọn quy mô"
                     className={
                       safeErrors.size ? "[&>button]:border-red-400" : ""
                     }
@@ -355,25 +434,42 @@ export default function EditCompanyPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground-700 mb-1.5">
-                    Địa điểm (Tỉnh/Thành phố) *
+                    {t("job.location")} *
+                  </label>
+                  <CustomSelect
+                    value={formData.provinceId}
+                    onChange={(v) => handleSelectChange("provinceId", v)}
+                    options={provinceOptions}
+                    className={
+                      safeErrors.provinceId ? "[&>button]:border-red-400" : ""
+                    }
+                  />
+                  {safeErrors.provinceId && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {safeErrors.provinceId}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground-700 mb-1.5">
+                    {t("company.taxCode")} *
                   </label>
                   <input
                     type="text"
-                    name="location"
-                    value={formData.location}
+                    name="taxCode"
+                    value={formData.taxCode}
                     onChange={handleChange}
-                    className={`w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border rounded-lg focus:outline-none focus:border-primary-300 transition-colors ${safeErrors.location ? "border-red-400" : "border-background-200/70"}`}
-                    placeholder="VD: Hồ Chí Minh"
+                    className={`w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border rounded-lg focus:outline-none focus:border-primary-300 transition-colors ${safeErrors.taxCode ? "border-red-400" : "border-background-200/70"}`}
                   />
-                  {safeErrors.location && (
+                  {safeErrors.taxCode && (
                     <p className="text-xs text-red-500 mt-1">
-                      {safeErrors.location}
+                      {safeErrors.taxCode}
                     </p>
                   )}
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-foreground-700 mb-1.5">
-                    Địa chỉ trụ sở *
+                    {t("company.address")} *
                   </label>
                   <input
                     type="text"
@@ -381,7 +477,6 @@ export default function EditCompanyPage() {
                     value={formData.address}
                     onChange={handleChange}
                     className={`w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border rounded-lg focus:outline-none focus:border-primary-300 transition-colors ${safeErrors.address ? "border-red-400" : "border-background-200/70"}`}
-                    placeholder="VD: Tầng 5, Tòa nhà ABC, 123 Đường XYZ, Quận 1, TP. HCM"
                   />
                   {safeErrors.address && (
                     <p className="text-xs text-red-500 mt-1">
@@ -394,79 +489,59 @@ export default function EditCompanyPage() {
 
             <div>
               <h3 className="text-base font-heading font-semibold text-foreground-950 mb-4 flex items-center gap-2">
-                <i className="ri-contacts-line text-primary-500"></i> Thông tin
-                liên hệ
+                <i className="ri-contacts-line text-primary-500"></i>{" "}
+                {t("company.contactInfo")}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-sm font-medium text-foreground-700 mb-1.5">
-                    Email liên hệ *
+                    {t("contact.email")} *
                   </label>
                   <input
                     type="email"
-                    name="contactEmail"
-                    value={formData.contactEmail}
+                    name="email"
+                    value={formData.email}
                     onChange={handleChange}
-                    className={`w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border rounded-lg focus:outline-none focus:border-primary-300 transition-colors ${safeErrors.contactEmail ? "border-red-400" : "border-background-200/70"}`}
-                    placeholder="VD: hr@congty.com"
+                    className={`w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border rounded-lg focus:outline-none focus:border-primary-300 transition-colors ${safeErrors.email ? "border-red-400" : "border-background-200/70"}`}
                   />
-                  {safeErrors.contactEmail && (
+                  {safeErrors.email && (
                     <p className="text-xs text-red-500 mt-1">
-                      {safeErrors.contactEmail}
+                      {safeErrors.email}
                     </p>
                   )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground-700 mb-1.5">
-                    Số điện thoại *
+                    {t("contact.phone")} *
                   </label>
                   <input
                     type="text"
-                    name="contactPhone"
-                    value={formData.contactPhone}
+                    name="phone"
+                    value={formData.phone}
                     onChange={handleChange}
-                    className={`w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border rounded-lg focus:outline-none focus:border-primary-300 transition-colors ${safeErrors.contactPhone ? "border-red-400" : "border-background-200/70"}`}
-                    placeholder="VD: 028 3838 1234"
+                    className={`w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border rounded-lg focus:outline-none focus:border-primary-300 transition-colors ${safeErrors.phone ? "border-red-400" : "border-background-200/70"}`}
                   />
-                  {safeErrors.contactPhone && (
+                  {safeErrors.phone && (
                     <p className="text-xs text-red-500 mt-1">
-                      {safeErrors.contactPhone}
+                      {safeErrors.phone}
                     </p>
                   )}
                 </div>
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-foreground-700 mb-1.5">
-                    Website
+                    {t("company.website")}
                   </label>
                   <input
-                    type="text"
+                    type="url"
                     name="website"
                     value={formData.website}
                     onChange={handleChange}
                     className={`w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border rounded-lg focus:outline-none focus:border-primary-300 transition-colors ${safeErrors.website ? "border-red-400" : "border-background-200/70"}`}
-                    placeholder="VD: https://www.congty.com"
+                    placeholder="https://"
                   />
                   {safeErrors.website && (
                     <p className="text-xs text-red-500 mt-1">
                       {safeErrors.website}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground-700 mb-1.5">
-                    Mã số thuế *
-                  </label>
-                  <input
-                    type="text"
-                    name="taxCode"
-                    value={formData.taxCode}
-                    onChange={handleChange}
-                    className={`w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border rounded-lg focus:outline-none focus:border-primary-300 transition-colors ${safeErrors.taxCode ? "border-red-400" : "border-background-200/70"}`}
-                    placeholder="VD: 0101248150"
-                  />
-                  {safeErrors.taxCode && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {safeErrors.taxCode}
                     </p>
                   )}
                 </div>
@@ -475,8 +550,43 @@ export default function EditCompanyPage() {
 
             <div>
               <h3 className="text-base font-heading font-semibold text-foreground-950 mb-4 flex items-center gap-2">
-                <i className="ri-file-text-line text-primary-500"></i> Mô tả
-                công ty *
+                <i className="ri-image-line text-primary-500"></i>{" "}
+                {t("company.logo")} / {t("company.coverImage")}
+              </h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <ImageUploadField
+                  label={t("company.logo")}
+                  value={logoUrl}
+                  file={logoFile}
+                  onChange={(next) => {
+                    setLogoFile(next.file);
+                    setLogoUrl(next.url);
+                  }}
+                  previewClassName="w-full h-40 rounded-xl object-contain border border-background-200/70 bg-background-100"
+                  placeholder={t("company.chooseLogo")}
+                  hint={t("company.logoOrLinkHint")}
+                />
+                <ImageUploadField
+                  label={t("company.coverImage")}
+                  value={bannerUrl}
+                  file={bannerFile}
+                  onChange={(next) => {
+                    setBannerFile(next.file);
+                    setBannerUrl(next.url);
+                  }}
+                  aspectW={16}
+                  aspectH={6}
+                  previewClassName="w-full h-40 rounded-xl object-cover border border-background-200/70 bg-background-100"
+                  placeholder={t("company.chooseBanner")}
+                  hint={t("company.logoOrLinkHint")}
+                />
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-base font-heading font-semibold text-foreground-950 mb-4 flex items-center gap-2">
+                <i className="ri-file-text-line text-primary-500"></i>{" "}
+                {t("company.description")} *
               </h3>
               <textarea
                 name="description"
@@ -484,7 +594,6 @@ export default function EditCompanyPage() {
                 onChange={handleChange}
                 rows={5}
                 className={`w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border rounded-lg focus:outline-none focus:border-primary-300 transition-colors resize-none ${safeErrors.description ? "border-red-400" : "border-background-200/70"}`}
-                placeholder="Mô tả về công ty, lĩnh vực hoạt động, văn hóa, thành tựu..."
                 maxLength={500}
               ></textarea>
               <div className="flex items-center justify-between mt-1">
@@ -499,17 +608,18 @@ export default function EditCompanyPage() {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 pt-4">
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <button
                 type="submit"
-                className="flex-1 py-3 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
+                disabled={submitting || Boolean(catalogError)}
+                className="sm:w-auto min-h-[44px] px-6 py-3 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
               >
-                <i className="ri-save-line mr-1.5"></i> {t("common.save")}
+                {submitting ? t("common.loading") : t("common.save")}
               </button>
               <button
                 type="button"
-                onClick={() => navigate("/companies/manage")}
-                className="px-6 py-3 border border-background-300 text-foreground-700 rounded-xl text-sm font-medium hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap"
+                onClick={() => navigate(`/employer/companies/${company.id}`)}
+                className="sm:w-auto min-h-[44px] px-6 py-3 border border-background-300 text-foreground-700 rounded-xl text-sm font-medium hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap"
               >
                 {t("common.cancel")}
               </button>

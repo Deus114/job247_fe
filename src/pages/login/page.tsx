@@ -2,7 +2,12 @@ import { useState, type SubmitEvent } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth";
-import { loginRequest, mockDemoAccounts } from "@/api";
+import {
+  AdminAuthError,
+  loginRequest,
+  mockDemoAccounts,
+  resolveAdminAuthErrorMessage,
+} from "@/api";
 import { env } from "@/config/env";
 import { useAppSelector } from "@/store/hooks";
 
@@ -29,7 +34,14 @@ export default function LoginPage() {
     role: "user" | "employer" | "admin";
   }) => {
     loginUser(user);
-    navigate(from !== "/login" && from !== "/register" ? from : "/");
+    const employerPath = from.startsWith("/employer");
+    if (user.role === "employer") {
+      navigate(employerPath ? from : "/employer", { replace: true });
+      return;
+    }
+    navigate(!employerPath && from !== "/login" && from !== "/register" ? from : "/", {
+      replace: true,
+    });
   };
 
   const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
@@ -45,8 +57,12 @@ export default function LoginPage() {
     try {
       const user = await loginRequest({ email, password });
       handleLoginSuccess(user);
-    } catch {
-      setError(t("auth.invalidCredentials"));
+    } catch (error) {
+      setError(
+        error instanceof AdminAuthError
+          ? resolveAdminAuthErrorMessage(error, t)
+          : t("auth.invalidCredentials"),
+      );
     } finally {
       setLoading(false);
     }
@@ -61,8 +77,12 @@ export default function LoginPage() {
         password: acc.password,
       });
       handleLoginSuccess(user);
-    } catch {
-      setError(t("auth.invalidCredentials"));
+    } catch (error) {
+      setError(
+        error instanceof AdminAuthError
+          ? resolveAdminAuthErrorMessage(error, t)
+          : t("auth.invalidCredentials"),
+      );
     } finally {
       setLoading(false);
     }
@@ -183,7 +203,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {env.useMock && (
+          {env.useMock && !env.apiBaseUrl && (
             <div className="mt-8 pt-6 border-t border-background-200/70">
               <p className="text-xs text-foreground-500 text-center mb-4">
                 {t("auth.demoQuickLogin")}

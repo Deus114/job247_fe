@@ -1,48 +1,132 @@
-import { useState, type SubmitEvent } from "react";
-import { useTranslation } from "react-i18next";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { toggleTheme } from "@/store/slices/themeSlice";
-import { changeAppLanguage } from "@/store/slices/languageSlice";
+import {
+  AdminAuthError,
+  fetchPublicMe,
+  resolveAdminAuthErrorMessage,
+  updatePublicMe,
+} from "@/api";
+import { env } from "@/config/env";
 import { useAuth } from "@/features/auth";
-import { useNavigate } from "react-router-dom";
 import { useNotification } from "@/hooks/useNotification";
+import { usePageShell } from "@/layouts/usePageShell";
+import { formatDate } from "@/lib/formatDate";
 import { isStrongPassword } from "@/lib/password";
+import { toast } from "@/lib/toast";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { changeAppLanguage } from "@/store/slices/languageSlice";
+import { toggleTheme } from "@/store/slices/themeSlice";
+import { useEffect, useState, type SubmitEvent } from "react";
+import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 
 export default function SettingsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const mode = useAppSelector((state) => state.theme.mode);
   const lang = useAppSelector((state) => state.language.lang);
-  const { user, updateProfile, logout: logoutUser } = useAuth();
+  const { user, login: loginUser, logout: logoutUser } = useAuth();
+  const { cms, className: shell } = usePageShell();
   const { isSupported, isSubscribed, requestPermission, sendTestNotification } =
     useNotification();
 
-  const [profileForm, setProfileForm] = useState({
-    fullName: user?.fullName || "",
-    email: user?.email || "",
-  });
-  const [saved, setSaved] = useState(false);
+  const [name, setName] = useState(user?.fullName || "");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState(user?.avatar || "");
+  const [profileMsg, setProfileMsg] = useState("");
+  const [profileError, setProfileError] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     current: "",
     newPass: "",
     confirm: "",
   });
   const [passwordMsg, setPasswordMsg] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
   const [notiTestSent, setNotiTestSent] = useState(false);
   const [activeSection, setActiveSection] = useState<
     "profile" | "password" | "appearance" | "notifications"
   >("profile");
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  const handleProfileSave = (e: SubmitEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    if (!avatarFile) {
+      setAvatarPreview(user?.avatar || "");
+      return;
+    }
+    const url = URL.createObjectURL(avatarFile);
+    setAvatarPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [avatarFile, user?.avatar]);
+
+  useEffect(() => {
+    if (!env.apiBaseUrl) return;
+    let cancelled = false;
+    setProfileLoading(true);
+    void fetchPublicMe()
+      .then((next) => {
+        if (cancelled) return;
+        loginUser(next);
+        setName(next.fullName);
+        setAvatarFile(null);
+        setProfileError("");
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setProfileError(
+          error instanceof AdminAuthError
+            ? resolveAdminAuthErrorMessage(error, t)
+            : t("apiErrors.publicMeLoadFailed"),
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setProfileLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (profileMsg !== "success") return;
+    const timer = window.setTimeout(() => setProfileMsg(""), 3000);
+    return () => window.clearTimeout(timer);
+  }, [profileMsg]);
+
+  const profileDirty =
+    name.trim() !== (user?.fullName || "").trim() || avatarFile !== null;
+
+  const handleProfileSave = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
-    updateProfile({ fullName: profileForm.fullName });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    if (!profileDirty) return;
+    setProfileError("");
+    setProfileMsg("");
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setProfileError(t("validation.required"));
+      return;
+    }
+    setProfileSaving(true);
+    try {
+      const next = await updatePublicMe({ name: trimmed, avatarFile });
+      loginUser(next);
+      setName(next.fullName);
+      setAvatarFile(null);
+      setProfileMsg("success");
+    } catch (error) {
+      setProfileError(
+        error instanceof AdminAuthError
+          ? resolveAdminAuthErrorMessage(error, t)
+          : t("apiErrors.publicMeUpdateFailed"),
+      );
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
-  const handlePasswordChange = (e: SubmitEvent<HTMLFormElement>) => {
+  const handlePasswordChange = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setPasswordMsg("");
     if (passwordForm.newPass !== passwordForm.confirm) {
       setPasswordMsg(t("settings.validation.passwordMismatch"));
       return;
@@ -51,18 +135,40 @@ export default function SettingsPage() {
       setPasswordMsg(t("validation.passwordStrong"));
       return;
     }
-    setPasswordMsg("success");
-    setPasswordForm({ current: "", newPass: "", confirm: "" });
-    setTimeout(() => setPasswordMsg(""), 3000);
+    setPasswordSaving(true);
+    try {
+      const next = await updatePublicMe({
+        currentPassword: passwordForm.current,
+        newPassword: passwordForm.newPass,
+      });
+      loginUser(next);
+      setPasswordMsg("success");
+      setPasswordForm({ current: "", newPass: "", confirm: "" });
+    } catch (error) {
+      setPasswordMsg(
+        error instanceof AdminAuthError
+          ? resolveAdminAuthErrorMessage(error, t)
+          : t("settings.password.updateError"),
+      );
+    } finally {
+      setPasswordSaving(false);
+    }
   };
 
   const handleLanguageChange = (l: "vi" | "en") => {
     void dispatch(changeAppLanguage(l));
   };
 
-  const handleLogout = () => {
-    logoutUser();
-    navigate("/");
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      const message = await logoutUser();
+      toast.success(message || t("nav.logoutSuccess"));
+      navigate("/");
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   const handleEnableNotifications = async () => {
@@ -101,9 +207,15 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="min-h-screen pt-[70px] bg-background-100">
-      <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12">
-        <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground-950 mb-8">
+    <div className={shell}>
+      <div
+        className={
+          cms ? "" : "w-full max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12"
+        }
+      >
+        <h1
+          className={`${cms ? "text-xl mb-6" : "text-2xl md:text-3xl mb-8"} font-heading font-bold text-foreground-950`}
+        >
           {t("settings.title")}
         </h1>
 
@@ -125,11 +237,15 @@ export default function SettingsPage() {
               ))}
               <hr className="border-background-200/70" />
               <button
+                type="button"
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-5 py-3.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors cursor-pointer whitespace-nowrap"
+                disabled={loggingOut}
+                className="w-full flex items-center gap-3 px-5 py-3.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed min-h-[44px]"
               >
-                <i className="ri-logout-box-line text-base"></i>{" "}
-                {t("nav.logout")}
+                <i
+                  className={`${loggingOut ? "ri-loader-4-line animate-spin" : "ri-logout-box-line"} text-base`}
+                ></i>{" "}
+                {loggingOut ? t("nav.loggingOut") : t("nav.logout")}
               </button>
             </div>
           </div>
@@ -140,48 +256,112 @@ export default function SettingsPage() {
                 <h3 className="text-lg font-heading font-semibold text-foreground-950 mb-6">
                   {t("settings.profile")}
                 </h3>
-                {saved && (
+                {profileMsg === "success" && (
                   <div className="mb-6 p-3 rounded-lg bg-accent-50 border border-accent-200 text-sm text-accent-600 flex items-center gap-2">
                     <i className="ri-check-line"></i>{" "}
-                    {t("settings.savedChanges")}
+                    {t("settings.profileSaved")}
                   </div>
                 )}
-                <form onSubmit={handleProfileSave} className="space-y-5">
+                {profileError && (
+                  <div className="mb-6 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-600">
+                    {profileError}
+                  </div>
+                )}
+                <form
+                  onSubmit={handleProfileSave}
+                  className="grid grid-cols-1 md:grid-cols-2 gap-5"
+                >
+                  <div className="md:col-span-2 flex items-center gap-4">
+                    <span className="w-16 h-16 rounded-full bg-primary-100 text-primary-700 overflow-hidden flex items-center justify-center flex-shrink-0">
+                      {avatarPreview ? (
+                        <img
+                          src={avatarPreview}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-lg font-semibold">
+                          {name.trim().charAt(0).toUpperCase() || "U"}
+                        </span>
+                      )}
+                    </span>
+                    <label className="inline-flex items-center gap-2 min-h-[44px] px-3 text-sm font-medium rounded-xl border border-background-200/70 bg-background-50 hover:bg-background-100 cursor-pointer">
+                      <i className="ri-image-add-line"></i>
+                      {t("settings.chooseAvatar")}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0] ?? null;
+                          setAvatarFile(file);
+                          setProfileMsg("");
+                          setProfileError("");
+                        }}
+                      />
+                    </label>
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-foreground-700 mb-1.5">
                       {t("auth.fullName")}
                     </label>
                     <input
                       type="text"
-                      value={profileForm.fullName}
-                      onChange={(e) =>
-                        setProfileForm({
-                          ...profileForm,
-                          fullName: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors"
+                      value={name}
+                      onChange={(event) => {
+                        setName(event.target.value);
+                        setProfileMsg("");
+                        setProfileError("");
+                      }}
+                      required
+                      disabled={profileLoading || profileSaving}
+                      className="w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors disabled:opacity-60"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-foreground-700 mb-1.5">
+                    <p className="text-sm font-medium text-foreground-700 mb-1.5">
                       {t("auth.email")}
-                    </label>
-                    <input
-                      type="email"
-                      value={profileForm.email}
-                      disabled
-                      className="w-full px-4 py-2.5 text-sm text-foreground-500 bg-background-100 border border-background-200/70 rounded-lg cursor-not-allowed"
-                    />
-                    <p className="text-xs text-foreground-400 mt-1">
-                      {t("settings.emailCannotChange")}
+                    </p>
+                    <p className="px-4 py-2.5 text-sm text-foreground-500 bg-background-100 border border-background-200/70 rounded-lg break-words">
+                      {user?.email || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-foreground-500 mb-1">
+                      {t("settings.accountType")}
+                    </p>
+                    <p className="text-sm font-medium text-foreground-900">
+                      {user?.role === "employer"
+                        ? t("auth.employer")
+                        : t("auth.jobSeeker")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-foreground-500 mb-1">
+                      {t("settings.emailStatus")}
+                    </p>
+                    <p className="text-sm font-medium text-foreground-900">
+                      {user?.emailVerified
+                        ? t("settings.verified")
+                        : t("settings.notVerified")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-foreground-500 mb-1">
+                      {t("settings.memberSince")}
+                    </p>
+                    <p className="text-sm font-medium text-foreground-900">
+                      {formatDate(user?.createdAt, i18n.language)}
                     </p>
                   </div>
                   <button
                     type="submit"
-                    className="px-8 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
+                    disabled={
+                      profileLoading || profileSaving || !profileDirty
+                    }
+                    className="md:col-span-2 w-fit min-h-[44px] px-8 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:bg-primary-500"
                   >
-                    {t("settings.save")}
+                    {profileSaving ? t("settings.saving") : t("settings.save")}
                   </button>
                 </form>
               </div>
@@ -203,7 +383,10 @@ export default function SettingsPage() {
                     {passwordMsg}
                   </div>
                 )}
-                <form onSubmit={handlePasswordChange} className="space-y-5">
+                <form
+                  onSubmit={handlePasswordChange}
+                  className="grid grid-cols-1 md:grid-cols-2 gap-5"
+                >
                   <div>
                     <label className="block text-sm font-medium text-foreground-700 mb-1.5">
                       {t("settings.password.currentPassword")}
@@ -260,9 +443,10 @@ export default function SettingsPage() {
                   </div>
                   <button
                     type="submit"
-                    className="px-8 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
+                    disabled={passwordSaving}
+                    className="md:col-span-2 w-fit min-h-[44px] px-8 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
                   >
-                    {t("settings.save")}
+                    {passwordSaving ? t("settings.saving") : t("settings.save")}
                   </button>
                 </form>
               </div>

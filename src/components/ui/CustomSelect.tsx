@@ -57,9 +57,10 @@ export default function CustomSelect({
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const btnPadding = outlined || compact ? "px-3" : "px-4 py-3.5";
-  const optPadding = compact || outlined ? "px-3 py-2" : "px-4 py-2.5";
-  const heightClass = outlined ? "h-10" : compact ? "" : "";
+  const framed = outlined || compact;
+  const btnPadding = framed ? "px-3" : "px-4 py-3.5";
+  const optPadding = framed ? "px-3 py-2" : "px-4 py-2.5";
+  const heightClass = framed ? "h-10" : "";
 
   return (
     <div ref={ref} className={`relative ${className}`}>
@@ -77,7 +78,7 @@ export default function CustomSelect({
         type="button"
         onClick={() => setOpen(!open)}
         className={`w-full flex items-center gap-2 ${btnPadding} ${heightClass} text-sm rounded-xl border transition-all cursor-pointer text-left whitespace-nowrap ${
-          outlined
+          framed
             ? open
               ? "bg-background-50 border-primary-300 ring-2 ring-primary-100"
               : "bg-background-50 border-background-200/70 hover:border-primary-300"

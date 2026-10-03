@@ -2,7 +2,8 @@ export type AdminRouteKey =
   | "dashboard"
   | "jobs"
   | "companies"
-  | "project-users"
+  | "job-seekers"
+  | "employers"
   | "users"
   | "roles"
   | "permissions"
@@ -62,10 +63,16 @@ export const adminNavGroups: AdminNavGroup[] = [
     icon: "ri-group-line",
     children: [
       {
-        key: "project-users",
-        label: "adminNav.projectUsers",
+        key: "job-seekers",
+        label: "adminNav.jobSeekers",
         icon: "ri-user-line",
-        path: "/admin/project-users",
+        path: "/admin/accounts/job-seekers",
+      },
+      {
+        key: "employers",
+        label: "adminNav.employers",
+        icon: "ri-user-star-line",
+        path: "/admin/accounts/employers",
       },
       {
         key: "users",

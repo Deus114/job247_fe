@@ -1,15 +1,16 @@
-import { Provider } from "react-redux";
-import { BrowserRouter } from "react-router-dom";
-import { I18nextProvider } from "react-i18next";
-import { useEffect } from "react";
-import { store } from "@/store";
-import { useAppSelector } from "@/store/hooks";
-import { useBusinessConfigBootstrap } from "@/features/catalog";
-import { AppRoutes } from "./router";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import ScrollToTop from "@/components/ScrollToTop";
 import ToastHost from "@/components/ui/ToastHost";
 import { env } from "@/config/env";
+import { useBusinessConfigBootstrap } from "@/features/catalog";
+import { store } from "@/store";
+import { useAppSelector } from "@/store/hooks";
+import { useEffect } from "react";
+import { I18nextProvider } from "react-i18next";
+import { Provider } from "react-redux";
+import { BrowserRouter } from "react-router-dom";
 import i18n from "./i18n";
+import { AppRoutes } from "./router";
 
 function ThemeProvider({ children }: { children: React.ReactNode }) {
   const mode = useAppSelector((state) => state.theme.mode);
@@ -33,6 +34,7 @@ function AppContent() {
     <ThemeProvider>
       <ErrorBoundary>
         <BrowserRouter basename={env.basePath || __BASE_PATH__}>
+          <ScrollToTop />
           <AppRoutes />
           <ToastHost />
         </BrowserRouter>

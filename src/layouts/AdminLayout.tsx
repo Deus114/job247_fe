@@ -1,7 +1,4 @@
-import { useMemo, useState } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { useAdminAuth } from "@/features/auth";
+import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
 import {
   AdminAvatar,
   AdminSidebar,
@@ -10,9 +7,12 @@ import {
   getAdminNavItemFromPath,
   getAdminRouteKeyFromPath,
 } from "@/features/admin";
+import { useAdminAuth } from "@/features/auth";
 import { useCatalogBootstrap } from "@/features/catalog";
-import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
 import { canAccessAdminModule } from "@/types/adminAuth";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 export default function AdminLayout() {
   const { t } = useTranslation();
@@ -87,7 +87,10 @@ export default function AdminLayout() {
         adminAvatar={admin.avatar}
       />
 
-      <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
+      <div
+        data-scroll-reset
+        className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto"
+      >
         <div className="flex items-center justify-between gap-3 mb-4">
           <div className="lg:hidden flex items-center gap-3 min-w-0">
             <button

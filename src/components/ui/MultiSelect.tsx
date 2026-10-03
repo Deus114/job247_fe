@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 interface SelectOption {
@@ -6,9 +6,16 @@ interface SelectOption {
   label: string;
 }
 
+interface SelectGroup {
+  label: string;
+  options: SelectOption[];
+}
+
 interface MultiSelectProps {
   values: string[];
-  options: SelectOption[];
+  options?: SelectOption[];
+  /** When set, options are shown under group labels. */
+  groups?: SelectGroup[];
   placeholder?: string;
   onChange: (values: string[]) => void;
   className?: string;
@@ -16,7 +23,8 @@ interface MultiSelectProps {
 
 export default function MultiSelect({
   values,
-  options,
+  options = [],
+  groups,
   placeholder,
   onChange,
   className = "",
@@ -25,8 +33,15 @@ export default function MultiSelect({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
+  const flatOptions = useMemo(() => {
+    if (groups?.length) {
+      return groups.flatMap((group) => group.options);
+    }
+    return options;
+  }, [groups, options]);
+
   const selectedLabels = values
-    .map((v) => options.find((o) => o.value === v)?.label)
+    .map((v) => flatOptions.find((o) => o.value === v)?.label)
     .filter(Boolean) as string[];
 
   const toggleOption = (val: string) => {
@@ -46,6 +61,33 @@ export default function MultiSelect({
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
+
+  const renderOption = (option: SelectOption) => {
+    const isSelected = values.includes(option.value);
+    return (
+      <button
+        key={option.value}
+        type="button"
+        onClick={() => toggleOption(option.value)}
+        className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-colors cursor-pointer whitespace-nowrap min-h-[44px] ${
+          isSelected
+            ? "bg-primary-50 text-primary-700 font-medium"
+            : "text-foreground-700 hover:bg-background-100"
+        }`}
+      >
+        <div
+          className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors ${
+            isSelected ? "bg-primary-500" : "border border-background-300"
+          }`}
+        >
+          {isSelected && (
+            <i className="ri-check-line text-[10px] text-white"></i>
+          )}
+        </div>
+        <span className="truncate">{option.label}</span>
+      </button>
+    );
+  };
 
   return (
     <div ref={ref} className={`relative ${className}`}>
@@ -73,42 +115,30 @@ export default function MultiSelect({
       </button>
 
       {open && (
-        <div className="absolute z-50 left-0 right-0 mt-2 bg-background-50 border border-background-200/70 rounded-xl shadow-xl shadow-background-950/10 overflow-hidden max-h-[280px] overflow-y-auto">
-          {options.map((option) => {
-            const isSelected = values.includes(option.value);
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => toggleOption(option.value)}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-colors cursor-pointer whitespace-nowrap ${
-                  isSelected
-                    ? "bg-primary-50 text-primary-700 font-medium"
-                    : "text-foreground-700 hover:bg-background-100"
-                }`}
-              >
-                <div
-                  className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors ${
-                    isSelected
-                      ? "bg-primary-500"
-                      : "border border-background-300"
-                  }`}
-                >
-                  {isSelected && (
-                    <i className="ri-check-line text-[10px] text-white"></i>
+        <div className="absolute z-50 left-0 right-0 mt-2 bg-background-50 border border-background-200/70 rounded-xl shadow-xl shadow-background-950/10 overflow-hidden max-h-[320px] overflow-y-auto">
+          {groups?.length
+            ? groups.map((group) => (
+                <div key={group.label}>
+                  <div className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-foreground-500 bg-background-100/80 sticky top-0">
+                    {group.label}
+                  </div>
+                  {group.options.length > 0 ? (
+                    group.options.map(renderOption)
+                  ) : (
+                    <p className="px-4 py-2 text-xs text-foreground-400">
+                      {t("common.noData")}
+                    </p>
                   )}
                 </div>
-                <span className="truncate">{option.label}</span>
-              </button>
-            );
-          })}
+              ))
+            : options.map(renderOption)}
         </div>
       )}
 
       {values.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-2">
           {values.map((val) => {
-            const label = options.find((o) => o.value === val)?.label || val;
+            const label = flatOptions.find((o) => o.value === val)?.label || val;
             return (
               <span
                 key={val}

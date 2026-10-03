@@ -1,8 +1,12 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@/features/auth";
 
 export default function CTASection() {
   const { t } = useTranslation();
+  const { isAuthenticated } = useAuth();
+
+  if (isAuthenticated) return null;
 
   return (
     <section className="relative py-20 md:py-24 overflow-hidden">

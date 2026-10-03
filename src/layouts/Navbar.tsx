@@ -1,15 +1,22 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { toggleTheme } from "@/store/slices/themeSlice";
 import { changeAppLanguage } from "@/store/slices/languageSlice";
 import { useAuth } from "@/features/auth";
+import { toast } from "@/lib/toast";
+
+/** Routes where the navbar sits over a dark hero and needs light text until scrolled. */
+function hasDarkHeroUnderNav(pathname: string): boolean {
+  return pathname === "/";
+}
 
 export default function Navbar() {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const mode = useAppSelector((state) => state.theme.mode);
   const lang = useAppSelector((state) => state.language.lang);
   const { isAuthenticated, user, logout: logoutUser } = useAuth();
@@ -19,17 +26,27 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const overDarkHero = hasDarkHeroUnderNav(pathname) && !scrolled;
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
+    handleScroll();
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [pathname]);
+
+  useEffect(() => {
+    setMobileOpen(false);
+    setLangOpen(false);
+    setUserMenuOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
+      if (loggingOut) return;
       if (langRef.current && !langRef.current.contains(e.target as Node))
         setLangOpen(false);
       if (
@@ -40,7 +57,7 @@ export default function Navbar() {
     };
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
+  }, [loggingOut]);
 
   const handleThemeToggle = () => {
     dispatch(toggleTheme());
@@ -51,26 +68,33 @@ export default function Navbar() {
     setLangOpen(false);
   };
 
-  const handleLogout = () => {
-    logoutUser();
-    setUserMenuOpen(false);
-    navigate("/");
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      const message = await logoutUser();
+      toast.success(message || t("nav.logoutSuccess"));
+      setUserMenuOpen(false);
+      setMobileOpen(false);
+      navigate("/");
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   const navLinks = [
     { to: "/", label: t("nav.home") },
     { to: "/jobs", label: t("nav.jobs") },
     { to: "/companies", label: t("nav.companies") },
-    { to: "/post-job", label: t("nav.postJob") },
     { to: "/contact", label: t("nav.contact") },
   ];
 
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-background-50/95 backdrop-blur-md border-b border-background-200/70"
-          : "bg-transparent"
+        overDarkHero
+          ? "bg-transparent"
+          : "bg-background-50/95 backdrop-blur-md border-b border-background-200/70"
       }`}
     >
       <div className="w-full px-4 lg:px-8">
@@ -92,11 +116,17 @@ export default function Navbar() {
                 <i className="ri-briefcase-line text-background-50 text-2xl"></i>
               </div>
             )}
-            <span className="font-heading text-xl font-bold leading-none text-foreground-950 whitespace-nowrap">
+            <span
+              className={`font-heading text-xl font-bold leading-none whitespace-nowrap ${
+                overDarkHero ? "text-white" : "text-foreground-950"
+              }`}
+            >
               {siteName.includes("247") ? (
                 <>
                   {siteName.replace(/247.*$/, "")}
-                  <span className="text-primary-500">247</span>
+                  <span className={overDarkHero ? "text-primary-300" : "text-primary-500"}>
+                    247
+                  </span>
                 </>
               ) : (
                 siteName
@@ -109,7 +139,11 @@ export default function Navbar() {
               <Link
                 key={link.to}
                 to={link.to}
-                className="text-sm font-medium text-foreground-700 hover:text-primary-500 transition-colors whitespace-nowrap"
+                className={`text-sm font-medium transition-colors whitespace-nowrap ${
+                  overDarkHero
+                    ? "text-white/90 hover:text-white"
+                    : "text-foreground-700 hover:text-primary-500"
+                }`}
               >
                 {link.label}
               </Link>
@@ -120,7 +154,11 @@ export default function Navbar() {
             <div ref={langRef} className="relative">
               <button
                 onClick={() => setLangOpen(!langOpen)}
-                className="flex items-center gap-1 px-3 py-1.5 border border-background-300 rounded-full text-sm text-foreground-700 hover:border-primary-400 transition-colors cursor-pointer whitespace-nowrap"
+                className={`flex items-center gap-1 px-3 py-1.5 border rounded-full text-sm transition-colors cursor-pointer whitespace-nowrap ${
+                  overDarkHero
+                    ? "border-white/40 text-white hover:border-white hover:bg-white/10"
+                    : "border-background-300 text-foreground-700 hover:border-primary-400"
+                }`}
               >
                 <i className="ri-global-line text-base"></i>
                 <span className="hidden xl:inline">
@@ -153,7 +191,11 @@ export default function Navbar() {
 
             <button
               onClick={handleThemeToggle}
-              className="w-9 h-9 flex items-center justify-center rounded-full border border-background-300 text-foreground-600 hover:text-primary-500 hover:border-primary-400 transition-colors cursor-pointer"
+              className={`w-9 h-9 flex items-center justify-center rounded-full border transition-colors cursor-pointer ${
+                overDarkHero
+                  ? "border-white/40 text-white hover:border-white hover:bg-white/10"
+                  : "border-background-300 text-foreground-600 hover:text-primary-500 hover:border-primary-400"
+              }`}
               title={
                 mode === "light" ? t("settings.dark") : t("settings.light")
               }
@@ -167,22 +209,48 @@ export default function Navbar() {
               <div ref={userMenuRef} className="relative">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-background-100 hover:bg-background-200 transition-colors cursor-pointer"
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors cursor-pointer ${
+                    overDarkHero
+                      ? "bg-white/15 hover:bg-white/25"
+                      : "bg-background-100 hover:bg-background-200"
+                  }`}
                 >
-                  <div className="w-7 h-7 rounded-full bg-primary-500 flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-bold text-background-50">
-                      {user?.fullName?.charAt(0) || "U"}
-                    </span>
+                  <div className="w-7 h-7 rounded-full bg-primary-500 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {user?.avatar ? (
+                      <img
+                        src={user.avatar}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-xs font-bold text-background-50">
+                        {user?.fullName?.charAt(0) || "U"}
+                      </span>
+                    )}
                   </div>
-                  <span className="text-sm text-foreground-700 whitespace-nowrap max-w-[100px] truncate hidden xl:inline">
+                  <span
+                    className={`text-sm whitespace-nowrap max-w-[100px] truncate hidden xl:inline ${
+                      overDarkHero ? "text-white" : "text-foreground-700"
+                    }`}
+                  >
                     {user?.fullName}
                   </span>
                   <i
-                    className={`ri-arrow-down-s-line text-xs text-foreground-500 transition-transform ${userMenuOpen ? "rotate-180" : ""}`}
+                    className={`ri-arrow-down-s-line text-xs transition-transform ${
+                      userMenuOpen ? "rotate-180" : ""
+                    } ${overDarkHero ? "text-white/80" : "text-foreground-500"}`}
                   ></i>
                 </button>
                 {userMenuOpen && (
                   <div className="absolute top-full mt-2 right-0 bg-background-50 border border-background-200 rounded-lg shadow-lg py-1 min-w-[200px] z-50">
+                    <div className="px-4 py-2 border-b border-background-200">
+                      <p className="text-sm font-medium text-foreground-900 truncate">
+                        {user?.fullName}
+                      </p>
+                      <p className="text-xs text-foreground-500 truncate">
+                        {user?.email}
+                      </p>
+                    </div>
                     <Link
                       to="/settings"
                       onClick={() => setUserMenuOpen(false)}
@@ -213,7 +281,7 @@ export default function Navbar() {
                     {user?.role === "employer" && (
                       <>
                         <Link
-                          to="/dashboard"
+                          to="/employer"
                           onClick={() => setUserMenuOpen(false)}
                           className="flex items-center gap-2 px-4 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors whitespace-nowrap cursor-pointer"
                         >
@@ -221,7 +289,7 @@ export default function Navbar() {
                           {t("nav.dashboard")}
                         </Link>
                         <Link
-                          to="/companies/manage"
+                          to="/employer/companies"
                           onClick={() => setUserMenuOpen(false)}
                           className="flex items-center gap-2 px-4 py-2 text-sm text-foreground-700 hover:bg-background-100 transition-colors whitespace-nowrap cursor-pointer"
                         >
@@ -232,10 +300,19 @@ export default function Navbar() {
                     )}
                     <hr className="my-1 border-background-200" />
                     <button
+                      type="button"
                       onClick={handleLogout}
-                      className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors whitespace-nowrap cursor-pointer"
+                      disabled={loggingOut}
+                      className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors whitespace-nowrap cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed min-h-[44px]"
                     >
-                      <i className="ri-logout-box-line"></i> {t("nav.logout")}
+                      <i
+                        className={
+                          loggingOut
+                            ? "ri-loader-4-line animate-spin"
+                            : "ri-logout-box-line"
+                        }
+                      ></i>
+                      {loggingOut ? t("nav.loggingOut") : t("nav.logout")}
                     </button>
                   </div>
                 )}
@@ -244,7 +321,11 @@ export default function Navbar() {
               <>
                 <Link
                   to="/login"
-                  className="text-sm font-medium px-4 py-2 border border-background-300 text-foreground-700 rounded-full hover:border-primary-400 hover:text-primary-500 transition-colors whitespace-nowrap cursor-pointer"
+                  className={`text-sm font-medium px-4 py-2 border rounded-full transition-colors whitespace-nowrap cursor-pointer ${
+                    overDarkHero
+                      ? "border-white/50 text-white hover:bg-white/10"
+                      : "border-background-300 text-foreground-700 hover:border-primary-400 hover:text-primary-500"
+                  }`}
                 >
                   {t("nav.login")}
                 </Link>
@@ -260,7 +341,11 @@ export default function Navbar() {
 
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg border border-background-300 text-foreground-700 hover:bg-background-100/50 transition-colors cursor-pointer"
+            className={`lg:hidden w-10 h-10 flex items-center justify-center rounded-lg border transition-colors cursor-pointer ${
+              overDarkHero
+                ? "border-white/40 text-white hover:bg-white/10"
+                : "border-background-300 text-foreground-700 hover:bg-background-100/50"
+            }`}
           >
             <i
               className={`text-xl ${mobileOpen ? "ri-close-line" : "ri-menu-line"}`}
@@ -333,6 +418,14 @@ export default function Navbar() {
             </div>
           ) : (
             <div className="flex flex-col gap-2 pt-2 px-2">
+              <div className="px-1 pb-2">
+                <p className="text-sm font-medium text-foreground-900 truncate">
+                  {user?.fullName}
+                </p>
+                <p className="text-xs text-foreground-500 truncate">
+                  {user?.email}
+                </p>
+              </div>
               <Link
                 to="/settings"
                 onClick={() => setMobileOpen(false)}
@@ -361,14 +454,14 @@ export default function Navbar() {
               {user?.role === "employer" && (
                 <>
                   <Link
-                    to="/dashboard"
+                    to="/employer"
                     onClick={() => setMobileOpen(false)}
                     className="text-center text-sm font-medium px-4 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full hover:bg-primary-600 transition-colors cursor-pointer"
                   >
                     {t("nav.dashboard")}
                   </Link>
                   <Link
-                    to="/companies/manage"
+                    to="/employer/companies"
                     onClick={() => setMobileOpen(false)}
                     className="text-center text-sm font-medium px-4 py-2.5 border border-background-300 text-foreground-700 rounded-full hover:bg-background-100 transition-colors cursor-pointer"
                   >
@@ -377,10 +470,15 @@ export default function Navbar() {
                 </>
               )}
               <button
+                type="button"
                 onClick={handleLogout}
-                className="text-sm font-medium px-4 py-2.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap"
+                disabled={loggingOut}
+                className="text-sm font-medium px-4 py-2.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed min-h-[44px] inline-flex items-center justify-center gap-2"
               >
-                {t("nav.logout")}
+                {loggingOut && (
+                  <i className="ri-loader-4-line animate-spin"></i>
+                )}
+                {loggingOut ? t("nav.loggingOut") : t("nav.logout")}
               </button>
             </div>
           )}

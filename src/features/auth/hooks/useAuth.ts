@@ -1,27 +1,74 @@
+import { fetchPublicMe, logoutRequest } from "@/api";
+import { USER_ACCESS_TOKEN_KEY } from "@/api/publicAuthTokens";
+import { env } from "@/config/env";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { login, logout, updateProfile } from "@/store/slices/authSlice";
-import { clearAccessToken } from "@/api";
 import type { AuthUser } from "@/types";
+import { useCallback, useEffect, useMemo } from "react";
+
+let syncedAccessToken: string | null = null;
+
+/** Allow the next profile sync (e.g. after company membership changes). */
+export function invalidatePublicProfileSync() {
+  syncedAccessToken = null;
+}
+
+/** Load GET /auth/me once per access token so the shell shows the saved profile. */
+export function useSyncPublicProfile() {
+  const dispatch = useAppDispatch();
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+
+  useEffect(() => {
+    if (!isAuthenticated || !env.apiBaseUrl) return;
+    const token = localStorage.getItem(USER_ACCESS_TOKEN_KEY);
+    if (!token || syncedAccessToken === token) return;
+    syncedAccessToken = token;
+    void fetchPublicMe()
+      .then((next) => {
+        dispatch(login(next));
+      })
+      .catch(() => {
+        if (syncedAccessToken === token) syncedAccessToken = null;
+      });
+  }, [isAuthenticated, dispatch]);
+}
 
 /** Domain hook for end-user auth session. */
 export function useAuth() {
   const dispatch = useAppDispatch();
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
 
-  return {
-    user,
-    isAuthenticated,
-    isEmployer: user?.role === "employer",
-    isCandidate: user?.role === "user",
-    login: (next: AuthUser) => {
+  const loginUser = useCallback(
+    (next: AuthUser) => {
       dispatch(login(next));
     },
-    logout: () => {
-      clearAccessToken();
-      dispatch(logout());
-    },
-    updateProfile: (patch: Partial<AuthUser>) => {
+    [dispatch],
+  );
+
+  const logoutUser = useCallback(async () => {
+    const message = await logoutRequest();
+    syncedAccessToken = null;
+    dispatch(logout());
+    return message;
+  }, [dispatch]);
+
+  const patchProfile = useCallback(
+    (patch: Partial<AuthUser>) => {
       dispatch(updateProfile(patch));
     },
-  };
+    [dispatch],
+  );
+
+  return useMemo(
+    () => ({
+      user,
+      isAuthenticated,
+      isEmployer: user?.role === "employer",
+      isCandidate: user?.role === "user",
+      login: loginUser,
+      logout: logoutUser,
+      updateProfile: patchProfile,
+    }),
+    [user, isAuthenticated, loginUser, logoutUser, patchProfile],
+  );
 }

@@ -339,35 +339,35 @@ export default function JobsPage() {
               value={statusFilter}
               options={statusOptions}
               onChange={(v) => setStatusFilter(v as typeof statusFilter)}
-              compact
+              outlined
               className="w-full sm:w-[160px]"
             />
             <CustomSelect
               value={categoryFilter}
               options={categoryOptions}
               onChange={setCategoryFilter}
-              compact
+              outlined
               className="w-full sm:w-[160px]"
             />
             <CustomSelect
               value={locationFilter}
               options={locationOptions}
               onChange={setLocationFilter}
-              compact
+              outlined
               className="w-full sm:w-[160px]"
             />
             <CustomSelect
               value={typeFilter}
               options={typeOptions}
               onChange={setTypeFilter}
-              compact
+              outlined
               className="w-full sm:w-[160px]"
             />
             <CustomSelect
               value={educationFilter}
               options={educationOptions}
               onChange={setEducationFilter}
-              compact
+              outlined
               className="w-full sm:w-[160px]"
             />
             <div className="flex items-center gap-2">

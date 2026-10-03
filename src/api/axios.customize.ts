@@ -7,6 +7,11 @@ import {
   ADMIN_REFRESH_TOKEN_KEY,
   clearAdminTokens,
 } from "@/api/adminAuthTokens";
+import {
+  USER_ACCESS_TOKEN_KEY,
+  USER_REFRESH_TOKEN_KEY,
+  clearPublicTokens,
+} from "@/api/publicAuthTokens";
 
 const instance = axios.create({
   baseURL: env.apiBaseUrl || undefined,
@@ -21,12 +26,20 @@ function currentAcceptLanguage(): string {
   return normalizeLanguage(i18n.language) || getInitialLanguage();
 }
 
-function isAdminAuthPath(url?: string): boolean {
+function isAdminRequest(url?: string): boolean {
+  return Boolean(url?.includes("/admin/"));
+}
+
+function skipsAuthRefresh(url?: string): boolean {
   if (!url) return false;
   return (
     url.includes("/admin/auth/login") ||
     url.includes("/admin/auth/refresh") ||
-    url.includes("/auth/logout")
+    url.includes("/auth/login") ||
+    url.includes("/auth/refresh") ||
+    url.includes("/auth/logout") ||
+    url.includes("/auth/register") ||
+    url.includes("/auth/otp/")
   );
 }
 
@@ -48,6 +61,47 @@ async function syncReduxAfterRefresh(session: {
   } catch {
     // tokens already persisted in localStorage
   }
+}
+
+async function syncPublicSession(session: {
+  user: import("@/types/user").AuthUser;
+  accessToken: string;
+  refreshToken: string;
+}) {
+  try {
+    const { store } = await import("@/store");
+    const { login } = await import("@/store/slices/authSlice");
+    store.dispatch(login(session.user));
+  } catch {
+    // tokens already persisted in localStorage
+  }
+}
+
+async function forcePublicLogoutAndRedirect() {
+  clearPublicTokens();
+  try {
+    const { store } = await import("@/store");
+    const { logout } = await import("@/store/slices/authSlice");
+    store.dispatch(logout());
+  } catch {
+    // ignore
+  }
+
+  if (typeof window === "undefined") return;
+  const path = window.location.pathname || "";
+  if (
+    path === "/login" ||
+    path.startsWith("/login/") ||
+    path.includes("/admin")
+  ) {
+    return;
+  }
+
+  const base = (env.basePath || "/").replace(/\/$/, "");
+  const loginPath = `${base}/login`.replace(/\/{2,}/g, "/");
+  window.location.assign(
+    loginPath.startsWith("/") ? loginPath : `/${loginPath}`,
+  );
 }
 
 async function forceAdminLogoutAndRedirect() {
@@ -79,14 +133,12 @@ instance.interceptors.request.use(
     config.headers["Accept-Language"] = currentAcceptLanguage();
 
     if (!config.skipAuthRefresh) {
-      const adminToken = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
-      const userToken = localStorage.getItem("access_token");
-      const token = adminToken || userToken;
+      const token = isAdminRequest(config.url)
+        ? localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY)
+        : localStorage.getItem(USER_ACCESS_TOKEN_KEY);
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-    } else if (config.headers.Authorization) {
-      delete config.headers.Authorization;
     }
 
     if (typeof FormData !== "undefined" && config.data instanceof FormData) {
@@ -118,27 +170,44 @@ instance.interceptors.response.use(
       !original ||
       original.skipAuthRefresh ||
       original._retry ||
-      isAdminAuthPath(original.url)
+      skipsAuthRefresh(original.url)
     ) {
       return Promise.reject(error);
     }
 
-    const refreshToken = localStorage.getItem(ADMIN_REFRESH_TOKEN_KEY);
-    if (!refreshToken) {
+    const adminRefresh = localStorage.getItem(ADMIN_REFRESH_TOKEN_KEY);
+    const userRefresh = localStorage.getItem(USER_REFRESH_TOKEN_KEY);
+    const refreshAdmin = isAdminRequest(original.url) && Boolean(adminRefresh);
+    const refreshUser = !refreshAdmin && Boolean(userRefresh);
+
+    if (!refreshAdmin && !refreshUser) {
       return Promise.reject(error);
     }
 
     original._retry = true;
 
     try {
+      if (refreshUser && userRefresh) {
+        const { refreshRequest } = await import("@/api/auth");
+        const session = await refreshRequest(userRefresh);
+        await syncPublicSession(session);
+        original.headers = original.headers ?? {};
+        original.headers.Authorization = `Bearer ${session.accessToken}`;
+        return instance(original);
+      }
+
       const { adminRefreshRequest } = await import("@/api/adminAuth");
-      const session = await adminRefreshRequest(refreshToken);
+      const session = await adminRefreshRequest(adminRefresh || undefined);
       await syncReduxAfterRefresh(session);
       original.headers = original.headers ?? {};
       original.headers.Authorization = `Bearer ${session.accessToken}`;
       return instance(original);
     } catch (refreshError) {
-      await forceAdminLogoutAndRedirect();
+      if (refreshUser) {
+        await forcePublicLogoutAndRedirect();
+      } else {
+        await forceAdminLogoutAndRedirect();
+      }
       return Promise.reject(refreshError);
     }
   },

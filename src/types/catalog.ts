@@ -1,5 +1,3 @@
-/** Admin catalog types. Industry groups, industries, education levels, provinces use real API. */
-
 export interface IndustryGroup {
   id: number;
   nameVi: string;
@@ -20,7 +18,6 @@ export interface IndustryGroupListParams {
   deleted?: boolean;
   page?: number;
   size?: number;
-  /** e.g. `industryCount,desc` or `createdAt,asc` */
   sort?: string;
 }
 
@@ -137,6 +134,30 @@ export interface ProvinceListParams {
   sort?: string;
 }
 
+export interface PublicProvince {
+  id: number;
+  name: string;
+  region: string;
+  sortOrder: number;
+}
+
+export interface PublicIndustry {
+  id: number;
+  name: string;
+  description: string;
+  sortOrder: number;
+  image: string;
+}
+
+export interface PublicIndustryGroup {
+  id: number;
+  name: string;
+  description: string;
+  sortOrder: number;
+  image: string;
+  industries: PublicIndustry[];
+}
+
 export interface ProvinceWritePayload {
   name: string;
   region: ProvinceRegion | string;
@@ -198,7 +219,6 @@ function foldRegion(value: string): string {
     .replace(/[^A-Z]/g, "");
 }
 
-/** Accept enum codes and localized labels (Accept-Language may return "Miền Bắc"). */
 export function normalizeProvinceRegion(
   value: string | null | undefined,
 ): ProvinceRegion | "" {

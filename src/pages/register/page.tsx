@@ -427,9 +427,7 @@ export default function RegisterPage() {
                     />
                     <button
                       type="button"
-                      onClick={() =>
-                        setShowConfirmPassword((value) => !value)
-                      }
+                      onClick={() => setShowConfirmPassword((value) => !value)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-400 hover:text-foreground-600 cursor-pointer w-8 h-8"
                       aria-label={
                         showConfirmPassword

@@ -17,9 +17,18 @@ export default function AuthGuard({ children, requiredRole }: AuthGuardProps) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
+  if (location.pathname.startsWith("/employer") && user?.role !== "employer") {
+    return <Navigate to="/" replace />;
+  }
+
   if (requiredRole && user?.role !== requiredRole) {
+    const inEmployer = location.pathname.startsWith("/employer");
     return (
-      <div className="min-h-screen pt-[70px] flex items-center justify-center bg-background-100">
+      <div
+        className={`min-h-screen flex items-center justify-center bg-background-100 ${
+          inEmployer ? "" : "pt-[70px]"
+        }`}
+      >
         <div className="text-center p-10 max-w-md">
           <div className="w-20 h-20 mx-auto rounded-full bg-red-50 flex items-center justify-center mb-5">
             <i className="ri-forbid-line text-3xl text-red-500"></i>

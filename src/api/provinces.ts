@@ -1,16 +1,17 @@
+import { AdminAuthError, isAdminApiSuccess } from "@/api/adminAuth";
 import axios from "@/api/axios.customize";
-import { isAxiosError } from "axios";
 import { env } from "@/config/env";
-import { isAdminApiSuccess, AdminAuthError } from "@/api/adminAuth";
 import type { ApiResponse } from "@/types/adminAuth";
 import type {
+  ApiPagination,
+  PaginatedList,
   Province,
   ProvinceListParams,
   ProvinceWritePayload,
-  PaginatedList,
-  ApiPagination,
+  PublicProvince,
 } from "@/types/catalog";
 import { normalizeProvinceRegion } from "@/types/catalog";
+import { isAxiosError } from "axios";
 
 function throwProvinceError(fallbackKey: string, error: unknown): never {
   if (error instanceof AdminAuthError) throw error;
@@ -308,5 +309,61 @@ export async function permanentDeleteProvince(id: number): Promise<void> {
     }
   } catch (error) {
     throwProvinceError("apiErrors.provinceDeleteFailed", error);
+  }
+}
+
+function normalizePublicProvince(raw: unknown): PublicProvince | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const id = Number(r.id);
+  if (!Number.isFinite(id)) return null;
+  return {
+    id,
+    name: String(r.name ?? ""),
+    region: String(r.region ?? ""),
+    sortOrder: Number(r.sortOrder) || 0,
+  };
+}
+
+/** GET /provinces — public catalog for employer forms. */
+export async function fetchPublicProvinces(
+  params: { page?: number; size?: number; sort?: string } = {},
+): Promise<PaginatedList<PublicProvince>> {
+  requireBackend();
+
+  try {
+    const res = (await axios.get("/provinces", {
+      params: {
+        page: params.page ?? 1,
+        size: params.size ?? 100,
+        sort: params.sort ?? "sortOrder,ASC",
+      },
+    })) as ApiResponse<{ data?: unknown; pagination?: unknown } | unknown[]>;
+
+    if (!res || typeof res !== "object") {
+      throw new AdminAuthError("apiErrors.invalidResponse");
+    }
+    if (!isAdminApiSuccess(res.statusCode)) {
+      throw new AdminAuthError(
+        "apiErrors.provinceLoadFailed",
+        res.statusCode,
+        res.message,
+      );
+    }
+
+    const envelope = asRecord(res.data);
+    const rowsRaw = Array.isArray(res.data)
+      ? res.data
+      : Array.isArray(envelope.data)
+        ? envelope.data
+        : [];
+
+    const data = rowsRaw
+      .map(normalizePublicProvince)
+      .filter((item): item is PublicProvince => item != null);
+
+    return { data, pagination: normalizePagination(envelope.pagination) };
+  } catch (error) {
+    throwProvinceError("apiErrors.provinceLoadFailed", error);
   }
 }

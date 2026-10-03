@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth";
 import { useJobs } from "@/features/jobs";
@@ -9,6 +9,7 @@ import type { Application } from "@/types/application";
 import ColumnVisibilityDropdown from "@/components/ui/ColumnVisibilityDropdown";
 import Pagination from "@/components/ui/Pagination";
 import CustomSelect from "@/components/ui/CustomSelect";
+import { usePageShell } from "@/layouts/usePageShell";
 
 const PAGE_SIZE_DEFAULT = 20;
 
@@ -28,6 +29,13 @@ const appStatusColor: Record<string, string> = {
 export default function DashboardPage() {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
+  const { cms, className: shell } = usePageShell();
+  const { pathname } = useLocation();
+  const section = pathname.endsWith("/applications")
+    ? "applications"
+    : pathname.endsWith("/jobs")
+      ? "jobs"
+      : "overview";
   const { jobs } = useJobs();
   const { companies } = useCompanies();
   const { applications: allApplications, updateApplicationStatus } =
@@ -73,9 +81,6 @@ export default function DashboardPage() {
     [t],
   );
 
-  const [activeTab, setActiveTab] = useState<"jobs" | "applications">("jobs");
-
-  // Jobs tab state
   const [jobSearch, setJobSearch] = useState("");
   const [jobStatusFilter, setJobStatusFilter] = useState<
     "all" | "approved" | "pending" | "rejected"
@@ -279,101 +284,203 @@ export default function DashboardPage() {
   const dateLocale = i18n.language === "en" ? "en-US" : "vi-VN";
 
   return (
-    <div className="min-h-screen pt-[70px] bg-background-100">
-      <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12">
-        <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground-950">
-            {t("dashboard.title")}
+    <div className={shell}>
+      <div className={cms ? "w-full" : "w-full max-w-[1440px] mx-auto"}>
+        <div className="mb-6">
+          <h1 className="text-xl font-heading font-bold text-foreground-950">
+            {section === "jobs"
+              ? t("dashboard.myJobs")
+              : section === "applications"
+                ? t("dashboard.applications")
+                : t("employerCms.overviewTitle")}
           </h1>
           <p className="text-sm text-foreground-600 mt-1">
-            {t("dashboard.subtitle")}
+            {section === "overview"
+              ? t("employerCms.overviewSubtitle", { name: user?.fullName })
+              : t("dashboard.subtitle")}
           </p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-background-50 border border-background-200/70 rounded-2xl p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
-                <i className="ri-briefcase-line text-lg text-primary-500"></i>
+        {section === "overview" && (
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+              <Link
+                to="/employer/jobs"
+                className="bg-background-50 border border-background-200/70 rounded-2xl p-4 sm:p-5 hover:border-primary-300 transition-colors"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
+                    <i className="ri-briefcase-line text-lg text-primary-500"></i>
+                  </div>
+                  <p className="text-xs text-foreground-500">
+                    {t("dashboard.stats.totalJobs")}
+                  </p>
+                </div>
+                <p className="text-2xl font-heading font-bold text-foreground-950">
+                  {stats.totalJobs}
+                </p>
+              </Link>
+              <div className="bg-background-50 border border-background-200/70 rounded-2xl p-4 sm:p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-accent-100 flex items-center justify-center">
+                    <i className="ri-check-double-line text-lg text-accent-500"></i>
+                  </div>
+                  <p className="text-xs text-foreground-500">
+                    {t("dashboard.stats.activeJobs")}
+                  </p>
+                </div>
+                <p className="text-2xl font-heading font-bold text-foreground-950">
+                  {stats.activeJobs}
+                </p>
               </div>
-              <p className="text-xs text-foreground-500">
-                {t("dashboard.stats.totalJobs")}
-              </p>
-            </div>
-            <p className="text-2xl font-heading font-bold text-foreground-950">
-              {stats.totalJobs}
-            </p>
-          </div>
-          <div className="bg-background-50 border border-background-200/70 rounded-2xl p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-accent-100 flex items-center justify-center">
-                <i className="ri-check-double-line text-lg text-accent-500"></i>
+              <Link
+                to="/employer/applications"
+                className="bg-background-50 border border-background-200/70 rounded-2xl p-4 sm:p-5 hover:border-primary-300 transition-colors"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-secondary-100 flex items-center justify-center">
+                    <i className="ri-file-user-line text-lg text-secondary-500"></i>
+                  </div>
+                  <p className="text-xs text-foreground-500">
+                    {t("dashboard.stats.totalApplications")}
+                  </p>
+                </div>
+                <p className="text-2xl font-heading font-bold text-foreground-950">
+                  {stats.totalApps}
+                </p>
+              </Link>
+              <div className="bg-background-50 border border-background-200/70 rounded-2xl p-4 sm:p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
+                    <i className="ri-notification-3-line text-lg text-primary-500"></i>
+                  </div>
+                  <p className="text-xs text-foreground-500">
+                    {t("dashboard.stats.newApps")}
+                  </p>
+                </div>
+                <p className="text-2xl font-heading font-bold text-foreground-950">
+                  {stats.newApps}
+                </p>
               </div>
-              <p className="text-xs text-foreground-500">
-                {t("dashboard.stats.activeJobs")}
-              </p>
             </div>
-            <p className="text-2xl font-heading font-bold text-foreground-950">
-              {stats.activeJobs}
-            </p>
-          </div>
-          <div className="bg-background-50 border border-background-200/70 rounded-2xl p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-secondary-100 flex items-center justify-center">
-                <i className="ri-file-user-line text-lg text-secondary-500"></i>
-              </div>
-              <p className="text-xs text-foreground-500">
-                {t("dashboard.stats.totalApplications")}
-              </p>
-            </div>
-            <p className="text-2xl font-heading font-bold text-foreground-950">
-              {stats.totalApps}
-            </p>
-          </div>
-          <div className="bg-background-50 border border-background-200/70 rounded-2xl p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
-                <i className="ri-notification-3-line text-lg text-primary-500"></i>
-              </div>
-              <p className="text-xs text-foreground-500">
-                {t("dashboard.stats.newApps")}
-              </p>
-            </div>
-            <p className="text-2xl font-heading font-bold text-foreground-950">
-              {stats.newApps}
-            </p>
-          </div>
-        </div>
 
-        {/* Tab Switcher */}
-        <div className="flex items-center gap-1 bg-background-200/50 rounded-full p-1 w-fit mb-6">
-          <button
-            onClick={() => setActiveTab("jobs")}
-            className={`px-5 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${
-              activeTab === "jobs"
-                ? "bg-background-50 text-foreground-950"
-                : "text-foreground-600 hover:text-foreground-800"
-            }`}
-          >
-            <i className="ri-briefcase-line mr-1.5"></i> {t("dashboard.myJobs")}{" "}
-            ({myJobs.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("applications")}
-            className={`px-5 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${
-              activeTab === "applications"
-                ? "bg-background-50 text-foreground-950"
-                : "text-foreground-600 hover:text-foreground-800"
-            }`}
-          >
-            <i className="ri-file-user-line mr-1.5"></i>{" "}
-            {t("dashboard.applications")} ({myApplications.length})
-          </button>
-        </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+              <Link
+                to="/employer/jobs/new"
+                className="flex items-center gap-3 p-4 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-2xl min-h-[44px]"
+              >
+                <i className="ri-add-circle-line text-xl"></i>
+                <span className="text-sm font-semibold">
+                  {t("dashboard.postNew")}
+                </span>
+              </Link>
+              <Link
+                to="/employer/companies"
+                className="flex items-center gap-3 p-4 bg-background-50 border border-background-200/70 rounded-2xl min-h-[44px]"
+              >
+                <i className="ri-building-line text-xl text-primary-500"></i>
+                <span className="text-sm font-semibold text-foreground-900">
+                  {t("employerNav.companies")}
+                </span>
+              </Link>
+              <Link
+                to="/employer/applications"
+                className="flex items-center gap-3 p-4 bg-background-50 border border-background-200/70 rounded-2xl min-h-[44px]"
+              >
+                <i className="ri-file-user-line text-xl text-primary-500"></i>
+                <span className="text-sm font-semibold text-foreground-900">
+                  {t("employerNav.applications")}
+                </span>
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="bg-background-50 border border-background-200/70 rounded-2xl p-4 sm:p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm font-semibold text-foreground-950">
+                    {t("dashboard.myJobs")}
+                  </h2>
+                  <Link
+                    to="/employer/jobs"
+                    className="text-xs font-medium text-primary-500"
+                  >
+                    {t("employerCms.viewAll")}
+                  </Link>
+                </div>
+                {myJobs.slice(0, 5).length === 0 ? (
+                  <p className="text-sm text-foreground-500">{t("dashboard.noJobs")}</p>
+                ) : (
+                  <ul className="divide-y divide-background-100">
+                    {myJobs.slice(0, 5).map((job) => (
+                      <li
+                        key={job.id}
+                        className="py-3 flex items-center justify-between gap-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground-900 truncate">
+                            {job.title}
+                          </p>
+                          <p className="text-xs text-foreground-500 truncate">
+                            {job.company}
+                          </p>
+                        </div>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap ${jobStatusColor[job.status] || ""}`}
+                        >
+                          {jobStatusLabel[job.status] || job.status}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div className="bg-background-50 border border-background-200/70 rounded-2xl p-4 sm:p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm font-semibold text-foreground-950">
+                    {t("dashboard.applications")}
+                  </h2>
+                  <Link
+                    to="/employer/applications"
+                    className="text-xs font-medium text-primary-500"
+                  >
+                    {t("employerCms.viewAll")}
+                  </Link>
+                </div>
+                {myApplications.slice(0, 5).length === 0 ? (
+                  <p className="text-sm text-foreground-500">
+                    {t("dashboard.noApplications")}
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-background-100">
+                    {myApplications.slice(0, 5).map((app) => (
+                      <li
+                        key={app.id}
+                        className="py-3 flex items-center justify-between gap-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground-900 truncate">
+                            {app.fullName}
+                          </p>
+                          <p className="text-xs text-foreground-500 truncate">
+                            {app.jobTitle}
+                          </p>
+                        </div>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap ${appStatusColor[app.status] || ""}`}
+                        >
+                          {appStatusLabel[app.status] || app.status}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </>
+        )}
 
         {/* ========== JOBS TAB ========== */}
-        {activeTab === "jobs" && (
+        {section === "jobs" && (
           <>
             {/* Toolbar */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
@@ -388,7 +495,7 @@ export default function DashboardPage() {
                     className="pl-9 pr-4 py-2 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors w-[200px]"
                   />
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <CustomSelect
                     value={jobCompanyFilter}
                     options={[
@@ -398,17 +505,18 @@ export default function DashboardPage() {
                     onChange={handleJobCompanyChange}
                     icon="ri-building-line"
                     className="w-[200px]"
-                    compact
+                    outlined
                   />
                   {(["all", "approved", "pending", "rejected"] as const).map(
                     (f) => (
                       <button
                         key={f}
+                        type="button"
                         onClick={() => handleJobFilterChange(f)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer whitespace-nowrap ${
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer whitespace-nowrap border ${
                           jobStatusFilter === f
-                            ? "bg-primary-500 text-background-50 dark:text-foreground-950"
-                            : "bg-background-50 border border-background-200/70 text-foreground-600 hover:bg-background-100"
+                            ? "bg-primary-500 border-primary-500 text-background-50 dark:text-foreground-950"
+                            : "bg-background-50 border-background-200 text-foreground-600 hover:bg-background-100"
                         }`}
                       >
                         {f === "all" ? t("common.all") : jobStatusLabel[f]}
@@ -419,8 +527,8 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Link
-                  to="/post-job"
-                  className="flex items-center gap-1.5 px-4 py-2 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-xs font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
+                  to="/employer/jobs/new"
+                  className="flex items-center gap-1.5 h-10 px-4 bg-primary-500 border border-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-xs font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
                 >
                   <i className="ri-add-line"></i> {t("dashboard.postNew")}
                 </Link>
@@ -450,7 +558,7 @@ export default function DashboardPage() {
                 </p>
                 {myJobs.length === 0 && (
                   <Link
-                    to="/post-job"
+                    to="/employer/jobs/new"
                     className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
                   >
                     <i className="ri-add-line"></i> {t("dashboard.postNow")}
@@ -629,7 +737,7 @@ export default function DashboardPage() {
         )}
 
         {/* ========== APPLICATIONS TAB ========== */}
-        {activeTab === "applications" && (
+        {section === "applications" && (
           <>
             {/* Toolbar */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
@@ -659,7 +767,7 @@ export default function DashboardPage() {
                   }}
                   icon="ri-briefcase-line"
                   className="w-[200px]"
-                  compact
+                  outlined
                 />
                 <CustomSelect
                   value={appCompanyFilter}
@@ -670,9 +778,9 @@ export default function DashboardPage() {
                   onChange={handleAppCompanyChange}
                   icon="ri-building-line"
                   className="w-[200px]"
-                  compact
+                  outlined
                 />
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   {(
                     [
                       "all",
@@ -684,11 +792,12 @@ export default function DashboardPage() {
                   ).map((f) => (
                     <button
                       key={f}
+                      type="button"
                       onClick={() => handleAppFilterChange(f)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer whitespace-nowrap ${
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer whitespace-nowrap border ${
                         appStatusFilter === f
-                          ? "bg-primary-500 text-background-50 dark:text-foreground-950"
-                          : "bg-background-50 border border-background-200/70 text-foreground-600 hover:bg-background-100"
+                          ? "bg-primary-500 border-primary-500 text-background-50 dark:text-foreground-950"
+                          : "bg-background-50 border-background-200 text-foreground-600 hover:bg-background-100"
                       }`}
                     >
                       {f === "all" ? t("common.all") : appStatusLabel[f]}

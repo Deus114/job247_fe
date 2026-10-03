@@ -131,11 +131,6 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/post-job" className={linkClasses}>
-                  {t("nav.postJob")}
-                </Link>
-              </li>
-              <li>
                 <Link to="/contact" className={linkClasses}>
                   {t("nav.contact")}
                 </Link>

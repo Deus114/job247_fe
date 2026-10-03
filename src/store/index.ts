@@ -7,7 +7,6 @@ import jobReducer from "./slices/jobSlice";
 import companyReducer from "./slices/companySlice";
 import savedJobsReducer from "./slices/savedJobsSlice";
 import applicationsReducer from "./slices/applicationsSlice";
-import projectUserReducer from "./slices/projectUserSlice";
 import businessConfigReducer from "./slices/businessConfigSlice";
 import { writeJson, removeKeys } from "@/lib/storage";
 
@@ -55,7 +54,6 @@ export const store = configureStore({
     companies: companyReducer,
     savedJobs: savedJobsReducer,
     applications: applicationsReducer,
-    projectUsers: projectUserReducer,
     businessConfig: businessConfigReducer,
   },
 });

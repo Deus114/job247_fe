@@ -1,15 +1,25 @@
-import axios from "@/api/axios.customize";
-import { isAxiosError } from "axios";
-import { withApiFallback } from "@/api/withApiFallback";
-import { env } from "@/config/env";
 import { AdminAuthError, isAdminApiSuccess } from "@/api/adminAuth";
-import type { ApiResponse } from "@/types/adminAuth";
+import axios from "@/api/axios.customize";
+import {
+  clearPublicTokens,
+  persistPublicTokens,
+  USER_ACCESS_TOKEN_KEY,
+  USER_REFRESH_TOKEN_KEY,
+} from "@/api/publicAuthTokens";
+import { env } from "@/config/env";
 import type {
-  AuthResponse,
   AuthUser,
   LoginPayload,
+  PublicAccountType,
+  PublicAuthSession,
   RegisterPayload,
+  UpdatePublicMePayload,
+  UserCompanyMembership,
+  UserCompanyRole,
+  UserCompanyStatus,
 } from "@/types";
+import type { ApiResponse } from "@/types/adminAuth";
+import { isAxiosError } from "axios";
 
 /** Demo accounts used only in mock / fallback mode. */
 export const mockDemoAccounts: Array<AuthUser & { password: string }> = [
@@ -149,34 +159,279 @@ export async function registerRequest(payload: RegisterPayload): Promise<void> {
   }
 }
 
-function persistToken(token?: string) {
-  if (token) {
-    localStorage.setItem("access_token", token);
-  } else {
-    localStorage.removeItem("access_token");
+function pickToken(data: Record<string, unknown>, ...keys: string[]): string {
+  for (const key of keys) {
+    const value = data[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
+function roleFromAccountType(type: string): AuthUser["role"] | null {
+  if (type === "EMPLOYER") return "employer";
+  if (type === "JOB_SEEKER") return "user";
+  return null;
+}
+
+function normalizeCompanyStatus(value: unknown): UserCompanyStatus {
+  const raw = String(value ?? "")
+    .trim()
+    .toUpperCase();
+  if (raw === "APPROVED") return "APPROVED";
+  if (raw === "REJECTED") return "REJECTED";
+  return "PENDING";
+}
+
+function normalizeCompanyRole(value: unknown): UserCompanyRole {
+  const raw = String(value ?? "")
+    .trim()
+    .toUpperCase();
+  return raw === "ADMIN" ? "ADMIN" : "OWNER";
+}
+
+export function normalizeUserCompanyMembership(
+  raw: unknown,
+): UserCompanyMembership | null {
+  if (!raw || typeof raw !== "object") return null;
+  const record = raw as Record<string, unknown>;
+  const companyId = Number(record.companyId);
+  if (!Number.isFinite(companyId) || companyId <= 0) return null;
+  return {
+    companyId,
+    companyName: String(record.companyName ?? ""),
+    companyLogo: String(record.companyLogo ?? ""),
+    companyStatus: normalizeCompanyStatus(record.companyStatus),
+    role: normalizeCompanyRole(record.role),
+  };
+}
+
+function normalizeUserCompanies(raw: unknown): UserCompanyMembership[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map(normalizeUserCompanyMembership)
+    .filter((item): item is UserCompanyMembership => item != null);
+}
+
+/** Map login/refresh `data.user` (or /auth/me data) into the session stored for the UI. */
+export function normalizePublicSessionUser(raw: unknown): AuthUser | null {
+  if (!raw || typeof raw !== "object") return null;
+  const user = raw as Record<string, unknown>;
+  const id = Number(user.id);
+  const email = String(user.email ?? "").trim();
+  const fullName = String(user.name ?? user.fullName ?? "").trim();
+  const accountType = String(user.type ?? "") as PublicAccountType;
+  const role = roleFromAccountType(accountType);
+  if (!Number.isFinite(id) || id <= 0 || !email || !fullName || !role) {
+    return null;
+  }
+
+  return {
+    id: String(id),
+    email,
+    fullName,
+    role,
+    accountType,
+    emailVerified: user.emailVerified === true,
+    avatar: String(user.avatar ?? ""),
+    active: user.active !== false,
+    createdAt: String(user.createdAt ?? ""),
+    updatedAt: String(user.updatedAt ?? ""),
+    companies: normalizeUserCompanies(user.companies),
+  };
+}
+
+function parsePublicSession(
+  data: Record<string, unknown>,
+  statusCode: number | undefined,
+  message: string,
+): PublicAuthSession {
+  const user = normalizePublicSessionUser(data.user);
+  const accessToken = pickToken(data, "accessToken", "access_token", "token");
+  const refreshToken = pickToken(data, "refreshToken", "refresh_token");
+
+  if (!user || !accessToken) {
+    throw new AdminAuthError("apiErrors.loginMissingData", statusCode, message);
+  }
+  if (user.active === false) {
+    throw new AdminAuthError(
+      "apiErrors.loginInactiveAccount",
+      statusCode,
+      message,
+    );
+  }
+
+  persistPublicTokens(accessToken, refreshToken || undefined);
+  return {
+    user,
+    accessToken,
+    refreshToken,
+  };
+}
+
+/** POST /auth/login — body `{ email, password }`. */
+export async function loginRequest(payload: LoginPayload): Promise<AuthUser> {
+  if (!env.apiBaseUrl) {
+    if (env.useMock) return mockLogin(payload);
+    throw new AdminAuthError("apiErrors.missingBackendUrl");
+  }
+
+  clearPublicTokens();
+
+  try {
+    const res = (await axios.post(
+      "/auth/login",
+      { email: payload.email.trim(), password: payload.password },
+      { skipAuthRefresh: true },
+    )) as ApiResponse<Record<string, unknown>>;
+    const body = assertPublicSuccess(res, "apiErrors.loginFailed");
+    const data = (
+      body.data && typeof body.data === "object" ? body.data : {}
+    ) as Record<string, unknown>;
+    return parsePublicSession(data, body.statusCode, body.message || "").user;
+  } catch (error) {
+    clearPublicTokens();
+    throwPublicAuthError("apiErrors.loginFailed", error);
   }
 }
 
-export async function loginRequest(payload: LoginPayload): Promise<AuthUser> {
-  clearAccessToken();
-  return withApiFallback(
-    async () => {
-      const data = await axios.post<AuthResponse, AuthResponse>(
-        "/api/auth/login",
-        payload,
-      );
-      // Backend may return { user, access_token } or the user object directly.
-      if (data && typeof data === "object" && "user" in data) {
-        persistToken(data.access_token);
-        return data.user;
+let refreshInFlight: Promise<PublicAuthSession> | null = null;
+
+/** POST /auth/refresh — body `{ refreshToken }`. Concurrent callers share one request. */
+export async function refreshRequest(
+  refreshTokenOverride?: string,
+): Promise<PublicAuthSession> {
+  if (!env.apiBaseUrl) {
+    throw new AdminAuthError("apiErrors.missingBackendUrl");
+  }
+  if (refreshInFlight) return refreshInFlight;
+
+  const refreshToken =
+    refreshTokenOverride?.trim() ||
+    localStorage.getItem(USER_REFRESH_TOKEN_KEY) ||
+    "";
+  if (!refreshToken) {
+    clearPublicTokens();
+    throw new AdminAuthError("apiErrors.sessionExpired");
+  }
+
+  refreshInFlight = (async () => {
+    try {
+      const res = (await axios.post(
+        "/auth/refresh",
+        { refreshToken },
+        { skipAuthRefresh: true },
+      )) as ApiResponse<Record<string, unknown>>;
+      const body = assertPublicSuccess(res, "apiErrors.sessionExpired");
+      const data = (
+        body.data && typeof body.data === "object" ? body.data : {}
+      ) as Record<string, unknown>;
+      return parsePublicSession(data, body.statusCode, body.message || "");
+    } catch (error) {
+      clearPublicTokens();
+      throwPublicAuthError("apiErrors.sessionExpired", error);
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
+}
+
+/** POST /auth/logout. Failures are ignored so the local session can still be cleared. */
+export async function logoutRequest(): Promise<string> {
+  const token = localStorage.getItem(USER_ACCESS_TOKEN_KEY);
+  let message = "";
+  if (env.apiBaseUrl && token) {
+    try {
+      const res = (await axios.post("/auth/logout", undefined, {
+        headers: { Authorization: `Bearer ${token}` },
+        skipAuthRefresh: true,
+      })) as ApiResponse<unknown>;
+      if (typeof res?.message === "string" && res.message.trim()) {
+        message = res.message.trim();
       }
-      return data as unknown as AuthUser;
-    },
-    () => mockLogin(payload),
-    { mockDelayMs: 150, fallbackOnHttpError: false },
-  );
+    } catch {
+      // local logout still proceeds
+    }
+  }
+  clearPublicTokens();
+  return message;
 }
 
 export function clearAccessToken() {
-  localStorage.removeItem("access_token");
+  clearPublicTokens();
+}
+
+function readMeUser(
+  data: unknown,
+  statusCode: number | undefined,
+  message: string,
+  missingKey: string,
+): AuthUser {
+  const record =
+    data && typeof data === "object" ? (data as Record<string, unknown>) : null;
+  const user = normalizePublicSessionUser(record?.user ?? data);
+  if (!user) {
+    throw new AdminAuthError(missingKey, statusCode, message);
+  }
+  return user;
+}
+
+/** GET /auth/me */
+export async function fetchPublicMe(): Promise<AuthUser> {
+  if (!env.apiBaseUrl) {
+    throw new AdminAuthError("apiErrors.missingBackendUrl");
+  }
+
+  try {
+    const res = (await axios.get("/auth/me")) as ApiResponse<unknown>;
+    const body = assertPublicSuccess(res, "apiErrors.publicMeLoadFailed");
+    return readMeUser(
+      body.data,
+      body.statusCode,
+      body.message || "",
+      "apiErrors.publicMeMissingData",
+    );
+  } catch (error) {
+    throwPublicAuthError("apiErrors.publicMeLoadFailed", error);
+  }
+}
+
+/** PUT /auth/me — multipart/form-data. */
+export async function updatePublicMe(
+  payload: UpdatePublicMePayload,
+): Promise<AuthUser> {
+  if (!env.apiBaseUrl) {
+    throw new AdminAuthError("apiErrors.missingBackendUrl");
+  }
+
+  const body = new FormData();
+  if (payload.name != null && payload.name.trim() !== "") {
+    body.append("name", payload.name.trim());
+  }
+  if (payload.currentPassword) {
+    body.append("currentPassword", payload.currentPassword);
+  }
+  if (payload.newPassword) {
+    body.append("newPassword", payload.newPassword);
+  }
+  if (payload.avatarFile) {
+    body.append("avatar", payload.avatarFile);
+  }
+  if ([...body.keys()].length === 0) {
+    throw new AdminAuthError("apiErrors.publicMeNothingToUpdate");
+  }
+
+  try {
+    const res = (await axios.put("/auth/me", body)) as ApiResponse<unknown>;
+    const envelope = assertPublicSuccess(res, "apiErrors.publicMeUpdateFailed");
+    return readMeUser(
+      envelope.data,
+      envelope.statusCode,
+      envelope.message || "",
+      "apiErrors.publicMeMissingData",
+    );
+  } catch (error) {
+    throwPublicAuthError("apiErrors.publicMeUpdateFailed", error);
+  }
 }

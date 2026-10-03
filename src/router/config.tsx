@@ -1,10 +1,12 @@
-import { lazy } from "react";
-import { Navigate, type RouteObject } from "react-router-dom";
-import AppLayout from "@/layouts/AppLayout";
-import AdminLayout from "@/layouts/AdminLayout";
-import AuthGuard from "@/components/guards/AuthGuard";
 import AdminAuthGuard from "@/components/guards/AdminAuthGuard";
+import AuthGuard from "@/components/guards/AuthGuard";
 import LazyPage from "@/components/LazyPage";
+import { useAuth } from "@/features/auth";
+import AdminLayout from "@/layouts/AdminLayout";
+import AppLayout from "@/layouts/AppLayout";
+import EmployerLayout from "@/layouts/EmployerLayout";
+import { lazy } from "react";
+import { Navigate, useParams, type RouteObject } from "react-router-dom";
 
 const Home = lazy(() => import("@/pages/home/page"));
 const JobsPage = lazy(() => import("@/pages/jobs/page"));
@@ -17,8 +19,15 @@ const SettingsPage = lazy(() => import("@/pages/settings/page"));
 const AdminLoginPage = lazy(() => import("@/pages/admin/login/page"));
 const CompaniesPage = lazy(() => import("@/pages/companies/page"));
 const CreateCompanyPage = lazy(() => import("@/pages/companies/create/page"));
+const FindCompanyPage = lazy(() => import("@/pages/companies/find/page"));
+const MyJoinRequestsPage = lazy(
+  () => import("@/pages/companies/join-requests/page"),
+);
 const EditCompanyPage = lazy(() => import("@/pages/companies/edit/page"));
 const CompanyDetailPage = lazy(() => import("@/pages/companies/detail/page"));
+const EmployerCompanyDetailPage = lazy(
+  () => import("@/pages/companies/employer-detail/page"),
+);
 const CompaniesBrowsePage = lazy(() => import("@/pages/companies/browse/page"));
 const SavedJobsPage = lazy(() => import("@/pages/saved-jobs/page"));
 const MyApplicationsPage = lazy(() => import("@/pages/my-applications/page"));
@@ -34,8 +43,11 @@ const AdminJobsPage = lazy(
 const AdminCompaniesPage = lazy(
   () => import("@/features/admin/components/CompaniesPage"),
 );
-const AdminProjectUsersPage = lazy(
-  () => import("@/features/admin/components/ProjectUsersPage"),
+const AdminJobSeekersPage = lazy(
+  () => import("@/features/admin/components/JobSeekersPage"),
+);
+const AdminEmployersPage = lazy(
+  () => import("@/features/admin/components/EmployersPage"),
 );
 const AdminUsersPage = lazy(
   () => import("@/features/admin/components/UsersPage"),
@@ -66,6 +78,22 @@ const AdminProfilePage = lazy(
 );
 const PrivacyPage = lazy(() => import("@/pages/privacy/page"));
 const TermsPage = lazy(() => import("@/pages/terms/page"));
+
+function RedirectEmployerPath({ to }: { to: string }) {
+  const { isAuthenticated, user } = useAuth();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: to }} replace />;
+  }
+  if (user?.role !== "employer") {
+    return <Navigate to="/" replace />;
+  }
+  return <Navigate to={to} replace />;
+}
+
+function RedirectCompanyEdit() {
+  const { id } = useParams();
+  return <RedirectEmployerPath to={`/employer/companies/${id}/edit`} />;
+}
 
 const routes: RouteObject[] = [
   // App routes
@@ -98,13 +126,7 @@ const routes: RouteObject[] = [
       },
       {
         path: "/post-job",
-        element: (
-          <LazyPage>
-            <AuthGuard requiredRole="employer">
-              <PostJobPage />
-            </AuthGuard>
-          </LazyPage>
-        ),
+        element: <RedirectEmployerPath to="/employer/jobs/new" />,
       },
       {
         path: "/contact",
@@ -158,43 +180,19 @@ const routes: RouteObject[] = [
       },
       {
         path: "/dashboard",
-        element: (
-          <LazyPage>
-            <AuthGuard requiredRole="employer">
-              <DashboardPage />
-            </AuthGuard>
-          </LazyPage>
-        ),
+        element: <RedirectEmployerPath to="/employer" />,
       },
       {
         path: "/companies/manage",
-        element: (
-          <LazyPage>
-            <AuthGuard requiredRole="employer">
-              <CompaniesPage />
-            </AuthGuard>
-          </LazyPage>
-        ),
+        element: <RedirectEmployerPath to="/employer/companies" />,
       },
       {
         path: "/companies/create",
-        element: (
-          <LazyPage>
-            <AuthGuard requiredRole="employer">
-              <CreateCompanyPage />
-            </AuthGuard>
-          </LazyPage>
-        ),
+        element: <RedirectEmployerPath to="/employer/companies/new" />,
       },
       {
         path: "/companies/edit/:id",
-        element: (
-          <LazyPage>
-            <AuthGuard requiredRole="employer">
-              <EditCompanyPage />
-            </AuthGuard>
-          </LazyPage>
-        ),
+        element: <RedirectCompanyEdit />,
       },
       {
         path: "/companies/:id",
@@ -229,6 +227,105 @@ const routes: RouteObject[] = [
             <AuthGuard>
               <MyApplicationsPage />
             </AuthGuard>
+          </LazyPage>
+        ),
+      },
+    ],
+  },
+
+  {
+    path: "/employer",
+    element: (
+      <AuthGuard requiredRole="employer">
+        <EmployerLayout />
+      </AuthGuard>
+    ),
+    children: [
+      {
+        index: true,
+        element: (
+          <LazyPage>
+            <DashboardPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "jobs",
+        element: (
+          <LazyPage>
+            <DashboardPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "applications",
+        element: (
+          <LazyPage>
+            <DashboardPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "jobs/new",
+        element: (
+          <LazyPage>
+            <PostJobPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "companies",
+        element: (
+          <LazyPage>
+            <CompaniesPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "companies/new",
+        element: (
+          <LazyPage>
+            <CreateCompanyPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "companies/find",
+        element: (
+          <LazyPage>
+            <FindCompanyPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "companies/join-requests",
+        element: (
+          <LazyPage>
+            <MyJoinRequestsPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "companies/:id/edit",
+        element: (
+          <LazyPage>
+            <EditCompanyPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "companies/:id",
+        element: (
+          <LazyPage>
+            <EmployerCompanyDetailPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "settings",
+        element: (
+          <LazyPage>
+            <SettingsPage />
           </LazyPage>
         ),
       },
@@ -283,9 +380,21 @@ const routes: RouteObject[] = [
       },
       {
         path: "project-users",
+        element: <Navigate to="/admin/accounts/job-seekers" replace />,
+      },
+      {
+        path: "accounts/job-seekers",
         element: (
           <LazyPage>
-            <AdminProjectUsersPage />
+            <AdminJobSeekersPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "accounts/employers",
+        element: (
+          <LazyPage>
+            <AdminEmployersPage />
           </LazyPage>
         ),
       },

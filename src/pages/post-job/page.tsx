@@ -7,6 +7,7 @@ import { useCompanies } from "@/features/companies";
 import CustomSelect from "@/components/ui/CustomSelect";
 import MultiSelect from "@/components/ui/MultiSelect";
 import type { Job } from "@/types/job";
+import { usePageShell } from "@/layouts/usePageShell";
 
 export default function PostJobPage() {
   const { t } = useTranslation();
@@ -15,6 +16,7 @@ export default function PostJobPage() {
   const preselectCompanyId = searchParams.get("companyId");
 
   const { user } = useAuth();
+  const { cms, className: shell } = usePageShell();
   const {
     categories: rawCategories,
     educationLevels: rawEducationLevels,
@@ -135,7 +137,7 @@ export default function PostJobPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen pt-[70px] flex items-center justify-center bg-background-100">
+      <div className={`${shell} flex items-center justify-center`}>
         <div className="text-center p-10 max-w-md">
           <div className="w-20 h-20 mx-auto rounded-full bg-accent-100 flex items-center justify-center mb-5">
             <i className="ri-check-line text-4xl text-accent-500"></i>
@@ -148,7 +150,7 @@ export default function PostJobPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/employer/jobs")}
               className="px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
             >
               {t("postJob.goToDashboard")}
@@ -183,7 +185,7 @@ export default function PostJobPage() {
 
   if (myApprovedCompanies.length === 0) {
     return (
-      <div className="min-h-screen pt-[70px] flex items-center justify-center bg-background-100">
+      <div className={`${shell} flex items-center justify-center`}>
         <div className="text-center p-10 max-w-lg">
           <div className="w-20 h-20 mx-auto rounded-full bg-yellow-100 flex items-center justify-center mb-5">
             <i className="ri-building-4-line text-3xl text-yellow-600"></i>
@@ -206,14 +208,14 @@ export default function PostJobPage() {
           </div>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
-              onClick={() => navigate("/companies/create")}
+              onClick={() => navigate("/employer/companies/new")}
               className="px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
             >
               <i className="ri-add-line mr-1.5"></i>{" "}
               {t("postJob.createCompanyFirst")}
             </button>
             <button
-              onClick={() => navigate("/companies/manage")}
+              onClick={() => navigate("/employer/companies")}
               className="px-6 py-2.5 border border-background-300 text-foreground-700 rounded-full text-sm font-medium hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap"
             >
               <i className="ri-building-line mr-1.5"></i>{" "}
@@ -226,11 +228,11 @@ export default function PostJobPage() {
   }
 
   return (
-    <div className="min-h-screen pt-[70px] bg-background-100">
-      <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12">
-        <div className="max-w-3xl mx-auto">
+    <div className={shell || undefined}>
+      <div className={cms ? "" : "w-full max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12"}>
+        <div className={cms ? "" : "max-w-3xl mx-auto"}>
           <div className="mb-8">
-            <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground-950">
+            <h1 className="text-xl font-heading font-bold text-foreground-950">
               {t("postJob.title")}
             </h1>
             <p className="text-sm text-foreground-600 mt-1">
@@ -389,6 +391,7 @@ export default function PostJobPage() {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
             <div>
               <label className="block text-sm font-medium text-foreground-700 mb-1.5">
                 {t("postJob.description")} *
@@ -441,17 +444,18 @@ export default function PostJobPage() {
                 {t("postJob.onePerLineBenefit")}
               </p>
             </div>
+            </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-4">
               <button
                 type="submit"
-                className="flex-1 py-3 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
+                className="sm:w-auto px-6 py-3 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
               >
                 <i className="ri-add-line mr-1.5"></i> {t("postJob.submit")}
               </button>
               <button
                 type="button"
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/employer/jobs")}
                 className="px-6 py-3 border border-background-300 text-foreground-700 rounded-xl text-sm font-medium hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap"
               >
                 {t("common.cancel")}

@@ -158,7 +158,7 @@ export default function CompanyDetailPage() {
           {(isOwner || isAdmin) && company.status === "approved" && (
             <div className="mt-6 pt-6 border-t border-background-200/40 flex flex-col sm:flex-row gap-3">
               <Link
-                to={`/post-job?companyId=${company.id}`}
+                to={`/employer/jobs/new?companyId=${company.id}`}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
               >
                 <i className="ri-add-line"></i> {t("company.postJobForCompany")}
