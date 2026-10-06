@@ -1,17 +1,77 @@
-import { useState, useMemo } from "react";
-import { Link, Navigate, useLocation } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { useAuth } from "@/features/auth";
-import { useJobs } from "@/features/jobs";
-import { useCompanies } from "@/features/companies";
-import { useApplications } from "@/features/applications";
-import type { Application } from "@/types/application";
+import {
+  AdminAuthError,
+  deleteEmployerJob,
+  fetchEmployerJobById,
+  fetchEmployerJobs,
+  joinJobRefNames,
+  resolveAdminAuthErrorMessage,
+  restoreEmployerJob,
+} from "@/api";
 import ColumnVisibilityDropdown from "@/components/ui/ColumnVisibilityDropdown";
-import Pagination from "@/components/ui/Pagination";
 import CustomSelect from "@/components/ui/CustomSelect";
+import Pagination from "@/components/ui/Pagination";
+import {
+  TableActionMenu,
+  useTableActionMenu,
+} from "@/components/ui/TableActionMenu";
+import { env } from "@/config/env";
+import {
+  employmentTypeLabelKey,
+  experienceLevelLabelKey,
+} from "@/constants/employerJob";
+import { useApplications } from "@/features/applications";
+import { useAuth } from "@/features/auth";
+import { useCompanies } from "@/features/companies";
+import { useJobs } from "@/features/jobs";
 import { usePageShell } from "@/layouts/usePageShell";
+import { formatDate, formatDateTime } from "@/lib/formatDate";
+import { formatMoneyRange } from "@/lib/formatNumber";
+import { toast } from "@/lib/toast";
+import type { Application } from "@/types/application";
+import type { EmployerJob, EmployerJobStatus, Job } from "@/types/job";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 const PAGE_SIZE_DEFAULT = 20;
+
+function mapEmployerJobToJob(
+  job: EmployerJob,
+  translate: (key: string) => string,
+): Job {
+  const status = job.status.toLowerCase() as Job["status"];
+  return {
+    id: String(job.id),
+    title: job.title,
+    company: job.companyName,
+    companyId: String(job.companyId),
+    companyLogo: job.companyLogo,
+    location: joinJobRefNames(job.provinces) || "—",
+    salary: job.salaryNegotiable
+      ? translate("postJob.negotiable")
+      : formatMoneyRange(job.salaryMin, job.salaryMax),
+    category: joinJobRefNames(job.industries) || "—",
+    educationLevel: joinJobRefNames(job.educationLevels) || "—",
+    type: job.employmentTypes
+      .map((value) => translate(employmentTypeLabelKey(value)))
+      .join(", "),
+    experience: job.experienceLevels
+      .map((value) => translate(experienceLevelLabelKey(value)))
+      .join(", "),
+    description: job.description,
+    requirements: job.requirements ? job.requirements.split("\n") : [],
+    benefits: job.benefits ? job.benefits.split("\n") : [],
+    deadline: job.deadline,
+    createdAt: job.createdAt,
+    featured: job.hot,
+    status:
+      status === "approved" || status === "rejected" || status === "pending"
+        ? status
+        : "pending",
+    isActive: job.active,
+    applicationCount: job.applicationCount,
+  };
+}
 
 const jobStatusColor: Record<string, string> = {
   approved: "bg-accent-100 text-accent-700",
@@ -28,6 +88,7 @@ const appStatusColor: Record<string, string> = {
 
 export default function DashboardPage() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { cms, className: shell } = usePageShell();
   const { pathname } = useLocation();
@@ -64,6 +125,8 @@ export default function DashboardPage() {
       { key: "createdAt", label: t("dashboard.jobsTable.postedDate") },
       { key: "deadline", label: t("dashboard.jobsTable.deadline") },
       { key: "status", label: t("dashboard.jobsTable.status") },
+      { key: "applications", label: t("dashboard.jobsTable.applications") },
+      { key: "actions", label: t("dashboard.jobsTable.actions") },
     ],
     [t],
   );
@@ -116,17 +179,199 @@ export default function DashboardPage() {
     () => new Set(myCompanies.map((c) => c.id)),
     [myCompanies],
   );
-  const myJobs = useMemo(
+  const mockMyJobs = useMemo(
     () => jobs.filter((j) => myCompanyIds.has(j.companyId)),
     [jobs, myCompanyIds],
   );
+
+  const [employerJobs, setEmployerJobs] = useState<Job[]>([]);
+  const [employerJobsLoading, setEmployerJobsLoading] = useState(false);
+  const [employerJobsTotal, setEmployerJobsTotal] = useState(0);
+  const [employerJobsTotalPages, setEmployerJobsTotalPages] = useState(1);
+  const [jobKeyword, setJobKeyword] = useState("");
+  const [jobViewMode, setJobViewMode] = useState<"active" | "trash">("active");
+  const [jobTrashCount, setJobTrashCount] = useState(0);
+  const [jobDetail, setJobDetail] = useState<EmployerJob | null>(null);
+  const [jobDetailLoading, setJobDetailLoading] = useState(false);
+  const [deleteJobTarget, setDeleteJobTarget] = useState<Job | null>(null);
+  const [jobActionBusy, setJobActionBusy] = useState(false);
+  const {
+    openId: jobMenuId,
+    pos: jobMenuPos,
+    menuRef: jobMenuRef,
+    toggle: toggleJobMenu,
+    close: closeJobMenu,
+  } = useTableActionMenu<string>();
+
+  const useEmployerJobsApi = Boolean(env.apiBaseUrl);
+
+  useEffect(() => {
+    if (!useEmployerJobsApi) return;
+    const timer = window.setTimeout(() => {
+      setJobKeyword(jobSearch.trim());
+      setJobPage(1);
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [jobSearch, useEmployerJobsApi]);
+
+  const loadEmployerJobs = useCallback(async () => {
+    if (!useEmployerJobsApi) return;
+    setEmployerJobsLoading(true);
+    try {
+      const statusMap: Record<string, EmployerJobStatus | undefined> = {
+        all: undefined,
+        approved: "APPROVED",
+        pending: "PENDING",
+        rejected: "REJECTED",
+      };
+      const companyId = jobCompanyFilter ? Number(jobCompanyFilter) : undefined;
+      const inTrash = section === "jobs" && jobViewMode === "trash";
+      const res = await fetchEmployerJobs({
+        keyword: jobKeyword || undefined,
+        status: inTrash ? undefined : statusMap[jobStatusFilter],
+        companyId:
+          companyId != null && Number.isFinite(companyId) && companyId > 0
+            ? companyId
+            : undefined,
+        deleted: inTrash,
+        page: jobPage,
+        size: jobPageSize,
+        sort: "createdAt,DESC",
+      });
+      setEmployerJobs(res.data.map((job) => mapEmployerJobToJob(job, t)));
+      setEmployerJobsTotal(res.pagination.total);
+      setEmployerJobsTotalPages(Math.max(1, res.pagination.last_page));
+    } catch (error) {
+      toast.error(
+        error instanceof AdminAuthError
+          ? resolveAdminAuthErrorMessage(error, t)
+          : t("apiErrors.employerJobLoadFailed"),
+      );
+      setEmployerJobs([]);
+      setEmployerJobsTotal(0);
+      setEmployerJobsTotalPages(1);
+    } finally {
+      setEmployerJobsLoading(false);
+    }
+  }, [
+    useEmployerJobsApi,
+    jobKeyword,
+    jobStatusFilter,
+    jobCompanyFilter,
+    jobPage,
+    jobPageSize,
+    jobViewMode,
+    section,
+    t,
+  ]);
+
+  const loadJobTrashCount = useCallback(async () => {
+    if (!useEmployerJobsApi) return;
+    try {
+      const res = await fetchEmployerJobs({
+        deleted: true,
+        page: 1,
+        size: 1,
+      });
+      setJobTrashCount(res.pagination.total);
+    } catch {
+      setJobTrashCount(0);
+    }
+  }, [useEmployerJobsApi]);
+
+  useEffect(() => {
+    if (section !== "jobs" && section !== "overview") return;
+    void loadEmployerJobs();
+  }, [section, loadEmployerJobs]);
+
+  useEffect(() => {
+    if (section !== "jobs" || !useEmployerJobsApi) return;
+    void loadJobTrashCount();
+  }, [section, useEmployerJobsApi, loadJobTrashCount, employerJobsTotal]);
+
+  const openJobDetail = async (jobId: string) => {
+    closeJobMenu();
+    if (!useEmployerJobsApi) {
+      toast.error(t("apiErrors.missingBackendUrl"));
+      return;
+    }
+    const id = Number(jobId);
+    if (!Number.isFinite(id) || id <= 0) return;
+    setJobDetailLoading(true);
+    try {
+      const detail = await fetchEmployerJobById(id);
+      setJobDetail(detail);
+    } catch (error) {
+      toast.error(
+        error instanceof AdminAuthError
+          ? resolveAdminAuthErrorMessage(error, t)
+          : t("apiErrors.employerJobLoadFailed"),
+      );
+    } finally {
+      setJobDetailLoading(false);
+    }
+  };
+
+  const handleDeleteJob = async () => {
+    if (!deleteJobTarget || jobActionBusy) return;
+    if (!useEmployerJobsApi) {
+      toast.error(t("apiErrors.missingBackendUrl"));
+      return;
+    }
+    const id = Number(deleteJobTarget.id);
+    if (!Number.isFinite(id) || id <= 0) return;
+    setJobActionBusy(true);
+    try {
+      await deleteEmployerJob(id);
+      toast.success(t("dashboard.jobDeleted"));
+      setDeleteJobTarget(null);
+      if (jobDetail?.id === id) setJobDetail(null);
+      await loadEmployerJobs();
+      await loadJobTrashCount();
+    } catch (error) {
+      toast.error(
+        error instanceof AdminAuthError
+          ? resolveAdminAuthErrorMessage(error, t)
+          : t("apiErrors.employerJobDeleteFailed"),
+      );
+    } finally {
+      setJobActionBusy(false);
+    }
+  };
+
+  const handleRestoreJob = async (jobId: string) => {
+    closeJobMenu();
+    if (!useEmployerJobsApi || jobActionBusy) return;
+    const id = Number(jobId);
+    if (!Number.isFinite(id) || id <= 0) return;
+    setJobActionBusy(true);
+    try {
+      const result = await restoreEmployerJob(id);
+      toast.success(result.message || t("dashboard.jobRestored"));
+      if (jobDetail?.id === id) setJobDetail(null);
+      setEmployerJobs((prev) => prev.filter((job) => job.id !== String(id)));
+      setEmployerJobsTotal((total) => Math.max(0, total - 1));
+      setJobTrashCount((count) => Math.max(0, count - 1));
+      await loadEmployerJobs();
+      await loadJobTrashCount();
+    } catch (error) {
+      toast.error(
+        error instanceof AdminAuthError
+          ? resolveAdminAuthErrorMessage(error, t)
+          : t("apiErrors.employerJobRestoreFailed"),
+      );
+    } finally {
+      setJobActionBusy(false);
+    }
+  };
+
+  const myJobs = useEmployerJobsApi ? employerJobs : mockMyJobs;
   const myJobIds = useMemo(() => new Set(myJobs.map((j) => j.id)), [myJobs]);
   const myApplications = useMemo(
     () => allApplications.filter((a) => myJobIds.has(a.jobId)),
     [allApplications, myJobIds],
   );
 
-  // Stats
   const stats = useMemo(() => {
     const activeJobs = myJobs.filter((j) => j.status === "approved").length;
     const totalApps = myApplications.length;
@@ -145,9 +390,18 @@ export default function DashboardPage() {
   }, [myJobs, myApplications]);
 
   const jobCompanyOptions = useMemo(() => {
-    const set = new Set(myJobs.map((j) => j.company));
-    return Array.from(set).sort();
-  }, [myJobs]);
+    if (useEmployerJobsApi) {
+      const map = new Map<string, string>();
+      employerJobs.forEach((j) => map.set(j.companyId, j.company));
+      return Array.from(map.entries())
+        .map(([id, name]) => ({ value: id, label: name }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    }
+    const set = new Set(mockMyJobs.map((j) => j.company));
+    return Array.from(set)
+      .sort()
+      .map((name) => ({ value: name, label: name }));
+  }, [useEmployerJobsApi, employerJobs, mockMyJobs]);
 
   const appCompanyOptions = useMemo(() => {
     const set = new Set<string>();
@@ -163,9 +417,9 @@ export default function DashboardPage() {
     return Array.from(set.entries());
   }, [myApplications]);
 
-  // --- Jobs filtering ---
   const filteredJobs = useMemo(() => {
-    let result = [...myJobs];
+    if (useEmployerJobsApi) return employerJobs;
+    let result = [...mockMyJobs];
     if (jobSearch.trim()) {
       const q = jobSearch.toLowerCase();
       result = result.filter(
@@ -185,14 +439,28 @@ export default function DashboardPage() {
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
     return result;
-  }, [myJobs, jobSearch, jobStatusFilter, jobCompanyFilter]);
+  }, [
+    useEmployerJobsApi,
+    employerJobs,
+    mockMyJobs,
+    jobSearch,
+    jobStatusFilter,
+    jobCompanyFilter,
+  ]);
 
   const paginatedJobs = useMemo(() => {
+    if (useEmployerJobsApi) return employerJobs;
     const start = (jobPage - 1) * jobPageSize;
     return filteredJobs.slice(start, start + jobPageSize);
-  }, [filteredJobs, jobPage, jobPageSize]);
+  }, [useEmployerJobsApi, employerJobs, filteredJobs, jobPage, jobPageSize]);
 
-  const totalJobPages = Math.ceil(filteredJobs.length / jobPageSize);
+  const totalJobPages = useEmployerJobsApi
+    ? employerJobsTotalPages
+    : Math.ceil(filteredJobs.length / jobPageSize) || 1;
+
+  const totalJobItems = useEmployerJobsApi
+    ? employerJobsTotal
+    : filteredJobs.length;
 
   // --- Applications filtering ---
   const filteredApps = useMemo(() => {
@@ -408,7 +676,9 @@ export default function DashboardPage() {
                   </Link>
                 </div>
                 {myJobs.slice(0, 5).length === 0 ? (
-                  <p className="text-sm text-foreground-500">{t("dashboard.noJobs")}</p>
+                  <p className="text-sm text-foreground-500">
+                    {t("dashboard.noJobs")}
+                  </p>
                 ) : (
                   <ul className="divide-y divide-background-100">
                     {myJobs.slice(0, 5).map((job) => (
@@ -485,6 +755,44 @@ export default function DashboardPage() {
             {/* Toolbar */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
               <div className="flex items-center gap-2 flex-wrap">
+                {useEmployerJobsApi && (
+                  <div className="flex items-center gap-1 p-1 rounded-xl bg-background-100 border border-background-200/70">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setJobViewMode("active");
+                        setJobPage(1);
+                      }}
+                      className={`h-9 px-3 rounded-lg text-xs font-medium cursor-pointer whitespace-nowrap ${
+                        jobViewMode === "active"
+                          ? "bg-background-50 text-foreground-900 shadow-sm"
+                          : "text-foreground-600 hover:text-foreground-900"
+                      }`}
+                    >
+                      {t("dashboard.activeList")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setJobViewMode("trash");
+                        setJobPage(1);
+                      }}
+                      className={`h-9 px-3 rounded-lg text-xs font-medium cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5 ${
+                        jobViewMode === "trash"
+                          ? "bg-background-50 text-foreground-900 shadow-sm"
+                          : "text-foreground-600 hover:text-foreground-900"
+                      }`}
+                    >
+                      <i className="ri-delete-bin-line"></i>
+                      {t("adminUi.actions.trash")}
+                      {jobTrashCount > 0 && (
+                        <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-100 text-red-600 text-[10px] font-semibold inline-flex items-center justify-center">
+                          {jobTrashCount}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                )}
                 <div className="relative">
                   <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-foreground-400 text-sm"></i>
                   <input
@@ -500,38 +808,41 @@ export default function DashboardPage() {
                     value={jobCompanyFilter}
                     options={[
                       { value: "", label: t("dashboard.allCompanies") },
-                      ...jobCompanyOptions.map((c) => ({ value: c, label: c })),
+                      ...jobCompanyOptions,
                     ]}
                     onChange={handleJobCompanyChange}
                     icon="ri-building-line"
                     className="w-[200px]"
                     outlined
                   />
-                  {(["all", "approved", "pending", "rejected"] as const).map(
-                    (f) => (
-                      <button
-                        key={f}
-                        type="button"
-                        onClick={() => handleJobFilterChange(f)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer whitespace-nowrap border ${
-                          jobStatusFilter === f
-                            ? "bg-primary-500 border-primary-500 text-background-50 dark:text-foreground-950"
-                            : "bg-background-50 border-background-200 text-foreground-600 hover:bg-background-100"
-                        }`}
-                      >
-                        {f === "all" ? t("common.all") : jobStatusLabel[f]}
-                      </button>
-                    ),
-                  )}
+                  {jobViewMode === "active" &&
+                    (["all", "approved", "pending", "rejected"] as const).map(
+                      (f) => (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => handleJobFilterChange(f)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer whitespace-nowrap border ${
+                            jobStatusFilter === f
+                              ? "bg-primary-500 border-primary-500 text-background-50 dark:text-foreground-950"
+                              : "bg-background-50 border-background-200 text-foreground-600 hover:bg-background-100"
+                          }`}
+                        >
+                          {f === "all" ? t("common.all") : jobStatusLabel[f]}
+                        </button>
+                      ),
+                    )}
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Link
-                  to="/employer/jobs/new"
-                  className="flex items-center gap-1.5 h-10 px-4 bg-primary-500 border border-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-xs font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
-                >
-                  <i className="ri-add-line"></i> {t("dashboard.postNew")}
-                </Link>
+                {jobViewMode === "active" && (
+                  <Link
+                    to="/employer/jobs/new"
+                    className="flex items-center gap-1.5 h-10 px-4 bg-primary-500 border border-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-xs font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
+                  >
+                    <i className="ri-add-line"></i> {t("dashboard.postNew")}
+                  </Link>
+                )}
                 <ColumnVisibilityDropdown
                   columns={JOB_COLUMNS}
                   visibleKeys={jobVisibleColumns}
@@ -540,23 +851,38 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {jobViewMode === "trash" && (
+              <p className="text-xs text-foreground-500 mb-3">
+                {t("dashboard.jobTrashInfo")}
+              </p>
+            )}
+
             {/* Table */}
-            {filteredJobs.length === 0 ? (
+            {employerJobsLoading ? (
+              <div className="bg-background-50 border border-background-200/70 rounded-2xl p-12 text-center text-foreground-500">
+                <i className="ri-loader-4-line animate-spin mr-2"></i>
+                {t("common.loading")}
+              </div>
+            ) : filteredJobs.length === 0 ? (
               <div className="bg-background-50 border border-background-200/70 rounded-2xl p-12 text-center">
                 <div className="w-16 h-16 mx-auto rounded-full bg-background-100 flex items-center justify-center mb-4">
                   <i className="ri-briefcase-line text-2xl text-foreground-400"></i>
                 </div>
                 <h3 className="text-lg font-heading font-semibold text-foreground-950 mb-2">
-                  {myJobs.length === 0
-                    ? t("dashboard.noJobs")
-                    : t("dashboard.noJobsFound")}
+                  {jobViewMode === "trash"
+                    ? t("dashboard.jobTrashEmpty")
+                    : myJobs.length === 0
+                      ? t("dashboard.noJobs")
+                      : t("dashboard.noJobsFound")}
                 </h3>
                 <p className="text-sm text-foreground-500 mb-6">
-                  {myJobs.length === 0
-                    ? t("dashboard.createFirstDesc")
-                    : t("dashboard.tryChangeFilter")}
+                  {jobViewMode === "trash"
+                    ? t("dashboard.jobTrashInfo")
+                    : myJobs.length === 0
+                      ? t("dashboard.createFirstDesc")
+                      : t("dashboard.tryChangeFilter")}
                 </p>
-                {myJobs.length === 0 && (
+                {jobViewMode === "active" && myJobs.length === 0 && (
                   <Link
                     to="/employer/jobs/new"
                     className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
@@ -611,112 +937,186 @@ export default function DashboardPage() {
                             {t("dashboard.jobsTable.status")}
                           </th>
                         )}
+                        {jobVisibleColumns.includes("applications") && (
+                          <th className="px-5 py-3.5 text-xs font-semibold text-foreground-600 uppercase tracking-wider">
+                            {t("dashboard.jobsTable.applications")}
+                          </th>
+                        )}
+                        {jobVisibleColumns.includes("actions") && (
+                          <th className="px-5 py-3.5 text-xs font-semibold text-foreground-600 uppercase tracking-wider text-right">
+                            {t("dashboard.jobsTable.actions")}
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-background-200/70">
-                      {paginatedJobs.map((job) => {
-                        const appCount = myApplications.filter(
-                          (a) => a.jobId === job.id,
-                        ).length;
-                        return (
-                          <tr
-                            key={job.id}
-                            className="hover:bg-background-100/50 transition-colors"
-                          >
-                            {jobVisibleColumns.includes("title") && (
-                              <td className="px-5 py-4">
-                                <Link
-                                  to={`/jobs/${job.id}`}
-                                  className="text-sm font-semibold text-foreground-900 hover:text-primary-500 transition-colors cursor-pointer line-clamp-1"
-                                >
-                                  {job.title}
-                                </Link>
-                                <p className="text-xs text-foreground-500 mt-0.5 md:hidden">
-                                  {job.category} · {job.location}
-                                </p>
-                              </td>
-                            )}
-                            {jobVisibleColumns.includes("company") && (
-                              <td className="px-5 py-4">
-                                <div className="flex items-center gap-2.5">
-                                  <div className="w-8 h-8 rounded-lg bg-background-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                                    <img
-                                      src={job.companyLogo}
-                                      alt={job.company}
-                                      className="w-6 h-6 object-contain"
-                                    />
-                                  </div>
-                                  <span className="text-sm text-foreground-700">
-                                    {job.company}
-                                  </span>
+                      {paginatedJobs.map((job) => (
+                        <tr
+                          key={job.id}
+                          className="hover:bg-background-100/50 transition-colors"
+                        >
+                          {jobVisibleColumns.includes("title") && (
+                            <td className="px-5 py-4">
+                              <button
+                                type="button"
+                                onClick={() => void openJobDetail(job.id)}
+                                className="text-sm font-semibold text-foreground-900 hover:text-primary-500 transition-colors cursor-pointer line-clamp-1 text-left"
+                              >
+                                {job.title}
+                              </button>
+                              <p className="text-xs text-foreground-500 mt-0.5 md:hidden">
+                                {job.category} · {job.location}
+                              </p>
+                            </td>
+                          )}
+                          {jobVisibleColumns.includes("company") && (
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-lg bg-background-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                  <img
+                                    src={job.companyLogo}
+                                    alt={job.company}
+                                    className="w-6 h-6 object-contain"
+                                  />
                                 </div>
-                              </td>
-                            )}
-                            {jobVisibleColumns.includes("category") && (
-                              <td className="px-5 py-4 hidden md:table-cell">
-                                <span className="text-sm text-foreground-600">
-                                  {job.category}
+                                <span className="text-sm text-foreground-700">
+                                  {job.company}
                                 </span>
-                              </td>
-                            )}
-                            {jobVisibleColumns.includes("location") && (
-                              <td className="px-5 py-4 hidden lg:table-cell">
-                                <span className="text-sm text-foreground-600">
-                                  {job.location}
-                                </span>
-                              </td>
-                            )}
-                            {jobVisibleColumns.includes("salary") && (
-                              <td className="px-5 py-4 hidden lg:table-cell">
-                                <span className="text-sm font-medium text-foreground-700">
-                                  {job.salary}
-                                </span>
-                              </td>
-                            )}
-                            {jobVisibleColumns.includes("createdAt") && (
-                              <td className="px-5 py-4 hidden md:table-cell">
-                                <span className="text-sm text-foreground-600">
-                                  {job.createdAt}
-                                </span>
-                              </td>
-                            )}
-                            {jobVisibleColumns.includes("deadline") && (
-                              <td className="px-5 py-4 hidden lg:table-cell">
-                                <span
-                                  className={`text-sm ${new Date(job.deadline) < new Date() ? "text-red-500 font-medium" : "text-foreground-600"}`}
+                              </div>
+                            </td>
+                          )}
+                          {jobVisibleColumns.includes("category") && (
+                            <td className="px-5 py-4 hidden md:table-cell">
+                              <span className="text-sm text-foreground-600">
+                                {job.category}
+                              </span>
+                            </td>
+                          )}
+                          {jobVisibleColumns.includes("location") && (
+                            <td className="px-5 py-4 hidden lg:table-cell">
+                              <span className="text-sm text-foreground-600">
+                                {job.location}
+                              </span>
+                            </td>
+                          )}
+                          {jobVisibleColumns.includes("salary") && (
+                            <td className="px-5 py-4 hidden lg:table-cell">
+                              <span className="text-sm font-medium text-foreground-700">
+                                {job.salary}
+                              </span>
+                            </td>
+                          )}
+                          {jobVisibleColumns.includes("createdAt") && (
+                            <td className="px-5 py-4 hidden md:table-cell">
+                              <span className="text-sm text-foreground-600">
+                                {formatDate(job.createdAt, i18n.language)}
+                              </span>
+                            </td>
+                          )}
+                          {jobVisibleColumns.includes("deadline") && (
+                            <td className="px-5 py-4 hidden lg:table-cell">
+                              <span
+                                className={`text-sm ${new Date(job.deadline) < new Date() ? "text-red-500 font-medium" : "text-foreground-600"}`}
+                              >
+                                {formatDate(job.deadline, i18n.language)}
+                              </span>
+                            </td>
+                          )}
+                          {jobVisibleColumns.includes("status") && (
+                            <td className="px-5 py-4">
+                              <span
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${jobStatusColor[job.status]}`}
+                              >
+                                {job.status === "approved" && (
+                                  <i className="ri-check-line text-[10px]"></i>
+                                )}
+                                {job.status === "pending" && (
+                                  <i className="ri-time-line text-[10px]"></i>
+                                )}
+                                {job.status === "rejected" && (
+                                  <i className="ri-close-line text-[10px]"></i>
+                                )}
+                                {jobStatusLabel[job.status]}
+                              </span>
+                            </td>
+                          )}
+                          {jobVisibleColumns.includes("applications") && (
+                            <td className="px-5 py-4 text-sm text-foreground-600 whitespace-nowrap">
+                              {t("dashboard.jobsTable.cvCount", {
+                                count: job.applicationCount ?? 0,
+                              })}
+                            </td>
+                          )}
+                          {jobVisibleColumns.includes("actions") && (
+                            <td className="px-5 py-4 text-right">
+                              <button
+                                type="button"
+                                onClick={(event) =>
+                                  toggleJobMenu(job.id, event)
+                                }
+                                className="w-9 h-9 inline-flex items-center justify-center rounded-lg hover:bg-background-100 text-foreground-500 cursor-pointer"
+                                aria-label={t("dashboard.jobsTable.actions")}
+                              >
+                                <i className="ri-more-2-fill text-lg"></i>
+                              </button>
+                              {jobMenuId === job.id && jobMenuPos && (
+                                <TableActionMenu
+                                  open
+                                  menuRef={jobMenuRef}
+                                  pos={jobMenuPos}
                                 >
-                                  {job.deadline}
-                                </span>
-                              </td>
-                            )}
-                            {jobVisibleColumns.includes("status") && (
-                              <td className="px-5 py-4">
-                                <div className="flex items-center gap-2">
-                                  <span
-                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${jobStatusColor[job.status]}`}
+                                  <button
+                                    type="button"
+                                    onClick={() => void openJobDetail(job.id)}
+                                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-foreground-700 hover:bg-background-100 cursor-pointer text-left min-h-[44px]"
                                   >
-                                    {job.status === "approved" && (
-                                      <i className="ri-check-line text-[10px]"></i>
-                                    )}
-                                    {job.status === "pending" && (
-                                      <i className="ri-time-line text-[10px]"></i>
-                                    )}
-                                    {job.status === "rejected" && (
-                                      <i className="ri-close-line text-[10px]"></i>
-                                    )}
-                                    {jobStatusLabel[job.status]}
-                                  </span>
-                                  {appCount > 0 && (
-                                    <span className="text-xs text-foreground-500 whitespace-nowrap">
-                                      {appCount} CV
-                                    </span>
+                                    <i className="ri-eye-line"></i>
+                                    {t("dashboard.viewJob")}
+                                  </button>
+                                  {jobViewMode === "active" ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          closeJobMenu();
+                                          navigate(`/employer/jobs/${job.id}/edit`);
+                                        }}
+                                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-foreground-700 hover:bg-background-100 cursor-pointer text-left min-h-[44px]"
+                                      >
+                                        <i className="ri-pencil-line"></i>
+                                        {t("dashboard.editJob")}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          closeJobMenu();
+                                          setDeleteJobTarget(job);
+                                        }}
+                                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 cursor-pointer text-left min-h-[44px]"
+                                      >
+                                        <i className="ri-delete-bin-line"></i>
+                                        {t("common.delete")}
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      disabled={jobActionBusy}
+                                      onClick={() =>
+                                        void handleRestoreJob(job.id)
+                                      }
+                                      className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-accent-700 hover:bg-accent-50 cursor-pointer text-left min-h-[44px] disabled:opacity-60"
+                                    >
+                                      <i className="ri-refresh-line"></i>
+                                      {t("adminUi.actions.restore")}
+                                    </button>
                                   )}
-                                </div>
-                              </td>
-                            )}
-                          </tr>
-                        );
-                      })}
+                                </TableActionMenu>
+                              )}
+                            </td>
+                          )}
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -724,13 +1124,311 @@ export default function DashboardPage() {
                   currentPage={jobPage}
                   totalPages={totalJobPages}
                   pageSize={jobPageSize}
-                  totalItems={filteredJobs.length}
+                  totalItems={totalJobItems}
                   onPageChange={setJobPage}
                   onPageSizeChange={(size) => {
                     setJobPageSize(size);
                     setJobPage(1);
                   }}
                 />
+              </div>
+            )}
+
+            {jobDetailLoading && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                <div className="bg-background-50 rounded-xl px-5 py-4 text-sm text-foreground-600 shadow-lg">
+                  <i className="ri-loader-4-line animate-spin mr-2"></i>
+                  {t("common.loading")}
+                </div>
+              </div>
+            )}
+
+            {jobDetail && (
+              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+                <div
+                  className="absolute inset-0 bg-black/50"
+                  onClick={() => setJobDetail(null)}
+                ></div>
+                <div className="relative bg-background-50 border border-background-200 rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-lg">
+                  <div className="flex items-start justify-between gap-3 mb-5">
+                    <div className="min-w-0">
+                      <h3 className="text-lg font-heading font-semibold text-foreground-950">
+                        {jobDetail.title}
+                      </h3>
+                      <p className="text-sm text-foreground-500 mt-1">
+                        {jobDetail.companyName}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setJobDetail(null)}
+                      className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-background-100 cursor-pointer"
+                    >
+                      <i className="ri-close-line text-lg"></i>
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <span
+                      className={`px-2.5 py-1 text-xs font-medium rounded-full ${
+                        jobStatusColor[jobDetail.status.toLowerCase()] || ""
+                      }`}
+                    >
+                      {jobStatusLabel[jobDetail.status.toLowerCase()] ||
+                        jobDetail.status}
+                    </span>
+                    <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-background-100 text-foreground-600">
+                      {t("dashboard.jobsTable.cvCount", {
+                        count: jobDetail.applicationCount,
+                      })}
+                    </span>
+                  </div>
+
+                  {jobDetail.status === "REJECTED" && (
+                    <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200">
+                      <p className="text-xs text-red-500 mb-1">
+                        {t("adminUi.rejectionReason")}
+                      </p>
+                      <p className="text-sm text-red-700 whitespace-pre-wrap">
+                        {jobDetail.rejectionReason.trim() ||
+                          t("adminUi.rejectionReasonEmpty")}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mb-5">
+                    <div>
+                      <p className="text-xs text-foreground-500 mb-1">
+                        {t("dashboard.jobsTable.category")}
+                      </p>
+                      <p>{joinJobRefNames(jobDetail.industries) || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-foreground-500 mb-1">
+                        {t("dashboard.jobsTable.location")}
+                      </p>
+                      <p>{joinJobRefNames(jobDetail.provinces) || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-foreground-500 mb-1">
+                        {t("postJob.education")}
+                      </p>
+                      <p>
+                        {joinJobRefNames(jobDetail.educationLevels) || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-foreground-500 mb-1">
+                        {t("postJob.workType")}
+                      </p>
+                      <p>
+                        {jobDetail.employmentTypes
+                          .map((value) => t(employmentTypeLabelKey(value)))
+                          .join(", ") || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-foreground-500 mb-1">
+                        {t("postJob.experience")}
+                      </p>
+                      <p>
+                        {jobDetail.experienceLevels
+                          .map((value) => t(experienceLevelLabelKey(value)))
+                          .join(", ") || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-foreground-500 mb-1">
+                        {t("postJob.experienceYears")}
+                      </p>
+                      <p>
+                        {jobDetail.experienceYears != null
+                          ? t("postJob.experienceYearsValue", {
+                              count: jobDetail.experienceYears,
+                            })
+                          : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-foreground-500 mb-1">
+                        {t("dashboard.jobsTable.salary")}
+                      </p>
+                      <p>
+                        {jobDetail.salaryNegotiable
+                          ? t("postJob.negotiable")
+                          : formatMoneyRange(
+                              jobDetail.salaryMin,
+                              jobDetail.salaryMax,
+                            )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-foreground-500 mb-1">
+                        {t("dashboard.jobsTable.deadline")}
+                      </p>
+                      <p>{formatDate(jobDetail.deadline, i18n.language)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-foreground-500 mb-1">
+                        {t("dashboard.jobsTable.postedDate")}
+                      </p>
+                      <p>
+                        {formatDateTime(jobDetail.createdAt, i18n.language)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {(
+                    [
+                      [
+                        "description",
+                        jobDetail.description,
+                        t("postJob.description"),
+                      ],
+                      [
+                        "requirements",
+                        jobDetail.requirements,
+                        t("postJob.requirements"),
+                      ],
+                      ["benefits", jobDetail.benefits, t("postJob.benefits")],
+                      [
+                        "workLocation",
+                        jobDetail.workLocation,
+                        t("postJob.workLocation"),
+                      ],
+                      [
+                        "workingTime",
+                        jobDetail.workingTime,
+                        t("postJob.workingTime"),
+                      ],
+                      [
+                        "applicantQuestion",
+                        jobDetail.applicantQuestion,
+                        t("postJob.applicantQuestion"),
+                      ],
+                    ] as const
+                  ).map(([key, html, label]) => {
+                    const hasText =
+                      html
+                        .replace(/<[^>]*>/g, " ")
+                        .replace(/&nbsp;/gi, " ")
+                        .trim().length > 0;
+                    if (!hasText) return null;
+                    return (
+                      <div key={key} className="mb-4">
+                        <p className="text-xs text-foreground-500 mb-1">
+                          {label}
+                        </p>
+                        <div
+                          className="text-sm text-foreground-700 prose prose-sm max-w-none [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5"
+                          dangerouslySetInnerHTML={{ __html: html }}
+                        />
+                      </div>
+                    );
+                  })}
+
+                  {jobViewMode === "active" && (
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setJobDetail(null);
+                          navigate(`/employer/jobs/${jobDetail.id}/edit`);
+                        }}
+                        className="flex-1 h-11 rounded-xl border border-background-300 text-foreground-700 text-sm font-medium hover:bg-background-100 cursor-pointer"
+                      >
+                        <i className="ri-pencil-line mr-1.5"></i>
+                        {t("dashboard.editJob")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeleteJobTarget({
+                            id: String(jobDetail.id),
+                            title: jobDetail.title,
+                            company: jobDetail.companyName,
+                            companyId: String(jobDetail.companyId),
+                            companyLogo: jobDetail.companyLogo,
+                            location:
+                              joinJobRefNames(jobDetail.provinces) || "—",
+                            salary: jobDetail.salaryNegotiable
+                              ? t("postJob.negotiable")
+                              : formatMoneyRange(
+                                  jobDetail.salaryMin,
+                                  jobDetail.salaryMax,
+                                ),
+                            category:
+                              joinJobRefNames(jobDetail.industries) || "—",
+                            educationLevel:
+                              joinJobRefNames(jobDetail.educationLevels) || "—",
+                            type: "",
+                            experience: "",
+                            description: "",
+                            requirements: [],
+                            benefits: [],
+                            deadline: jobDetail.deadline,
+                            createdAt: jobDetail.createdAt,
+                            featured: jobDetail.hot,
+                            status:
+                              jobDetail.status.toLowerCase() as Job["status"],
+                            applicationCount: jobDetail.applicationCount,
+                          });
+                          setJobDetail(null);
+                        }}
+                        className="flex-1 h-11 rounded-xl border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 cursor-pointer"
+                      >
+                        {t("common.delete")}
+                      </button>
+                    </div>
+                  )}
+                  {jobViewMode === "trash" && (
+                    <button
+                      type="button"
+                      disabled={jobActionBusy}
+                      onClick={() => void handleRestoreJob(String(jobDetail.id))}
+                      className="w-full h-11 rounded-xl bg-primary-500 text-white text-sm font-medium cursor-pointer disabled:opacity-60"
+                    >
+                      {t("adminUi.actions.restore")}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {deleteJobTarget && (
+              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+                <div
+                  className="absolute inset-0 bg-black/50"
+                  onClick={() => !jobActionBusy && setDeleteJobTarget(null)}
+                ></div>
+                <div className="relative bg-background-50 border border-background-200 rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-md shadow-lg">
+                  <h3 className="text-lg font-heading font-semibold text-foreground-950 mb-2">
+                    {t("adminUi.confirm.deleteTitle")}
+                  </h3>
+                  <p className="text-sm text-foreground-600 mb-6">
+                    {t("adminUi.confirm.deleteMessage", {
+                      item: deleteJobTarget.title,
+                    })}
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <button
+                      type="button"
+                      disabled={jobActionBusy}
+                      onClick={() => void handleDeleteJob()}
+                      className="flex-1 h-11 rounded-xl bg-red-500 text-white text-sm font-medium cursor-pointer disabled:opacity-60"
+                    >
+                      {t("common.delete")}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={jobActionBusy}
+                      onClick={() => setDeleteJobTarget(null)}
+                      className="flex-1 h-11 rounded-xl border border-background-300 text-sm cursor-pointer disabled:opacity-60"
+                    >
+                      {t("common.cancel")}
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </>

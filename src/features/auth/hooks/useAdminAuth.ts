@@ -1,6 +1,5 @@
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { adminLogoutRequest } from "@/api/adminAuth";
-import { ADMIN_ACCESS_TOKEN_KEY } from "@/api/adminAuthTokens";
+import { adminLogoutRequest, getAdminAccessToken } from "@/api/adminAuth";
 import {
   adminLogin,
   adminLogout,
@@ -8,37 +7,50 @@ import {
   setAdminSessionUser,
 } from "@/store/slices/adminAuthSlice";
 import type { AdminSessionUser } from "@/types/adminAuth";
+import { useCallback, useMemo } from "react";
 
 /** Domain hook for admin portal session. */
 export function useAdminAuth() {
   const dispatch = useAppDispatch();
-  const { admin, accessToken, refreshToken, isAuthenticated } = useAppSelector(
-    (state) => state.adminAuth,
-  );
+  const { admin, isAuthenticated } = useAppSelector((state) => state.adminAuth);
 
-  return {
-    admin,
-    accessToken,
-    refreshToken,
-    isAuthenticated,
-    login: (payload: {
-      user: AdminSessionUser;
-      accessToken: string;
-      refreshToken: string;
-    }) => {
+  const login = useCallback(
+    (payload: { user: AdminSessionUser }) => {
       dispatch(adminLogin(payload));
     },
-    logout: () => {
-      const token =
-        accessToken || localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
-      void adminLogoutRequest(token);
-      dispatch(adminLogout());
-    },
-    updateProfile: (patch: Partial<AdminSessionUser>) => {
+    [dispatch],
+  );
+
+  const logout = useCallback(() => {
+    const token = getAdminAccessToken();
+    void adminLogoutRequest(token);
+    dispatch(adminLogout());
+  }, [dispatch]);
+
+  const updateProfile = useCallback(
+    (patch: Partial<AdminSessionUser>) => {
       dispatch(updateAdminProfile(patch));
     },
-    setSessionUser: (user: AdminSessionUser) => {
+    [dispatch],
+  );
+
+  const setSessionUser = useCallback(
+    (user: AdminSessionUser) => {
       dispatch(setAdminSessionUser(user));
     },
-  };
+    [dispatch],
+  );
+
+  return useMemo(
+    () => ({
+      admin,
+      accessToken: getAdminAccessToken(),
+      isAuthenticated,
+      login,
+      logout,
+      updateProfile,
+      setSessionUser,
+    }),
+    [admin, isAuthenticated, login, logout, updateProfile, setSessionUser],
+  );
 }

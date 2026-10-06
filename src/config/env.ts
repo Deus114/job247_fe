@@ -3,11 +3,19 @@ function readEnv(key: keyof ImportMetaEnv, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
 }
 
+/**
+ * Cookie Path is `/api/v1/auth` and `/api/v1/admin/auth`.
+ */
 function normalizeApiBaseUrl(raw: string): string {
-  const trimmed = raw.trim().replace(/\/$/, "");
+  let trimmed = raw.trim().replace(/\/$/, "");
   if (!trimmed) return "";
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  return `http://${trimmed}`;
+  if (!/^https?:\/\//i.test(trimmed)) {
+    trimmed = `http://${trimmed}`;
+  }
+  if (!/\/api\/v\d+$/i.test(trimmed)) {
+    trimmed = `${trimmed}/api/v1`;
+  }
+  return trimmed;
 }
 
 function readNumber(key: keyof ImportMetaEnv, fallback: number): number {

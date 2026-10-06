@@ -1,5 +1,9 @@
+import {
+  clearAdminTokens,
+  getAdminAccessToken,
+  setAdminAccessToken,
+} from "@/api/adminAuthTokens";
 import axios from "@/api/axios.customize";
-import { isAxiosError } from "axios";
 import { env } from "@/config/env";
 import type {
   AdminLoginData,
@@ -13,18 +17,9 @@ import type {
   UpdateAdminMePayload,
 } from "@/types/adminAuth";
 import { isValidAdminSession } from "@/types/adminAuth";
-import {
-  ADMIN_ACCESS_TOKEN_KEY,
-  ADMIN_REFRESH_TOKEN_KEY,
-  clearAdminTokens,
-  persistAdminTokens,
-} from "@/api/adminAuthTokens";
+import { isAxiosError } from "axios";
 
-export {
-  ADMIN_ACCESS_TOKEN_KEY,
-  ADMIN_REFRESH_TOKEN_KEY,
-  clearAdminTokens,
-} from "@/api/adminAuthTokens";
+export { clearAdminTokens, getAdminAccessToken } from "@/api/adminAuthTokens";
 
 export class AdminAuthError extends Error {
   /** i18n key under `apiErrors.*` — resolve with `resolveAdminAuthErrorMessage` */
@@ -136,7 +131,6 @@ function parseAuthSessionData(
 ): AdminLoginResult {
   const user = normalizeAdminSessionUser(data.user);
   const accessToken = pickToken(data, "accessToken", "access_token", "token");
-  const refreshToken = pickToken(data, "refreshToken", "refresh_token");
 
   if (!user || !accessToken) {
     throw new AdminAuthError("apiErrors.loginMissingData", statusCode, message);
@@ -150,33 +144,37 @@ function parseAuthSessionData(
     );
   }
 
-  persistAdminTokens(accessToken, refreshToken || undefined);
+  setAdminAccessToken(accessToken);
 
   return {
     user,
     accessToken,
-    refreshToken: refreshToken || "",
     message: message || "",
   };
 }
 
 /**
- * POST /auth/logout
- * Failures are ignored so the local session can still be cleared.
+ * POST /admin/auth/logout — always call so BE can clear `admin_refresh_token`.
+ * Bearer is optional when access is already gone from RAM.
  */
 export async function adminLogoutRequest(
   accessToken?: string | null,
 ): Promise<void> {
-  if (!env.apiBaseUrl) return;
-  const token = accessToken || localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
-  if (!token) return;
+  if (!env.apiBaseUrl) {
+    clearAdminTokens();
+    return;
+  }
 
   try {
-    await axios.post("/auth/logout", undefined, {
-      headers: { Authorization: `Bearer ${token}` },
+    const token = accessToken ?? getAdminAccessToken();
+    await axios.post("/admin/auth/logout", undefined, {
+      ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
+      skipAuthRefresh: true,
     });
   } catch {
     // local logout still proceeds
+  } finally {
+    clearAdminTokens();
   }
 }
 
@@ -241,33 +239,21 @@ export async function adminLoginRequest(
 let refreshInFlight: Promise<AdminLoginResult> | null = null;
 
 /**
- * POST /admin/auth/refresh — body `{ refreshToken }`.
+ * POST /admin/auth/refresh — browser sends HttpOnly cookie (`admin_refresh_token`).
  * Single-flight: concurrent callers share one request.
  */
-export async function adminRefreshRequest(
-  refreshTokenOverride?: string,
-): Promise<AdminLoginResult> {
+export async function adminRefreshRequest(): Promise<AdminLoginResult> {
   if (!env.apiBaseUrl) {
     throw new AdminAuthError("apiErrors.missingBackendUrl");
   }
 
   if (refreshInFlight) return refreshInFlight;
 
-  const refreshToken =
-    refreshTokenOverride?.trim() ||
-    localStorage.getItem(ADMIN_REFRESH_TOKEN_KEY) ||
-    "";
-
-  if (!refreshToken) {
-    clearAdminTokens();
-    throw new AdminAuthError("apiErrors.sessionExpired");
-  }
-
   refreshInFlight = (async () => {
     try {
       const res = (await axios.post(
         "/admin/auth/refresh",
-        { refreshToken },
+        {},
         { skipAuthRefresh: true },
       )) as ApiResponse<AdminLoginData | Record<string, unknown>>;
 
@@ -328,63 +314,36 @@ function isNetworkAuthError(error: unknown): boolean {
 }
 
 /**
- * Bootstrap admin session when revisiting the app (server decides expiry):
- * 1) GET /admin/users/me with current access token
- * 2) On 401/403 (or missing access) → POST /admin/auth/refresh then retry /me
- * 3) On refresh failure → clear tokens
+ * Bootstrap admin session (F5 / revisit):
+ * 1) If access in RAM → GET /admin/users/me
+ * 2) On 401/403 or missing access → POST /admin/auth/refresh (cookie)
+ * 3) Refresh failure → clear RAM access
  */
 export async function ensureAdminSession(): Promise<EnsureAdminSessionResult> {
   if (!env.apiBaseUrl) {
     return { ok: false, reason: "unauthenticated" };
   }
 
-  const accessToken = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
-  const refreshToken = localStorage.getItem(ADMIN_REFRESH_TOKEN_KEY);
-
-  if (!accessToken && !refreshToken) {
-    return { ok: false, reason: "unauthenticated" };
-  }
-
-  let refreshed = false;
-  let sessionUser: AdminSessionUser | null = null;
+  const accessToken = getAdminAccessToken();
 
   try {
-    // No access token but still have refresh → refresh first
-    if (!accessToken && refreshToken) {
-      const session = await adminRefreshRequest(refreshToken);
-      sessionUser = session.user;
-      refreshed = true;
-    }
-
-    try {
-      const user = await fetchAdminMe();
-      return { ok: true, user, refreshed };
-    } catch (meError) {
-      if (isNetworkAuthError(meError)) {
-        if (sessionUser) return { ok: true, user: sessionUser, refreshed };
-        return { ok: false, reason: "network" };
-      }
-
-      const status = authErrorStatus(meError);
-      if (status !== 401 && status !== 403) {
-        if (sessionUser) return { ok: true, user: sessionUser, refreshed };
-        return { ok: false, reason: "network" };
-      }
-
-      if (!localStorage.getItem(ADMIN_REFRESH_TOKEN_KEY)) {
-        clearAdminTokens();
-        return { ok: false, reason: "session_expired" };
-      }
-
-      const session = await adminRefreshRequest();
-      refreshed = true;
+    if (accessToken) {
       try {
         const user = await fetchAdminMe();
-        return { ok: true, user, refreshed };
-      } catch {
-        return { ok: true, user: session.user, refreshed };
+        return { ok: true, user, refreshed: false };
+      } catch (meError) {
+        if (isNetworkAuthError(meError)) {
+          return { ok: false, reason: "network" };
+        }
+        const status = authErrorStatus(meError);
+        if (status !== 401 && status !== 403) {
+          return { ok: false, reason: "network" };
+        }
       }
     }
+
+    const session = await adminRefreshRequest();
+    return { ok: true, user: session.user, refreshed: true };
   } catch (error) {
     clearAdminTokens();
     if (isNetworkAuthError(error)) {

@@ -1,7 +1,6 @@
-import axios from "@/api/axios.customize";
-import { isAxiosError } from "axios";
-import { env } from "@/config/env";
 import { AdminAuthError, isAdminApiSuccess } from "@/api/adminAuth";
+import axios from "@/api/axios.customize";
+import { env } from "@/config/env";
 import type { ApiResponse } from "@/types/adminAuth";
 import type { ApiPagination, PaginatedList } from "@/types/catalog";
 import type {
@@ -20,11 +19,9 @@ import type {
   UpdateCompanyJoinRequestPayload,
   UpdateEmployerCompanyPayload,
 } from "@/types/company";
+import { isAxiosError } from "axios";
 
-function throwEmployerCompanyError(
-  fallbackKey: string,
-  error: unknown,
-): never {
+function throwEmployerCompanyError(fallbackKey: string, error: unknown): never {
   if (error instanceof AdminAuthError) throw error;
 
   if (isAxiosError(error)) {
@@ -146,7 +143,9 @@ export function normalizeEmployerCompanyApi(
     taxCode: String(r.taxCode ?? ""),
     description: String(r.description ?? ""),
     status: normalizeCompanyStatus(r.status),
+    rejectionReason: String(r.rejectionReason ?? ""),
     active: r.active !== false,
+    applied: r.applied === true,
     members: membersRaw
       .map(normalizeMember)
       .filter((item): item is AdminCompanyMember => item != null),
@@ -180,7 +179,10 @@ export function normalizeEmployerCompany(
     logo: api.logo,
     banner: api.backgroundImage,
     description: api.description,
-    industry: api.industries.map((item) => item.name).filter(Boolean).join(", "),
+    industry: api.industries
+      .map((item) => item.name)
+      .filter(Boolean)
+      .join(", "),
     size: api.size,
     location: api.provinceName,
     address: api.address,
@@ -440,7 +442,7 @@ export async function createEmployerCompany(
   }
 }
 
-/** GET /employer/companies/join-requests/mine */
+/** GET /employer/join-requests/mine */
 export async function fetchMyCompanyJoinRequests(
   params: CompanyJoinRequestListParams = {},
 ): Promise<PaginatedList<CompanyJoinRequest>> {
@@ -454,7 +456,7 @@ export async function fetchMyCompanyJoinRequests(
     if (params.status) query.status = params.status;
     if (params.sort?.trim()) query.sort = params.sort.trim();
 
-    const res = (await axios.get("/employer/companies/join-requests/mine", {
+    const res = (await axios.get("/employer/join-requests/mine", {
       params: query,
     })) as ApiResponse<{ data?: unknown; pagination?: unknown } | unknown[]>;
 
@@ -485,9 +487,8 @@ export async function fetchMyCompanyJoinRequests(
   }
 }
 
-/** GET /employer/companies/:id/join-requests */
+/** GET /employer/join-requests — optional `companyId` query. */
 export async function fetchCompanyJoinRequests(
-  companyId: number,
   params: CompanyJoinRequestListParams = {},
 ): Promise<PaginatedList<CompanyJoinRequest>> {
   requireBackend();
@@ -497,13 +498,15 @@ export async function fetchCompanyJoinRequests(
       page: params.page ?? 1,
       size: params.size ?? 10,
     };
+    if (params.companyId != null && Number.isFinite(params.companyId)) {
+      query.companyId = params.companyId;
+    }
     if (params.status) query.status = params.status;
     if (params.sort?.trim()) query.sort = params.sort.trim();
 
-    const res = (await axios.get(
-      `/employer/companies/${companyId}/join-requests`,
-      { params: query },
-    )) as ApiResponse<{ data?: unknown; pagination?: unknown } | unknown[]>;
+    const res = (await axios.get("/employer/join-requests", {
+      params: query,
+    })) as ApiResponse<{ data?: unknown; pagination?: unknown } | unknown[]>;
 
     if (!res || typeof res !== "object") {
       throw new AdminAuthError("apiErrors.invalidResponse");
@@ -556,19 +559,17 @@ export async function createCompanyJoinRequest(
   }
 }
 
-/** PUT /employer/companies/:id/join-requests/:requestId */
+/** PUT /employer/join-requests/:id */
 export async function updateCompanyJoinRequest(
-  companyId: number,
   requestId: number,
   payload: UpdateCompanyJoinRequestPayload,
 ): Promise<CompanyJoinRequest> {
   requireBackend();
 
   try {
-    const res = (await axios.put(
-      `/employer/companies/${companyId}/join-requests/${requestId}`,
-      { status: payload.status },
-    )) as ApiResponse<unknown>;
+    const res = (await axios.put(`/employer/join-requests/${requestId}`, {
+      status: payload.status,
+    })) as ApiResponse<unknown>;
     if (!res || typeof res !== "object") {
       throw new AdminAuthError("apiErrors.invalidResponse");
     }

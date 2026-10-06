@@ -132,6 +132,7 @@ export function normalizeAdminCompany(raw: unknown): AdminCompany | null {
     taxCode: String(record.taxCode ?? ""),
     description: String(record.description ?? ""),
     status,
+    rejectionReason: String(record.rejectionReason ?? ""),
     active: record.active !== false,
     members: membersRaw
       .map(normalizeMember)
@@ -231,7 +232,7 @@ export async function fetchAdminCompanyById(id: number): Promise<AdminCompany> {
   }
 }
 
-/** PUT /admin/companies/:id — body `{ active, status }` only. */
+/** PUT /admin/companies/:id — body `{ active, status, rejectionReason? }`. */
 export async function updateAdminCompany(
   id: number,
   payload: AdminCompanyUpdatePayload,
@@ -239,10 +240,17 @@ export async function updateAdminCompany(
   requireBackend();
 
   try {
-    const res = (await axios.put(`/admin/companies/${id}`, {
+    const body: Record<string, unknown> = {
       active: payload.active,
       status: payload.status,
-    })) as ApiResponse<unknown>;
+    };
+    if (payload.status === "REJECTED") {
+      body.rejectionReason = payload.rejectionReason?.trim() || "";
+    }
+    const res = (await axios.put(
+      `/admin/companies/${id}`,
+      body,
+    )) as ApiResponse<unknown>;
     if (!res || typeof res !== "object") {
       throw new AdminAuthError("apiErrors.invalidResponse");
     }

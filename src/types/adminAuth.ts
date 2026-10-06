@@ -105,7 +105,6 @@ export interface AdminAccountUpdatePayload {
 export interface AdminLoginData {
   user: AdminSessionUser;
   accessToken: string;
-  refreshToken: string;
 }
 
 export interface AdminLoginPayload {
@@ -116,7 +115,6 @@ export interface AdminLoginPayload {
 export interface AdminLoginResult {
   user: AdminSessionUser;
   accessToken: string;
-  refreshToken: string;
   message: string;
 }
 

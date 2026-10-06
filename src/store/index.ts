@@ -10,7 +10,7 @@ import applicationsReducer from "./slices/applicationsSlice";
 import businessConfigReducer from "./slices/businessConfigSlice";
 import { writeJson, removeKeys } from "@/lib/storage";
 
-const STORE_VERSION = "v2-admin-api-auth";
+const STORE_VERSION = "v3-cookie-refresh-auth";
 const STORE_VER_KEY = "redux_store_version";
 
 const LEGACY_KEYS = [
@@ -61,8 +61,15 @@ export const store = configureStore({
 store.subscribe(() => {
   const state = store.getState();
   writeJson(PERSIST_KEYS.theme, state.theme);
-  writeJson(PERSIST_KEYS.auth, state.auth);
-  writeJson(PERSIST_KEYS.adminAuth, state.adminAuth);
+  // Option B: persist user only — never tokens; isAuthenticated is runtime-gated.
+  writeJson(PERSIST_KEYS.auth, {
+    user: state.auth.user,
+    isAuthenticated: false,
+  });
+  writeJson(PERSIST_KEYS.adminAuth, {
+    admin: state.adminAuth.admin,
+    isAuthenticated: false,
+  });
   writeJson(PERSIST_KEYS.savedJobs, state.savedJobs);
   writeJson(PERSIST_KEYS.applications, state.applications);
 });

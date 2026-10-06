@@ -80,13 +80,11 @@ export interface PublicAuthSessionData {
     companies?: UserCompanyMembership[];
   };
   accessToken: string;
-  refreshToken: string;
 }
 
 export interface PublicAuthSession {
   user: AuthUser;
   accessToken: string;
-  refreshToken: string;
 }
 
 /** PUT /auth/me — multipart. Password fields are sent only when changing it. */

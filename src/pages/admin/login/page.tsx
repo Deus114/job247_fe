@@ -5,6 +5,7 @@ import { useAdminAuth } from "@/features/auth";
 import {
   adminLoginRequest,
   AdminAuthError,
+  ensureAdminSession,
   resolveAdminAuthErrorMessage,
 } from "@/api";
 import { toast } from "@/lib/toast";
@@ -34,6 +35,18 @@ export default function AdminLoginPage() {
     }
   }, [isAuthenticated, navigate]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void ensureAdminSession().then((result) => {
+      if (cancelled || !result.ok) return;
+      adminLoginUser({ user: result.user });
+      navigate("/admin/dashboard", { replace: true });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [adminLoginUser, navigate]);
+
   const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
@@ -52,8 +65,6 @@ export default function AdminLoginPage() {
 
       adminLoginUser({
         user: result.user,
-        accessToken: result.accessToken,
-        refreshToken: result.refreshToken,
       });
       toast.success(result.message.trim() || t("adminLogin.welcome"));
       navigate("/admin/dashboard", { replace: true });

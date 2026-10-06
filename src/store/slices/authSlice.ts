@@ -7,11 +7,17 @@ interface AuthState {
   isAuthenticated: boolean;
 }
 
-const stored = readJson<AuthState>("redux_auth");
+interface PersistedAuth {
+  user: AuthUser | null;
+}
+
+const stored = readJson<PersistedAuth & { isAuthenticated?: boolean }>(
+  "redux_auth",
+);
 
 const initialState: AuthState = {
   user: stored?.user ?? null,
-  isAuthenticated: Boolean(stored?.user && stored?.isAuthenticated),
+  isAuthenticated: false,
 };
 
 const authSlice = createSlice({

@@ -90,7 +90,8 @@ export default function EmployerCompanyDetailPage() {
     }
     setRequestsLoading(true);
     try {
-      const res = await fetchCompanyJoinRequests(companyId, {
+      const res = await fetchCompanyJoinRequests({
+        companyId,
         status: requestStatus || undefined,
         page: 1,
         size: 50,
@@ -130,7 +131,7 @@ export default function EmployerCompanyDetailPage() {
     if (actingId != null) return;
     setActingId(request.id);
     try {
-      await updateCompanyJoinRequest(companyId, request.id, { status });
+      await updateCompanyJoinRequest(request.id, { status });
       toast.success(
         status === "APPROVED"
           ? t("company.joinApproved")
@@ -247,6 +248,17 @@ export default function EmployerCompanyDetailPage() {
                 </span>
               )}
             </div>
+            {company.status === "REJECTED" && (
+              <div className="mt-3 p-3 rounded-xl bg-red-50 border border-red-200 max-w-xl">
+                <p className="text-xs text-red-500 mb-1">
+                  {t("company.rejectionReason")}
+                </p>
+                <p className="text-sm text-red-700 whitespace-pre-wrap">
+                  {company.rejectionReason.trim() ||
+                    t("company.rejectionReasonEmpty")}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

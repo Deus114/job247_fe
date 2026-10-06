@@ -210,17 +210,24 @@ export default function FindCompanyPage() {
                       {sizeLabel(company.size)}
                     </td>
                     <td className="px-5 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setJoinTarget(company);
-                          setJoinMessage("");
-                        }}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary-500 text-white text-xs font-medium hover:bg-primary-600 cursor-pointer min-h-[36px]"
-                      >
-                        <i className="ri-user-add-line"></i>
-                        {t("company.requestAdmin")}
-                      </button>
+                      {company.applied ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-accent-50 text-accent-700 text-xs font-medium min-h-[36px]">
+                          <i className="ri-check-line"></i>
+                          {t("company.adminRequestSent")}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setJoinTarget(company);
+                            setJoinMessage("");
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary-500 text-white text-xs font-medium hover:bg-primary-600 cursor-pointer min-h-[36px]"
+                        >
+                          <i className="ri-user-add-line"></i>
+                          {t("company.requestAdmin")}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -278,11 +285,11 @@ export default function FindCompanyPage() {
               placeholder={t("company.joinMessagePlaceholder")}
               className="w-full px-3 py-2.5 text-sm border border-background-200 rounded-xl outline-none focus:border-primary-400 resize-y min-h-[100px]"
             />
-            <div className="flex flex-col sm:flex-row gap-2 mt-5">
+            <div className="grid grid-cols-2 gap-2 mt-5">
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex-1 h-11 rounded-xl bg-primary-500 text-white text-sm font-medium hover:bg-primary-600 cursor-pointer disabled:opacity-60"
+                className="h-11 min-h-[44px] rounded-xl bg-primary-500 text-white text-sm font-medium hover:bg-primary-600 cursor-pointer disabled:opacity-60"
               >
                 {submitting ? t("common.loading") : t("company.sendJoinRequest")}
               </button>
@@ -290,7 +297,7 @@ export default function FindCompanyPage() {
                 type="button"
                 disabled={submitting}
                 onClick={() => setJoinTarget(null)}
-                className="h-11 px-4 rounded-xl border border-background-300 text-sm cursor-pointer"
+                className="h-11 min-h-[44px] rounded-xl border border-background-300 text-sm cursor-pointer disabled:opacity-60"
               >
                 {t("common.cancel")}
               </button>

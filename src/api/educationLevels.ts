@@ -297,3 +297,75 @@ export async function permanentDeleteEducationLevel(id: number): Promise<void> {
     throwEducationError("apiErrors.educationDeleteFailed", error);
   }
 }
+
+function normalizePublicEducationLevel(
+  raw: unknown,
+): import("@/types/catalog").PublicEducationLevel | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = asRecord(raw);
+  const id = Number(r.id);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  const name = String(r.name ?? r.nameVi ?? r.nameEn ?? "").trim();
+  if (!name) return null;
+  return {
+    id,
+    name,
+    sortOrder: Number(r.sortOrder) || 0,
+  };
+}
+
+/** GET /education-levels — public catalog for employer forms. */
+export async function fetchPublicEducationLevels(
+  params: { page?: number; size?: number; sort?: string } = {},
+): Promise<PaginatedList<import("@/types/catalog").PublicEducationLevel>> {
+  requireBackend();
+
+  try {
+    const res = (await axios.get("/education-levels", {
+      params: {
+        page: params.page ?? 1,
+        size: params.size ?? 100,
+        sort: params.sort ?? "sortOrder,ASC",
+      },
+    })) as ApiResponse<{ data?: unknown; pagination?: unknown } | unknown[]>;
+
+    if (!res || typeof res !== "object") {
+      throw new AdminAuthError("apiErrors.invalidResponse");
+    }
+    if (!isAdminApiSuccess(res.statusCode)) {
+      throw new AdminAuthError(
+        "apiErrors.educationLoadFailed",
+        res.statusCode,
+        res.message,
+      );
+    }
+
+    const envelope = asRecord(res.data);
+    const rowsRaw = Array.isArray(res.data)
+      ? res.data
+      : Array.isArray(envelope.data)
+        ? envelope.data
+        : [];
+    const data = rowsRaw
+      .map(normalizePublicEducationLevel)
+      .filter(
+        (item): item is import("@/types/catalog").PublicEducationLevel =>
+          item != null,
+      );
+
+    const page = asRecord(envelope.pagination);
+    return {
+      data,
+      pagination: {
+        current_page: Number(page.current_page) || 1,
+        last_page: Number(page.last_page) || 1,
+        per_page: Number(page.per_page) || data.length || 10,
+        total: Number(page.total) || data.length,
+        from: Number(page.from) || 0,
+        to: Number(page.to) || 0,
+      },
+    };
+  } catch (error) {
+    throwEducationError("apiErrors.educationLoadFailed", error);
+  }
+}

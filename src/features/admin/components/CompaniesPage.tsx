@@ -27,7 +27,6 @@ import {
   type SubmitEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 
 type SortField = "name" | "createdAt" | "updatedAt";
 
@@ -47,7 +46,6 @@ function statusBadgeClass(status: AdminCompanyStatus): string {
 export default function CompaniesPage() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
-  const navigate = useNavigate();
   const { openId, pos, menuRef, toggle, close } = useTableActionMenu<number>();
 
   const [viewMode, setViewMode] = useState<"active" | "trash">("active");
@@ -65,6 +63,7 @@ export default function CompaniesPage() {
   const [editTarget, setEditTarget] = useState<AdminCompany | null>(null);
   const [editStatus, setEditStatus] = useState<AdminCompanyStatus>("PENDING");
   const [editActive, setEditActive] = useState(true);
+  const [editRejectionReason, setEditRejectionReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [confirmSoftDelete, setConfirmSoftDelete] = useState<number | null>(
     null,
@@ -234,6 +233,7 @@ export default function CompaniesPage() {
     setEditTarget(company);
     setEditStatus(company.status);
     setEditActive(company.active);
+    setEditRejectionReason(company.rejectionReason || "");
     close();
   };
 
@@ -288,6 +288,8 @@ export default function CompaniesPage() {
       const updated = await updateAdminCompany(editTarget.id, {
         active: editActive,
         status: editStatus,
+        rejectionReason:
+          editStatus === "REJECTED" ? editRejectionReason.trim() : undefined,
       });
       toast.success(t("adminUi.companies.saved"));
       setEditTarget(null);
@@ -682,17 +684,6 @@ export default function CompaniesPage() {
                 <i className="ri-edit-line"></i>
                 {t("adminUi.companies.editStatus")}
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  navigate(`/companies/${activeItem.id}`);
-                  close();
-                }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-foreground-700 hover:bg-background-100 cursor-pointer min-h-[44px]"
-              >
-                <i className="ri-external-link-line"></i>
-                {t("adminUi.companies.companyPage")}
-              </button>
               <hr className="my-1 border-background-200" />
               <button
                 type="button"
@@ -860,6 +851,18 @@ export default function CompaniesPage() {
               </div>
             )}
 
+            {detail.status === "REJECTED" && (
+              <div className="mb-5 p-3 rounded-xl bg-red-50 border border-red-200">
+                <p className="text-xs text-red-500 mb-1">
+                  {t("adminUi.rejectionReason")}
+                </p>
+                <p className="text-sm text-red-700 whitespace-pre-wrap">
+                  {detail.rejectionReason.trim() ||
+                    t("adminUi.rejectionReasonEmpty")}
+                </p>
+              </div>
+            )}
+
             <div>
               <p className="text-xs text-foreground-500 mb-2">
                 {t("adminUi.companies.members")} ({detail.members.length})
@@ -983,6 +986,25 @@ export default function CompaniesPage() {
                   options={editStatusOptions}
                 />
               </div>
+              {editStatus === "REJECTED" && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground-700 mb-1.5">
+                    {t("adminUi.rejectionReason")}
+                  </label>
+                  <textarea
+                    value={editRejectionReason}
+                    onChange={(event) =>
+                      setEditRejectionReason(event.target.value)
+                    }
+                    rows={3}
+                    placeholder={t("adminUi.rejectionReasonPlaceholder")}
+                    className="w-full px-3 py-2.5 text-sm border border-background-200 rounded-xl outline-none focus:border-primary-400 resize-y min-h-[88px]"
+                  />
+                  <p className="mt-1.5 text-xs text-foreground-400">
+                    {t("adminUi.rejectionReasonOptionalHint")}
+                  </p>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-foreground-700 mb-1.5">
                   {t("adminUi.columns.active")}

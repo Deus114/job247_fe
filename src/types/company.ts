@@ -88,6 +88,7 @@ export interface AdminCompany {
   taxCode: string;
   description: string;
   status: AdminCompanyStatus;
+  rejectionReason: string;
   active: boolean;
   members: AdminCompanyMember[];
   createdAt: string;
@@ -105,10 +106,11 @@ export interface AdminCompanyListParams {
   sort?: string;
 }
 
-/** PUT /admin/companies/:id — only `active` and `status`. */
+/** PUT /admin/companies/:id */
 export interface AdminCompanyUpdatePayload {
   active: boolean;
   status: AdminCompanyStatus;
+  rejectionReason?: string;
 }
 
 /** GET /employer/companies — list/detail item (employer CMS). */
@@ -128,7 +130,9 @@ export interface EmployerCompany {
   taxCode: string;
   description: string;
   status: AdminCompanyStatus;
+  rejectionReason: string;
   active: boolean;
+  applied: boolean;
   members: AdminCompanyMember[];
   createdAt: string;
   updatedAt: string;
@@ -165,6 +169,7 @@ export interface CompanyJoinRequest {
 }
 
 export interface CompanyJoinRequestListParams {
+  companyId?: number;
   status?: CompanyJoinRequestStatus;
   page?: number;
   size?: number;

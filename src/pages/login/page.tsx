@@ -5,11 +5,22 @@ import { useAuth } from "@/features/auth";
 import {
   AdminAuthError,
   loginRequest,
-  mockDemoAccounts,
   resolveAdminAuthErrorMessage,
 } from "@/api";
-import { env } from "@/config/env";
 import { useAppSelector } from "@/store/hooks";
+
+const TEST_ACCOUNTS = [
+  {
+    email: "user@gmail.com",
+    password: "123456",
+    role: "user" as const,
+  },
+  {
+    email: "employer@gmail.com",
+    password: "123456",
+    role: "employer" as const,
+  },
+] as const;
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -68,24 +79,10 @@ export default function LoginPage() {
     }
   };
 
-  const quickLogin = async (acc: (typeof mockDemoAccounts)[number]) => {
-    setLoading(true);
+  const fillTestAccount = (acc: (typeof TEST_ACCOUNTS)[number]) => {
+    setEmail(acc.email);
+    setPassword(acc.password);
     setError("");
-    try {
-      const user = await loginRequest({
-        email: acc.email,
-        password: acc.password,
-      });
-      handleLoginSuccess(user);
-    } catch (error) {
-      setError(
-        error instanceof AdminAuthError
-          ? resolveAdminAuthErrorMessage(error, t)
-          : t("auth.invalidCredentials"),
-      );
-    } finally {
-      setLoading(false);
-    }
   };
 
   return (
@@ -203,47 +200,39 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {env.useMock && !env.apiBaseUrl && (
-            <div className="mt-8 pt-6 border-t border-background-200/70">
-              <p className="text-xs text-foreground-500 text-center mb-4">
-                {t("auth.demoQuickLogin")}
-              </p>
-              <div className="flex flex-col gap-2">
-                {mockDemoAccounts.map((acc) => (
-                  <button
-                    key={acc.email}
-                    type="button"
-                    disabled={loading}
-                    onClick={() => void quickLogin(acc)}
-                    className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-background-200/70 hover:bg-background-100 transition-colors cursor-pointer disabled:opacity-60"
+          <div className="mt-8 pt-6 border-t border-background-200/70">
+            <div className="flex flex-col gap-2">
+              {TEST_ACCOUNTS.map((acc) => (
+                <button
+                  key={acc.email}
+                  type="button"
+                  disabled={loading}
+                  onClick={() => fillTestAccount(acc)}
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3 min-h-[44px] rounded-lg border border-background-200/70 hover:bg-background-100 transition-colors cursor-pointer disabled:opacity-60"
+                >
+                  <div className="text-left min-w-0">
+                    <p className="text-sm font-medium text-foreground-950 truncate">
+                      {acc.email}
+                    </p>
+                    <p className="text-xs text-foreground-500">
+                      {t("auth.password")}: {acc.password}
+                    </p>
+                  </div>
+                  <span
+                    className={`text-[10px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${
+                      acc.role === "employer"
+                        ? "bg-primary-100 text-primary-700"
+                        : "bg-secondary-100 text-secondary-700"
+                    }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
-                        <span className="text-xs font-bold text-primary-600">
-                          {acc.fullName.charAt(0)}
-                        </span>
-                      </div>
-                      <div className="text-left">
-                        <p className="text-sm font-medium text-foreground-950">
-                          {acc.fullName}
-                        </p>
-                        <p className="text-xs text-foreground-500">
-                          {acc.email}
-                        </p>
-                      </div>
-                    </div>
-                    <span
-                      className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${acc.role === "employer" ? "bg-primary-100 text-primary-700" : "bg-secondary-100 text-secondary-700"}`}
-                    >
-                      {acc.role === "employer"
-                        ? t("auth.roleEmployer")
-                        : t("auth.roleUser")}
-                    </span>
-                  </button>
-                ))}
-              </div>
+                    {acc.role === "employer"
+                      ? t("auth.roleEmployer")
+                      : t("auth.roleUser")}
+                  </span>
+                </button>
+              ))}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

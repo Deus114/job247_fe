@@ -274,6 +274,14 @@ const routes: RouteObject[] = [
         ),
       },
       {
+        path: "jobs/:id/edit",
+        element: (
+          <LazyPage>
+            <PostJobPage />
+          </LazyPage>
+        ),
+      },
+      {
         path: "companies",
         element: (
           <LazyPage>

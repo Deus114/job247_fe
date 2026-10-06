@@ -141,6 +141,12 @@ export interface PublicProvince {
   sortOrder: number;
 }
 
+export interface PublicEducationLevel {
+  id: number;
+  name: string;
+  sortOrder: number;
+}
+
 export interface PublicIndustry {
   id: number;
   name: string;

@@ -2,9 +2,8 @@ import { AdminAuthError, isAdminApiSuccess } from "@/api/adminAuth";
 import axios from "@/api/axios.customize";
 import {
   clearPublicTokens,
-  persistPublicTokens,
-  USER_ACCESS_TOKEN_KEY,
-  USER_REFRESH_TOKEN_KEY,
+  getPublicAccessToken,
+  setPublicAccessToken,
 } from "@/api/publicAuthTokens";
 import { env } from "@/config/env";
 import type {
@@ -247,7 +246,6 @@ function parsePublicSession(
 ): PublicAuthSession {
   const user = normalizePublicSessionUser(data.user);
   const accessToken = pickToken(data, "accessToken", "access_token", "token");
-  const refreshToken = pickToken(data, "refreshToken", "refresh_token");
 
   if (!user || !accessToken) {
     throw new AdminAuthError("apiErrors.loginMissingData", statusCode, message);
@@ -260,18 +258,21 @@ function parsePublicSession(
     );
   }
 
-  persistPublicTokens(accessToken, refreshToken || undefined);
+  setPublicAccessToken(accessToken);
   return {
     user,
     accessToken,
-    refreshToken,
   };
 }
 
-/** POST /auth/login — body `{ email, password }`. */
+/** POST /auth/login — body `{ email, password }`. Refresh cookie is set by BE. */
 export async function loginRequest(payload: LoginPayload): Promise<AuthUser> {
   if (!env.apiBaseUrl) {
-    if (env.useMock) return mockLogin(payload);
+    if (env.useMock) {
+      const user = mockLogin(payload);
+      setPublicAccessToken("mock-access-token");
+      return user;
+    }
     throw new AdminAuthError("apiErrors.missingBackendUrl");
   }
 
@@ -296,29 +297,21 @@ export async function loginRequest(payload: LoginPayload): Promise<AuthUser> {
 
 let refreshInFlight: Promise<PublicAuthSession> | null = null;
 
-/** POST /auth/refresh — body `{ refreshToken }`. Concurrent callers share one request. */
-export async function refreshRequest(
-  refreshTokenOverride?: string,
-): Promise<PublicAuthSession> {
+/**
+ * POST /auth/refresh — browser sends HttpOnly cookie (`user_refresh_token`).
+ * Concurrent callers share one in-flight request.
+ */
+export async function refreshRequest(): Promise<PublicAuthSession> {
   if (!env.apiBaseUrl) {
     throw new AdminAuthError("apiErrors.missingBackendUrl");
   }
   if (refreshInFlight) return refreshInFlight;
 
-  const refreshToken =
-    refreshTokenOverride?.trim() ||
-    localStorage.getItem(USER_REFRESH_TOKEN_KEY) ||
-    "";
-  if (!refreshToken) {
-    clearPublicTokens();
-    throw new AdminAuthError("apiErrors.sessionExpired");
-  }
-
   refreshInFlight = (async () => {
     try {
       const res = (await axios.post(
         "/auth/refresh",
-        { refreshToken },
+        {},
         { skipAuthRefresh: true },
       )) as ApiResponse<Record<string, unknown>>;
       const body = assertPublicSuccess(res, "apiErrors.sessionExpired");
@@ -337,14 +330,17 @@ export async function refreshRequest(
   return refreshInFlight;
 }
 
-/** POST /auth/logout. Failures are ignored so the local session can still be cleared. */
+/**
+ * POST /auth/logout — always call API so BE can clear the refresh cookie.
+ * Bearer is optional when access is already gone from RAM.
+ */
 export async function logoutRequest(): Promise<string> {
-  const token = localStorage.getItem(USER_ACCESS_TOKEN_KEY);
   let message = "";
-  if (env.apiBaseUrl && token) {
+  if (env.apiBaseUrl) {
     try {
+      const token = getPublicAccessToken();
       const res = (await axios.post("/auth/logout", undefined, {
-        headers: { Authorization: `Bearer ${token}` },
+        ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
         skipAuthRefresh: true,
       })) as ApiResponse<unknown>;
       if (typeof res?.message === "string" && res.message.trim()) {

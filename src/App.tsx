@@ -1,7 +1,9 @@
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ScrollToTop from "@/components/ScrollToTop";
+import PageLoader from "@/components/ui/PageLoader";
 import ToastHost from "@/components/ui/ToastHost";
 import { env } from "@/config/env";
+import { usePublicAuthBootstrap } from "@/features/auth/hooks/usePublicAuthBootstrap";
 import { useBusinessConfigBootstrap } from "@/features/catalog";
 import { store } from "@/store";
 import { useAppSelector } from "@/store/hooks";
@@ -29,16 +31,21 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 function AppContent() {
   useBusinessConfigBootstrap();
+  const authReady = usePublicAuthBootstrap();
 
   return (
     <ThemeProvider>
-      <ErrorBoundary>
-        <BrowserRouter basename={env.basePath || __BASE_PATH__}>
-          <ScrollToTop />
-          <AppRoutes />
-          <ToastHost />
-        </BrowserRouter>
-      </ErrorBoundary>
+      {!authReady ? (
+        <PageLoader />
+      ) : (
+        <ErrorBoundary>
+          <BrowserRouter basename={env.basePath || __BASE_PATH__}>
+            <ScrollToTop />
+            <AppRoutes />
+            <ToastHost />
+          </BrowserRouter>
+        </ErrorBoundary>
+      )}
     </ThemeProvider>
   );
 }

@@ -1,19 +1,14 @@
-export const USER_ACCESS_TOKEN_KEY = "access_token";
-export const USER_REFRESH_TOKEN_KEY = "refresh_token";
+/** Access token lives only in RAM (module scope). Refresh is HttpOnly cookie. */
+let accessTokenMemory: string | null = null;
 
-export function persistPublicTokens(
-  accessToken?: string,
-  refreshToken?: string,
-) {
-  if (accessToken) {
-    localStorage.setItem(USER_ACCESS_TOKEN_KEY, accessToken);
-  }
-  if (refreshToken) {
-    localStorage.setItem(USER_REFRESH_TOKEN_KEY, refreshToken);
-  }
+export function getPublicAccessToken(): string | null {
+  return accessTokenMemory;
+}
+
+export function setPublicAccessToken(token: string | null) {
+  accessTokenMemory = token?.trim() || null;
 }
 
 export function clearPublicTokens() {
-  localStorage.removeItem(USER_ACCESS_TOKEN_KEY);
-  localStorage.removeItem(USER_REFRESH_TOKEN_KEY);
+  accessTokenMemory = null;
 }

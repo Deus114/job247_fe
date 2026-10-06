@@ -1,5 +1,5 @@
 import { fetchPublicMe, logoutRequest } from "@/api";
-import { USER_ACCESS_TOKEN_KEY } from "@/api/publicAuthTokens";
+import { getPublicAccessToken } from "@/api/publicAuthTokens";
 import { env } from "@/config/env";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { login, logout, updateProfile } from "@/store/slices/authSlice";
@@ -20,7 +20,7 @@ export function useSyncPublicProfile() {
 
   useEffect(() => {
     if (!isAuthenticated || !env.apiBaseUrl) return;
-    const token = localStorage.getItem(USER_ACCESS_TOKEN_KEY);
+    const token = getPublicAccessToken();
     if (!token || syncedAccessToken === token) return;
     syncedAccessToken = token;
     void fetchPublicMe()
