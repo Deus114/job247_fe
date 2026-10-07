@@ -1,6 +1,9 @@
 import {
   AdminAuthError,
   deleteEmployerJob,
+  fetchEmployerApplicationById,
+  fetchEmployerApplications,
+  fetchEmployerCompanies,
   fetchEmployerJobById,
   fetchEmployerJobs,
   joinJobRefNames,
@@ -9,6 +12,7 @@ import {
 } from "@/api";
 import ColumnVisibilityDropdown from "@/components/ui/ColumnVisibilityDropdown";
 import CustomSelect from "@/components/ui/CustomSelect";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import Pagination from "@/components/ui/Pagination";
 import {
   TableActionMenu,
@@ -19,15 +23,23 @@ import {
   employmentTypeLabelKey,
   experienceLevelLabelKey,
 } from "@/constants/employerJob";
-import { useApplications } from "@/features/applications";
+import {
+  useApplications,
+  ViewApplicationModal,
+} from "@/features/applications";
 import { useAuth } from "@/features/auth";
 import { useCompanies } from "@/features/companies";
 import { useJobs } from "@/features/jobs";
 import { usePageShell } from "@/layouts/usePageShell";
 import { formatDate, formatDateTime } from "@/lib/formatDate";
 import { formatMoneyRange } from "@/lib/formatNumber";
+import { jobPath } from "@/lib/paths";
 import { toast } from "@/lib/toast";
-import type { Application } from "@/types/application";
+import type {
+  Application,
+  EmployerApplicationStatus,
+} from "@/types/application";
+import type { EmployerCompany } from "@/types/company";
 import type { EmployerJob, EmployerJobStatus, Job } from "@/types/job";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -84,6 +96,8 @@ const appStatusColor: Record<string, string> = {
   reviewing: "bg-accent-100 text-accent-700",
   accepted: "bg-green-100 text-green-700",
   rejected: "bg-red-100 text-red-700",
+  SUBMITTED: "bg-yellow-100 text-yellow-700",
+  VIEWED: "bg-accent-100 text-accent-700",
 };
 
 export default function DashboardPage() {
@@ -101,6 +115,7 @@ export default function DashboardPage() {
   const { companies } = useCompanies();
   const { applications: allApplications, updateApplicationStatus } =
     useApplications();
+  const useEmployerAppsApi = Boolean(env.apiBaseUrl);
 
   const jobStatusLabel: Record<string, string> = {
     approved: t("dashboard.statuses.approved"),
@@ -113,6 +128,8 @@ export default function DashboardPage() {
     reviewing: t("dashboard.appStatuses.reviewing"),
     accepted: t("dashboard.appStatuses.accepted"),
     rejected: t("dashboard.appStatuses.rejected"),
+    SUBMITTED: t("dashboard.appStatuses.SUBMITTED"),
+    VIEWED: t("dashboard.appStatuses.VIEWED"),
   };
 
   const JOB_COLUMNS = useMemo(
@@ -138,8 +155,10 @@ export default function DashboardPage() {
       { key: "phone", label: t("dashboard.applicationsTable.phone") },
       { key: "jobTitle", label: t("dashboard.applicationsTable.job") },
       { key: "appliedAt", label: t("dashboard.applicationsTable.appliedDate") },
+      { key: "viewedAt", label: t("dashboard.applicationsTable.viewedAt") },
       { key: "cvFileName", label: t("dashboard.applicationsTable.cv") },
       { key: "status", label: t("dashboard.applicationsTable.status") },
+      { key: "actions", label: t("dashboard.applicationsTable.actions") },
     ],
     [t],
   );
@@ -157,8 +176,9 @@ export default function DashboardPage() {
 
   // Applications tab state
   const [appSearch, setAppSearch] = useState("");
+  const [appKeyword, setAppKeyword] = useState("");
   const [appStatusFilter, setAppStatusFilter] = useState<
-    "all" | "pending" | "reviewing" | "accepted" | "rejected"
+    "all" | EmployerApplicationStatus | "pending" | "reviewing" | "accepted" | "rejected"
   >("all");
   const [appJobFilter, setAppJobFilter] = useState("");
   const [appCompanyFilter, setAppCompanyFilter] = useState("");
@@ -170,6 +190,18 @@ export default function DashboardPage() {
   const [statusDropdownOpen, setStatusDropdownOpen] = useState<string | null>(
     null,
   );
+  const [employerApps, setEmployerApps] = useState<Application[]>([]);
+  const [employerAppsLoading, setEmployerAppsLoading] = useState(false);
+  const [employerAppsTotal, setEmployerAppsTotal] = useState(0);
+  const [employerAppsTotalPages, setEmployerAppsTotalPages] = useState(1);
+  const [employerAppCompanies, setEmployerAppCompanies] = useState<
+    EmployerCompany[]
+  >([]);
+  const [employerAppJobs, setEmployerAppJobs] = useState<
+    Array<{ id: string; title: string }>
+  >([]);
+  const [viewApp, setViewApp] = useState<Application | null>(null);
+  const [viewAppLoading, setViewAppLoading] = useState(false);
 
   const myCompanies = useMemo(
     () => companies.filter((c) => c.createdBy === user?.id),
@@ -367,14 +399,115 @@ export default function DashboardPage() {
 
   const myJobs = useEmployerJobsApi ? employerJobs : mockMyJobs;
   const myJobIds = useMemo(() => new Set(myJobs.map((j) => j.id)), [myJobs]);
-  const myApplications = useMemo(
-    () => allApplications.filter((a) => myJobIds.has(a.jobId)),
-    [allApplications, myJobIds],
-  );
+
+  useEffect(() => {
+    if (!useEmployerAppsApi) return;
+    const timer = window.setTimeout(() => {
+      setAppKeyword(appSearch.trim());
+      setAppPage(1);
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [appSearch, useEmployerAppsApi]);
+
+  const loadEmployerApps = useCallback(async () => {
+    if (!useEmployerAppsApi) return;
+    setEmployerAppsLoading(true);
+    try {
+      const companyId = appCompanyFilter
+        ? Number(appCompanyFilter)
+        : undefined;
+      const jobId = appJobFilter ? Number(appJobFilter) : undefined;
+      const res = await fetchEmployerApplications({
+        keyword: appKeyword || undefined,
+        status:
+          appStatusFilter === "all"
+            ? undefined
+            : appStatusFilter === "SUBMITTED" || appStatusFilter === "VIEWED"
+              ? appStatusFilter
+              : undefined,
+        companyId:
+          companyId != null && Number.isFinite(companyId) && companyId > 0
+            ? companyId
+            : undefined,
+        jobId:
+          jobId != null && Number.isFinite(jobId) && jobId > 0
+            ? jobId
+            : undefined,
+        page: appPage,
+        size: appPageSize,
+        sort: "createdAt,DESC",
+      });
+      setEmployerApps(res.data);
+      setEmployerAppsTotal(res.pagination.total);
+      setEmployerAppsTotalPages(Math.max(1, res.pagination.last_page));
+    } catch (error) {
+      setEmployerApps([]);
+      setEmployerAppsTotal(0);
+      setEmployerAppsTotalPages(1);
+      toast.error(
+        error instanceof AdminAuthError
+          ? resolveAdminAuthErrorMessage(error, t)
+          : t("apiErrors.employerApplicationLoadFailed"),
+      );
+    } finally {
+      setEmployerAppsLoading(false);
+    }
+  }, [
+    useEmployerAppsApi,
+    appKeyword,
+    appStatusFilter,
+    appCompanyFilter,
+    appJobFilter,
+    appPage,
+    appPageSize,
+    t,
+  ]);
+
+  useEffect(() => {
+    if (!useEmployerAppsApi) return;
+    if (section !== "applications" && section !== "overview") return;
+    void loadEmployerApps();
+  }, [useEmployerAppsApi, section, loadEmployerApps]);
+
+  useEffect(() => {
+    if (!useEmployerAppsApi) return;
+    let cancelled = false;
+    void Promise.all([
+      fetchEmployerCompanies({
+        mine: true,
+        page: 1,
+        size: 100,
+        sort: "createdAt,DESC",
+      }),
+      fetchEmployerJobs({ page: 1, size: 100, sort: "createdAt,DESC" }),
+    ])
+      .then(([companiesRes, jobsRes]) => {
+        if (cancelled) return;
+        setEmployerAppCompanies(companiesRes.data);
+        setEmployerAppJobs(
+          jobsRes.data.map((j) => ({ id: String(j.id), title: j.title })),
+        );
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setEmployerAppCompanies([]);
+        setEmployerAppJobs([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [useEmployerAppsApi]);
+
+  const myApplications = useMemo(() => {
+    if (useEmployerAppsApi) return employerApps;
+    return allApplications.filter((a) => myJobIds.has(a.jobId));
+  }, [useEmployerAppsApi, employerApps, allApplications, myJobIds]);
 
   const stats = useMemo(() => {
     const activeJobs = myJobs.filter((j) => j.status === "approved").length;
-    const totalApps = myApplications.length;
+    const totalApps = useEmployerAppsApi
+      ? employerAppsTotal
+      : myApplications.length;
     const newApps = myApplications.filter((a) => {
       const d = new Date(a.appliedAt);
       const weekAgo = new Date();
@@ -382,12 +515,19 @@ export default function DashboardPage() {
       return d >= weekAgo;
     }).length;
     return {
-      totalJobs: myJobs.length,
+      totalJobs: useEmployerJobsApi ? employerJobsTotal : myJobs.length,
       activeJobs,
       totalApps,
       newApps,
     };
-  }, [myJobs, myApplications]);
+  }, [
+    myJobs,
+    myApplications,
+    useEmployerAppsApi,
+    employerAppsTotal,
+    useEmployerJobsApi,
+    employerJobsTotal,
+  ]);
 
   const jobCompanyOptions = useMemo(() => {
     if (useEmployerJobsApi) {
@@ -404,18 +544,29 @@ export default function DashboardPage() {
   }, [useEmployerJobsApi, employerJobs, mockMyJobs]);
 
   const appCompanyOptions = useMemo(() => {
+    if (useEmployerAppsApi) {
+      return employerAppCompanies
+        .map((c) => ({ value: String(c.id), label: c.name }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    }
     const set = new Set<string>();
     myApplications.forEach((a) => {
       const job = myJobs.find((j) => j.id === a.jobId);
       if (job) set.add(job.company);
     });
-    return Array.from(set).sort();
-  }, [myApplications, myJobs]);
+    return Array.from(set)
+      .sort()
+      .map((name) => ({ value: name, label: name }));
+  }, [useEmployerAppsApi, employerAppCompanies, myApplications, myJobs]);
+
   const appJobOptions = useMemo(() => {
+    if (useEmployerAppsApi) {
+      return employerAppJobs.map((j) => [j.id, j.title] as [string, string]);
+    }
     const set = new Map<string, string>();
     myApplications.forEach((a) => set.set(a.jobId, a.jobTitle));
     return Array.from(set.entries());
-  }, [myApplications]);
+  }, [useEmployerAppsApi, employerAppJobs, myApplications]);
 
   const filteredJobs = useMemo(() => {
     if (useEmployerJobsApi) return employerJobs;
@@ -462,8 +613,9 @@ export default function DashboardPage() {
     ? employerJobsTotal
     : filteredJobs.length;
 
-  // --- Applications filtering ---
+  // --- Applications filtering (client fallback when no API) ---
   const filteredApps = useMemo(() => {
+    if (useEmployerAppsApi) return employerApps;
     let result = [...myApplications];
     if (appSearch.trim()) {
       const q = appSearch.toLowerCase();
@@ -492,6 +644,8 @@ export default function DashboardPage() {
     );
     return result;
   }, [
+    useEmployerAppsApi,
+    employerApps,
     myApplications,
     myJobs,
     appSearch,
@@ -501,11 +655,24 @@ export default function DashboardPage() {
   ]);
 
   const paginatedApps = useMemo(() => {
+    if (useEmployerAppsApi) return employerApps;
     const start = (appPage - 1) * appPageSize;
     return filteredApps.slice(start, start + appPageSize);
-  }, [filteredApps, appPage, appPageSize]);
+  }, [
+    useEmployerAppsApi,
+    employerApps,
+    filteredApps,
+    appPage,
+    appPageSize,
+  ]);
 
-  const totalAppPages = Math.ceil(filteredApps.length / appPageSize);
+  const totalAppPages = useEmployerAppsApi
+    ? employerAppsTotalPages
+    : Math.ceil(filteredApps.length / appPageSize) || 1;
+
+  const totalAppItems = useEmployerAppsApi
+    ? employerAppsTotal
+    : filteredApps.length;
 
   if (user?.role !== "employer") {
     return <Navigate to="/" replace />;
@@ -515,6 +682,7 @@ export default function DashboardPage() {
     appId: string,
     newStatus: Application["status"],
   ) => {
+    if (useEmployerAppsApi) return;
     updateApplicationStatus(appId, newStatus);
     setStatusDropdownOpen(null);
   };
@@ -522,6 +690,30 @@ export default function DashboardPage() {
   const handleAppFilterChange = (filter: typeof appStatusFilter) => {
     setAppStatusFilter(filter);
     setAppPage(1);
+  };
+
+  const handleViewApplication = async (app: Application) => {
+    if (!useEmployerAppsApi) {
+      setViewApp(app);
+      return;
+    }
+    setViewAppLoading(true);
+    try {
+      const detail = await fetchEmployerApplicationById(app.id);
+      setViewApp(detail);
+      setEmployerApps((prev) =>
+        prev.map((item) => (item.id === detail.id ? detail : item)),
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof AdminAuthError
+          ? resolveAdminAuthErrorMessage(error, t)
+          : t("apiErrors.employerApplicationLoadFailed"),
+      );
+      setViewApp(app);
+    } finally {
+      setViewAppLoading(false);
+    }
   };
 
   const handleJobFilterChange = (filter: typeof jobStatusFilter) => {
@@ -546,10 +738,29 @@ export default function DashboardPage() {
 
   const handleAppSearch = (val: string) => {
     setAppSearch(val);
-    setAppPage(1);
+    if (!useEmployerAppsApi) setAppPage(1);
   };
 
-  const dateLocale = i18n.language === "en" ? "en-US" : "vi-VN";
+  const appStatusFilterOptions = useMemo(
+    () =>
+      useEmployerAppsApi
+        ? [
+            { value: "all", label: t("common.all") },
+            {
+              value: "SUBMITTED",
+              label: appStatusLabel.SUBMITTED,
+            },
+            { value: "VIEWED", label: appStatusLabel.VIEWED },
+          ]
+        : [
+            { value: "all", label: t("common.all") },
+            { value: "pending", label: appStatusLabel.pending },
+            { value: "reviewing", label: appStatusLabel.reviewing },
+            { value: "accepted", label: appStatusLabel.accepted },
+            { value: "rejected", label: appStatusLabel.rejected },
+          ],
+    [useEmployerAppsApi, t, appStatusLabel],
+  );
 
   return (
     <div className={shell}>
@@ -1079,7 +1290,9 @@ export default function DashboardPage() {
                                         type="button"
                                         onClick={() => {
                                           closeJobMenu();
-                                          navigate(`/employer/jobs/${job.id}/edit`);
+                                          navigate(
+                                            `/employer/jobs/${job.id}/edit`,
+                                          );
                                         }}
                                         className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-foreground-700 hover:bg-background-100 cursor-pointer text-left min-h-[44px]"
                                       >
@@ -1213,9 +1426,7 @@ export default function DashboardPage() {
                       <p className="text-xs text-foreground-500 mb-1">
                         {t("postJob.education")}
                       </p>
-                      <p>
-                        {joinJobRefNames(jobDetail.educationLevels) || "—"}
-                      </p>
+                      <p>{joinJobRefNames(jobDetail.educationLevels) || "—"}</p>
                     </div>
                     <div>
                       <p className="text-xs text-foreground-500 mb-1">
@@ -1385,7 +1596,9 @@ export default function DashboardPage() {
                     <button
                       type="button"
                       disabled={jobActionBusy}
-                      onClick={() => void handleRestoreJob(String(jobDetail.id))}
+                      onClick={() =>
+                        void handleRestoreJob(String(jobDetail.id))
+                      }
                       className="w-full h-11 rounded-xl bg-primary-500 text-white text-sm font-medium cursor-pointer disabled:opacity-60"
                     >
                       {t("adminUi.actions.restore")}
@@ -1437,17 +1650,16 @@ export default function DashboardPage() {
         {/* ========== APPLICATIONS TAB ========== */}
         {section === "applications" && (
           <>
-            {/* Toolbar */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="relative">
+            <div className="flex flex-col gap-3 mb-4">
+              <div className="flex flex-col lg:flex-row gap-3">
+                <div className="relative flex-1 min-w-0">
                   <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-foreground-400 text-sm"></i>
                   <input
                     type="text"
                     value={appSearch}
                     onChange={(e) => handleAppSearch(e.target.value)}
                     placeholder={t("dashboard.searchCandidate")}
-                    className="pl-9 pr-4 py-2 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-lg focus:outline-none focus:border-primary-300 transition-colors w-[200px]"
+                    className="w-full pl-9 pr-4 py-2.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-xl focus:outline-none focus:border-primary-300 transition-colors min-h-[44px]"
                   />
                 </div>
                 <CustomSelect
@@ -1464,67 +1676,63 @@ export default function DashboardPage() {
                     setAppPage(1);
                   }}
                   icon="ri-briefcase-line"
-                  className="w-[200px]"
+                  className="w-full lg:w-[220px] shrink-0"
                   outlined
                 />
                 <CustomSelect
                   value={appCompanyFilter}
                   options={[
                     { value: "", label: t("dashboard.allCompanies") },
-                    ...appCompanyOptions.map((c) => ({ value: c, label: c })),
+                    ...appCompanyOptions,
                   ]}
                   onChange={handleAppCompanyChange}
                   icon="ri-building-line"
-                  className="w-[200px]"
+                  className="w-full lg:w-[200px] shrink-0"
                   outlined
                 />
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {(
-                    [
-                      "all",
-                      "pending",
-                      "reviewing",
-                      "accepted",
-                      "rejected",
-                    ] as const
-                  ).map((f) => (
-                    <button
-                      key={f}
-                      type="button"
-                      onClick={() => handleAppFilterChange(f)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer whitespace-nowrap border ${
-                        appStatusFilter === f
-                          ? "bg-primary-500 border-primary-500 text-background-50 dark:text-foreground-950"
-                          : "bg-background-50 border-background-200 text-foreground-600 hover:bg-background-100"
-                      }`}
-                    >
-                      {f === "all" ? t("common.all") : appStatusLabel[f]}
-                    </button>
-                  ))}
-                </div>
+                <CustomSelect
+                  value={appStatusFilter}
+                  options={appStatusFilterOptions}
+                  onChange={(val) =>
+                    handleAppFilterChange(val as typeof appStatusFilter)
+                  }
+                  icon="ri-flag-line"
+                  className="w-full lg:w-[180px] shrink-0"
+                  outlined
+                />
+                <ColumnVisibilityDropdown
+                  columns={APP_COLUMNS}
+                  visibleKeys={appVisibleColumns}
+                  onChange={setAppVisibleColumns}
+                />
               </div>
-              <ColumnVisibilityDropdown
-                columns={APP_COLUMNS}
-                visibleKeys={appVisibleColumns}
-                onChange={setAppVisibleColumns}
-              />
             </div>
 
             {/* Table */}
-            {filteredApps.length === 0 ? (
+            {employerAppsLoading ? (
+              <div className="flex justify-center py-16">
+                <LoadingSpinner />
+              </div>
+            ) : totalAppItems === 0 ? (
               <div className="bg-background-50 border border-background-200/70 rounded-2xl p-12 text-center">
                 <div className="w-16 h-16 mx-auto rounded-full bg-background-100 flex items-center justify-center mb-4">
                   <i className="ri-file-user-line text-2xl text-foreground-400"></i>
                 </div>
                 <h3 className="text-lg font-heading font-semibold text-foreground-950 mb-2">
-                  {myApplications.length === 0
-                    ? t("dashboard.noApplications")
-                    : t("dashboard.noAppsFound")}
+                  {appKeyword ||
+                  appStatusFilter !== "all" ||
+                  appJobFilter ||
+                  appCompanyFilter
+                    ? t("dashboard.noAppsFound")
+                    : t("dashboard.noApplications")}
                 </h3>
                 <p className="text-sm text-foreground-500">
-                  {myApplications.length === 0
-                    ? t("dashboard.appsEmptyDesc")
-                    : t("dashboard.tryChangeFilter")}
+                  {appKeyword ||
+                  appStatusFilter !== "all" ||
+                  appJobFilter ||
+                  appCompanyFilter
+                    ? t("dashboard.tryChangeFilter")
+                    : t("dashboard.appsEmptyDesc")}
                 </p>
               </div>
             ) : (
@@ -1558,6 +1766,11 @@ export default function DashboardPage() {
                             {t("dashboard.applicationsTable.appliedDate")}
                           </th>
                         )}
+                        {appVisibleColumns.includes("viewedAt") && (
+                          <th className="px-5 py-3.5 text-xs font-semibold text-foreground-600 uppercase tracking-wider hidden lg:table-cell">
+                            {t("dashboard.applicationsTable.viewedAt")}
+                          </th>
+                        )}
                         {appVisibleColumns.includes("cvFileName") && (
                           <th className="px-5 py-3.5 text-xs font-semibold text-foreground-600 uppercase tracking-wider hidden lg:table-cell">
                             {t("dashboard.applicationsTable.cv")}
@@ -1568,9 +1781,11 @@ export default function DashboardPage() {
                             {t("dashboard.applicationsTable.status")}
                           </th>
                         )}
-                        <th className="px-5 py-3.5 text-xs font-semibold text-foreground-600 uppercase tracking-wider text-right">
-                          {t("dashboard.applicationsTable.actions")}
-                        </th>
+                        {appVisibleColumns.includes("actions") && (
+                          <th className="px-5 py-3.5 text-xs font-semibold text-foreground-600 uppercase tracking-wider text-right">
+                            {t("dashboard.applicationsTable.actions")}
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-background-200/70">
@@ -1627,19 +1842,38 @@ export default function DashboardPage() {
                           {appVisibleColumns.includes("appliedAt") && (
                             <td className="px-5 py-4 hidden md:table-cell">
                               <span className="text-sm text-foreground-600">
-                                {new Date(app.appliedAt).toLocaleDateString(
-                                  dateLocale,
-                                )}
+                                {formatDate(app.appliedAt, i18n.language)}
+                              </span>
+                            </td>
+                          )}
+                          {appVisibleColumns.includes("viewedAt") && (
+                            <td className="px-5 py-4 hidden lg:table-cell">
+                              <span className="text-sm text-foreground-600">
+                                {app.viewedAt
+                                  ? formatDateTime(app.viewedAt, i18n.language)
+                                  : "—"}
                               </span>
                             </td>
                           )}
                           {appVisibleColumns.includes("cvFileName") && (
                             <td className="px-5 py-4 hidden lg:table-cell">
-                              {app.cvFileName ? (
-                                <span className="inline-flex items-center gap-1 text-xs text-primary-500 font-medium">
-                                  <i className="ri-file-text-line"></i>{" "}
-                                  {app.cvFileName}
-                                </span>
+                              {app.cvUrl || app.cvFileName ? (
+                                app.cvUrl ? (
+                                  <a
+                                    href={app.cvUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-xs text-primary-500 font-medium hover:underline"
+                                  >
+                                    <i className="ri-file-text-line"></i>{" "}
+                                    {app.cvFileName || t("applications.viewModal.cv")}
+                                  </a>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-xs text-primary-500 font-medium">
+                                    <i className="ri-file-text-line"></i>{" "}
+                                    {app.cvFileName}
+                                  </span>
+                                )
                               ) : (
                                 <span className="text-xs text-foreground-400">
                                   —
@@ -1649,80 +1883,103 @@ export default function DashboardPage() {
                           )}
                           {appVisibleColumns.includes("status") && (
                             <td className="px-5 py-4">
-                              <div className="relative">
-                                <button
-                                  onClick={() =>
-                                    setStatusDropdownOpen(
-                                      statusDropdownOpen === app.id
-                                        ? null
-                                        : app.id,
-                                    )
-                                  }
-                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer whitespace-nowrap ${appStatusColor[app.status]}`}
+                              {useEmployerAppsApi ? (
+                                <span
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${appStatusColor[app.status] || "bg-background-100 text-foreground-600"}`}
                                 >
                                   <span
                                     className={`w-1.5 h-1.5 rounded-full ${
-                                      app.status === "pending"
+                                      app.status === "SUBMITTED"
                                         ? "bg-yellow-500"
-                                        : app.status === "reviewing"
+                                        : app.status === "VIEWED"
                                           ? "bg-accent-500"
-                                          : app.status === "accepted"
-                                            ? "bg-green-500"
-                                            : "bg-red-500"
+                                          : "bg-foreground-400"
                                     }`}
                                   ></span>
-                                  {appStatusLabel[app.status]}
-                                  <i className="ri-arrow-down-s-line text-[10px]"></i>
-                                </button>
-                                {statusDropdownOpen === app.id && (
-                                  <div className="absolute top-full mt-1 left-0 bg-background-50 border border-background-200 rounded-lg shadow-lg py-1 min-w-[140px] z-30">
-                                    {(
-                                      [
-                                        "pending",
-                                        "reviewing",
-                                        "accepted",
-                                        "rejected",
-                                      ] as const
-                                    ).map((s) => (
-                                      <button
-                                        key={s}
-                                        onClick={() =>
-                                          handleStatusChange(app.id, s)
-                                        }
-                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap flex items-center gap-2 ${
-                                          app.status === s
-                                            ? "font-semibold text-foreground-950"
-                                            : "text-foreground-600"
-                                        }`}
-                                      >
-                                        <span
-                                          className={`w-2 h-2 rounded-full ${
-                                            s === "pending"
-                                              ? "bg-yellow-500"
-                                              : s === "reviewing"
-                                                ? "bg-accent-500"
-                                                : s === "accepted"
-                                                  ? "bg-green-500"
-                                                  : "bg-red-500"
+                                  {appStatusLabel[app.status] || app.status}
+                                </span>
+                              ) : (
+                                <div className="relative">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setStatusDropdownOpen(
+                                        statusDropdownOpen === app.id
+                                          ? null
+                                          : app.id,
+                                      )
+                                    }
+                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer whitespace-nowrap ${appStatusColor[app.status]}`}
+                                  >
+                                    <span
+                                      className={`w-1.5 h-1.5 rounded-full ${
+                                        app.status === "pending"
+                                          ? "bg-yellow-500"
+                                          : app.status === "reviewing"
+                                            ? "bg-accent-500"
+                                            : app.status === "accepted"
+                                              ? "bg-green-500"
+                                              : "bg-red-500"
+                                      }`}
+                                    ></span>
+                                    {appStatusLabel[app.status]}
+                                    <i className="ri-arrow-down-s-line text-[10px]"></i>
+                                  </button>
+                                  {statusDropdownOpen === app.id && (
+                                    <div className="absolute top-full mt-1 left-0 bg-background-50 border border-background-200 rounded-lg shadow-lg py-1 min-w-[140px] z-30">
+                                      {(
+                                        [
+                                          "pending",
+                                          "reviewing",
+                                          "accepted",
+                                          "rejected",
+                                        ] as const
+                                      ).map((s) => (
+                                        <button
+                                          key={s}
+                                          type="button"
+                                          onClick={() =>
+                                            handleStatusChange(app.id, s)
+                                          }
+                                          className={`w-full text-left px-4 py-2 text-sm hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap flex items-center gap-2 ${
+                                            app.status === s
+                                              ? "font-semibold text-foreground-950"
+                                              : "text-foreground-600"
                                           }`}
-                                        ></span>
-                                        {appStatusLabel[s]}
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
+                                        >
+                                          <span
+                                            className={`w-2 h-2 rounded-full ${
+                                              s === "pending"
+                                                ? "bg-yellow-500"
+                                                : s === "reviewing"
+                                                  ? "bg-accent-500"
+                                                  : s === "accepted"
+                                                    ? "bg-green-500"
+                                                    : "bg-red-500"
+                                            }`}
+                                          ></span>
+                                          {appStatusLabel[s]}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </td>
                           )}
-                          <td className="px-5 py-4 text-right">
-                            <Link
-                              to={`/jobs/${app.jobId}`}
-                              className="inline-flex items-center gap-1 text-xs font-medium text-primary-500 hover:text-primary-600 transition-colors cursor-pointer whitespace-nowrap"
-                            >
-                              <i className="ri-eye-line"></i>{" "}
-                              {t("dashboard.viewJob")}
-                            </Link>
-                          </td>
+                          {appVisibleColumns.includes("actions") && (
+                            <td className="px-5 py-4 text-right">
+                              <button
+                                type="button"
+                                onClick={() => void handleViewApplication(app)}
+                                disabled={viewAppLoading}
+                                className="inline-flex items-center gap-1 text-xs font-medium text-primary-500 hover:text-primary-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60 min-h-[44px]"
+                              >
+                                <i className="ri-file-user-line"></i>{" "}
+                                {t("dashboard.viewApplication")}
+                              </button>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
@@ -1732,7 +1989,7 @@ export default function DashboardPage() {
                   currentPage={appPage}
                   totalPages={totalAppPages}
                   pageSize={appPageSize}
-                  totalItems={filteredApps.length}
+                  totalItems={totalAppItems}
                   onPageChange={setAppPage}
                   onPageSizeChange={(size) => {
                     setAppPageSize(size);
@@ -1744,6 +2001,14 @@ export default function DashboardPage() {
           </>
         )}
       </div>
+
+      {viewApp ? (
+        <ViewApplicationModal
+          application={viewApp}
+          isOpen
+          onClose={() => setViewApp(null)}
+        />
+      ) : null}
     </div>
   );
 }

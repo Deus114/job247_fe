@@ -89,6 +89,11 @@ export default function Navbar() {
     { to: "/contact", label: t("nav.contact") },
   ];
 
+  const isNavActive = (to: string) => {
+    if (to === "/") return pathname === "/";
+    return pathname === to || pathname.startsWith(`${to}/`);
+  };
+
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -135,19 +140,26 @@ export default function Navbar() {
           </Link>
 
           <div className="hidden lg:flex items-center gap-6">
-            {navLinks.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={`text-sm font-medium transition-colors whitespace-nowrap ${
-                  overDarkHero
-                    ? "text-white/90 hover:text-white"
-                    : "text-foreground-700 hover:text-primary-500"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const active = isNavActive(link.to);
+              return (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={`text-sm font-medium transition-colors whitespace-nowrap ${
+                    overDarkHero
+                      ? active
+                        ? "text-primary-300"
+                        : "text-white/90 hover:text-white"
+                      : active
+                        ? "text-primary-500"
+                        : "text-foreground-700 hover:text-primary-500"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
           </div>
 
           <div className="hidden lg:flex items-center gap-2">
@@ -356,16 +368,23 @@ export default function Navbar() {
 
       {mobileOpen && (
         <div className="lg:hidden bg-background-50 border-t border-background-200 px-4 py-4 flex flex-col gap-2 max-h-[calc(100vh-70px)] overflow-y-auto">
-          {navLinks.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              onClick={() => setMobileOpen(false)}
-              className="text-sm font-medium text-foreground-700 hover:text-primary-500 transition-colors py-2.5 px-2 rounded-lg hover:bg-background-100"
-            >
-              {link.label}
-            </Link>
-          ))}
+          {navLinks.map((link) => {
+            const active = isNavActive(link.to);
+            return (
+              <Link
+                key={link.to}
+                to={link.to}
+                onClick={() => setMobileOpen(false)}
+                className={`text-sm font-medium transition-colors py-2.5 px-2 rounded-lg min-h-[44px] flex items-center ${
+                  active
+                    ? "text-primary-500 bg-primary-50"
+                    : "text-foreground-700 hover:text-primary-500 hover:bg-background-100"
+                }`}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
           <hr className="border-background-200 my-1" />
           <div className="flex items-center justify-between py-2 px-2">
             <span className="text-sm text-foreground-600">

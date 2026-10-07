@@ -1,7 +1,8 @@
-import { Link } from "react-router-dom";
+import { fetchPublicIndustryGroups, fetchPublicJobs } from "@/api";
+import type { PublicIndustryGroup } from "@/types/catalog";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useMemo } from "react";
-import { useJobs } from "@/features/jobs";
+import { Link } from "react-router-dom";
 
 const categoryIcons: Record<string, string> = {
   "Công nghệ thông tin": "ri-code-s-slash-line",
@@ -21,30 +22,70 @@ const categoryIcons: Record<string, string> = {
   "Du lịch - Nhà hàng - Khách sạn": "ri-hotel-line",
 };
 
+type PopularGroup = PublicIndustryGroup & { jobCount: number };
+
+async function resolveJobCount(group: PublicIndustryGroup): Promise<number> {
+  if (typeof group.jobCount === "number" && Number.isFinite(group.jobCount)) {
+    return group.jobCount;
+  }
+  try {
+    const res = await fetchPublicJobs({
+      industryGroupIds: [group.id],
+      page: 1,
+      size: 1,
+    });
+    return res.pagination.total;
+  } catch {
+    return 0;
+  }
+}
+
 export default function CategoryGrid() {
   const { t } = useTranslation();
-  const { categories, jobs } = useJobs();
+  const [groups, setGroups] = useState<PopularGroup[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const displayCategories = useMemo(() => {
-    return categories.filter((c) => c.isActive !== false).slice(0, 8);
-  }, [categories]);
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    void (async () => {
+      try {
+        const res = await fetchPublicIndustryGroups({
+          page: 1,
+          size: 100,
+          sort: "sortOrder,ASC",
+        });
+        if (cancelled) return;
 
-  const jobCountByCategory = useMemo(() => {
-    const counts: Record<string, number> = {};
-    jobs
-      .filter(
-        (j) => j.status === "approved" && !j.deletedAt && j.isActive !== false,
-      )
-      .forEach((j) => {
-        counts[j.category] = (counts[j.category] || 0) + 1;
-      });
-    return counts;
-  }, [jobs]);
+        const withCounts = await Promise.all(
+          res.data.map(async (group) => ({
+            ...group,
+            jobCount: await resolveJobCount(group),
+          })),
+        );
+        if (cancelled) return;
+
+        withCounts.sort((a, b) => {
+          if (b.jobCount !== a.jobCount) return b.jobCount - a.jobCount;
+          return a.sortOrder - b.sortOrder;
+        });
+        setGroups(withCounts.slice(0, 8));
+      } catch {
+        if (!cancelled) setGroups([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
-    <section className="py-16 md:py-20 bg-background-100">
+    <section className="py-10 md:py-12 bg-background-50">
       <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8">
-        <div className="text-center mb-10">
+        <div className="text-center mb-6">
           <h2 className="text-2xl md:text-3xl font-heading font-bold text-foreground-950">
             {t("home.categories")}
           </h2>
@@ -53,48 +94,57 @@ export default function CategoryGrid() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
-          {displayCategories.map((cat) => (
-            <Link
-              key={cat.name}
-              to={`/jobs?categories=${encodeURIComponent(cat.name)}`}
-              className="group relative bg-background-50 rounded-xl overflow-hidden border border-background-200/70 hover:border-primary-300 transition-all duration-200 cursor-pointer"
-            >
-              <div className="aspect-[4/3] overflow-hidden">
-                {cat.image ? (
-                  <img
-                    src={cat.image}
-                    alt={cat.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-400"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-primary-100 to-accent-100 flex items-center justify-center">
-                    <i
-                      className={`${categoryIcons[cat.name] || "ri-briefcase-line"} text-4xl text-primary-400`}
-                    ></i>
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-              </div>
-              <div className="absolute bottom-0 left-0 right-0 p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-8 h-8 rounded-lg bg-background-50/20 flex items-center justify-center">
-                    <i
-                      className={`${categoryIcons[cat.name] || "ri-briefcase-line"} text-sm text-white`}
-                    ></i>
-                  </div>
-                  <h3 className="font-heading text-sm font-semibold text-white">
-                    {cat.name}
-                  </h3>
+        {loading ? (
+          <p className="text-center text-sm text-foreground-500 py-10">
+            {t("common.loading")}
+          </p>
+        ) : groups.length === 0 ? (
+          <p className="text-center text-sm text-foreground-500 py-10">
+            {t("common.noData")}
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+            {groups.map((cat) => (
+              <Link
+                key={cat.id}
+                to={`/jobs?industryGroupIds=${cat.id}`}
+                className="group relative bg-background-50 rounded-xl overflow-hidden border border-background-200/70 hover:border-primary-300 transition-all duration-200 cursor-pointer"
+              >
+                <div className="aspect-[4/3] overflow-hidden">
+                  {cat.image ? (
+                    <img
+                      src={cat.image}
+                      alt={cat.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-400"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-primary-100 to-accent-100 flex items-center justify-center">
+                      <i
+                        className={`${categoryIcons[cat.name] || "ri-briefcase-line"} text-4xl text-primary-400`}
+                      ></i>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                 </div>
-                <p className="text-xs text-white/70">
-                  {jobCountByCategory[cat.name] || 0}{" "}
-                  {t("hero.statsJobs").toLowerCase()}
-                </p>
-              </div>
-            </Link>
-          ))}
-        </div>
+                <div className="absolute bottom-0 left-0 right-0 p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-8 h-8 rounded-lg bg-background-50/20 flex items-center justify-center">
+                      <i
+                        className={`${categoryIcons[cat.name] || "ri-briefcase-line"} text-sm text-white`}
+                      ></i>
+                    </div>
+                    <h3 className="font-heading text-sm font-semibold text-white">
+                      {cat.name}
+                    </h3>
+                  </div>
+                  <p className="text-xs text-white/70">
+                    {cat.jobCount} {t("hero.statsJobs").toLowerCase()}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

@@ -162,6 +162,8 @@ export interface PublicIndustryGroup {
   sortOrder: number;
   image: string;
   industries: PublicIndustry[];
+  /** Optional count from API when present. */
+  jobCount?: number;
 }
 
 export interface ProvinceWritePayload {

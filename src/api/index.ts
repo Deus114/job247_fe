@@ -70,6 +70,13 @@ export {
   updateAdminCompany,
 } from "./adminCompanies";
 export {
+  fetchAdminApplicationById,
+  fetchAdminApplications,
+  permanentDeleteAdminApplication,
+  restoreAdminApplication,
+  softDeleteAdminApplication,
+} from "./adminApplications";
+export {
   fetchAdminJobById,
   fetchAdminJobs,
   restoreAdminJob,
@@ -85,7 +92,22 @@ export {
   softDeleteAdminUser,
   updateAdminUser,
 } from "./adminUsers";
-export { fetchApplications } from "./applications";
+export {
+  applyToJobRequest,
+  fetchApplications,
+  fetchJobSeekerApplicationById,
+  fetchJobSeekerApplications,
+  normalizeApplication,
+} from "./applications";
+export {
+  fetchEmployerApplicationById,
+  fetchEmployerApplications,
+} from "./employerApplications";
+export {
+  fetchSavedJobs,
+  saveJobRequest,
+  unsaveJobRequest,
+} from "./savedJobs";
 export {
   clearAccessToken,
   fetchPublicMe,
@@ -104,7 +126,13 @@ export {
   fetchPublicBusinessConfig,
   updateAdminBusinessConfig,
 } from "./businessConfig";
-export { fetchCompanies } from "./companies";
+export {
+  fetchCompanies,
+  fetchPublicCompanies,
+  fetchPublicCompanyById,
+  fetchPublicCompanyJobs,
+} from "./companies";
+export type { PublicCompanyListParams } from "./companies";
 export {
   createEducationLevel,
   fetchEducationLevelById,
@@ -154,7 +182,13 @@ export {
   softDeleteIndustryGroup,
   updateIndustryGroup,
 } from "./industryGroups";
-export { fetchJobById, fetchJobsCatalog } from "./jobs";
+export {
+  fetchJobById,
+  fetchJobsCatalog,
+  fetchPublicJobs,
+  fetchRelatedJobs,
+  mapPublicJobToUi,
+} from "./jobs";
 export {
   createPermission,
   fetchPermissionById,

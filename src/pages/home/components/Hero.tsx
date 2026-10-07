@@ -1,8 +1,9 @@
-import { useState, type SubmitEvent } from "react";
-import { useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
+import { fetchPublicProvinces } from "@/api";
 import CustomSelect from "@/components/ui/CustomSelect";
 import { useAppSelector } from "@/store/hooks";
+import { useEffect, useState, type SubmitEvent } from "react";
+import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 
 export default function Hero() {
   const { t } = useTranslation();
@@ -10,24 +11,50 @@ export default function Hero() {
   const { homeBannerUrl, tagline, name } = useAppSelector(
     (state) => state.businessConfig.config,
   );
+  const storeLocations = useAppSelector((state) => state.jobs.locations);
   const [keyword, setKeyword] = useState("");
-  const [location, setLocation] = useState("");
+  const [provinceId, setProvinceId] = useState("");
+  const [provinceOptions, setProvinceOptions] = useState<
+    Array<{ value: string; label: string }>
+  >([{ value: "", label: t("hero.locationPlaceholder") }]);
 
-  const locationOptions = [
-    { value: "", label: t("hero.locationPlaceholder") },
-    { value: "Hồ Chí Minh", label: "Hồ Chí Minh" },
-    { value: "Hà Nội", label: "Hà Nội" },
-    { value: "Đà Nẵng", label: "Đà Nẵng" },
-    { value: "Hải Phòng", label: "Hải Phòng" },
-    { value: "Cần Thơ", label: "Cần Thơ" },
-    { value: "Bình Dương", label: "Bình Dương" },
-  ];
+  useEffect(() => {
+    let cancelled = false;
+    void fetchPublicProvinces({ page: 1, size: 100 })
+      .then((res) => {
+        if (cancelled) return;
+        setProvinceOptions([
+          { value: "", label: t("hero.locationPlaceholder") },
+          ...res.data.map((item) => ({
+            value: String(item.id),
+            label: item.name,
+          })),
+        ]);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // Fallback to bootstrap locations (names only — use as keyword locations).
+        setProvinceOptions([
+          { value: "", label: t("hero.locationPlaceholder") },
+          ...storeLocations.map((loc) => ({ value: loc, label: loc })),
+        ]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [t, storeLocations]);
 
   const handleSearch = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const params = new URLSearchParams();
     if (keyword) params.set("keyword", keyword);
-    if (location) params.set("locations", location);
+    if (provinceId) {
+      if (/^\d+$/.test(provinceId)) {
+        params.set("provinceIds", provinceId);
+      } else {
+        params.set("locations", provinceId);
+      }
+    }
     navigate(`/jobs?${params.toString()}`);
   };
 
@@ -71,9 +98,9 @@ export default function Hero() {
             </div>
             <div className="hidden sm:block w-px bg-background-200 self-stretch my-1.5 flex-shrink-0"></div>
             <CustomSelect
-              value={location}
-              options={locationOptions}
-              onChange={setLocation}
+              value={provinceId}
+              options={provinceOptions}
+              onChange={setProvinceId}
               className="w-full sm:w-auto sm:min-w-[170px]"
             />
             <button
@@ -105,7 +132,7 @@ export default function Hero() {
             </div>
             <div>
               <p className="text-xl md:text-2xl font-heading font-bold text-white">
-                50,000+
+                8,900+
               </p>
               <p className="text-xs md:text-sm text-white/70">
                 {t("hero.statsCandidates")}

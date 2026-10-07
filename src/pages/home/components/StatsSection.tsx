@@ -35,7 +35,7 @@ export default function StatsSection() {
   ];
 
   return (
-    <section className="py-16 md:py-20 bg-background-50">
+    <section className="py-10 md:py-12 bg-background-50">
       <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8">
         <div className="text-center mb-10">
           <h2 className="text-2xl md:text-3xl font-heading font-bold text-foreground-950">

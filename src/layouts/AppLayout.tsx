@@ -10,9 +10,10 @@ export default function AppLayout() {
   const { user } = useAuth();
   const location = useLocation();
   const previewingCompany =
-    /^\/companies\/[^/]+$/.test(location.pathname) &&
-    location.pathname !== "/companies/manage" &&
-    location.pathname !== "/companies/create";
+    /^\/companies\/[^/]+\/\d+$/.test(location.pathname) ||
+    (/^\/companies\/[^/]+$/.test(location.pathname) &&
+      location.pathname !== "/companies/manage" &&
+      location.pathname !== "/companies/create");
 
   if (user?.role === "employer" && !previewingCompany) {
     return <Navigate to="/employer" replace />;

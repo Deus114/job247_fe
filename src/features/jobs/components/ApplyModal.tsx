@@ -1,28 +1,50 @@
-import { useState, useRef, useEffect, type SubmitEvent } from "react";
-import { useTranslation } from "react-i18next";
-import { useAuth } from "@/features/auth";
+import {
+  resolveAdminAuthErrorMessage,
+  type AdminAuthError,
+} from "@/api/adminAuth";
 import { useApplications } from "@/features/applications";
+import { useAuth } from "@/features/auth";
+import { toast } from "@/lib/toast";
+import { useEffect, useRef, useState, type SubmitEvent } from "react";
+import { useTranslation } from "react-i18next";
 
 interface ApplyModalProps {
   jobId: string;
   jobTitle: string;
   companyName: string;
   companyLogo: string;
+  /** Rich-text candidate questions from the job (shown below cover letter). */
+  applicantQuestion?: string;
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
+}
+
+function hasVisibleHtml(html: string | undefined): boolean {
+  if (!html?.trim()) return false;
+  return html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim().length > 0;
+}
+
+function looksLikeHtml(value: string): boolean {
+  return /<\/?[a-z][\s\S]*>/i.test(value);
 }
 
 export default function ApplyModal({
   jobId,
   jobTitle,
   companyName,
-  companyLogo,
+  applicantQuestion,
   isOpen,
   onClose,
+  onSuccess,
 }: ApplyModalProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { addApplication } = useApplications();
+  const { applyToJob } = useApplications();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     fullName: "",
@@ -32,10 +54,13 @@ export default function ApplyModal({
   });
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const showQuestion = hasVisibleHtml(applicantQuestion);
 
   useEffect(() => {
     if (!isOpen) return;
     setSubmitted(false);
+    setSubmitting(false);
     setCvFile(null);
     setFormData({
       fullName: user?.fullName || "",
@@ -51,34 +76,40 @@ export default function ApplyModal({
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert(t("job.applyModal.fileTooLarge"));
+        toast.error(t("job.applyModal.fileTooLarge"));
         return;
       }
       setCvFile(file);
     }
   };
 
-  const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!formData.fullName || !formData.email) return;
+    if (!formData.fullName.trim() || !formData.email.trim()) return;
+    if (!cvFile) {
+      toast.error(t("job.applyModal.cvRequired"));
+      return;
+    }
+    if (submitting) return;
 
-    addApplication({
-      id: crypto.randomUUID(),
-      jobId,
-      jobTitle,
-      companyName,
-      companyLogo,
-      userId: user?.id,
-      fullName: formData.fullName,
-      email: formData.email,
-      phone: formData.phone,
-      coverLetter: formData.coverLetter,
-      cvFileName: cvFile ? cvFile.name : "",
-      status: "pending",
-      appliedAt: new Date().toISOString(),
-    });
-
-    setSubmitted(true);
+    setSubmitting(true);
+    try {
+      await applyToJob(jobId, {
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        coverLetter: formData.coverLetter,
+        cvFile,
+      });
+      setSubmitted(true);
+      onSuccess?.();
+    } catch (error) {
+      toast.error(
+        resolveAdminAuthErrorMessage(error as AdminAuthError, t),
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const triggerFileInput = () => fileInputRef.current?.click();
@@ -88,8 +119,9 @@ export default function ApplyModal({
       <div className="absolute inset-0 bg-black/50" onClick={onClose}></div>
       <div className="relative bg-background-50 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 md:p-8">
         <button
+          type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-background-100 transition-colors cursor-pointer"
+          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-background-100 transition-colors cursor-pointer min-h-[44px] min-w-[44px]"
         >
           <i className="ri-close-line text-xl text-foreground-600"></i>
         </button>
@@ -106,8 +138,9 @@ export default function ApplyModal({
               {t("job.applyModal.successDesc", { company: companyName })}
             </p>
             <button
+              type="button"
               onClick={onClose}
-              className="px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
+              className="px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap min-h-[44px]"
             >
               {t("common.close")}
             </button>
@@ -168,7 +201,7 @@ export default function ApplyModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground-700 mb-1.5">
-                  {t("job.applyModal.cv")}
+                  {t("job.applyModal.cv")} *
                 </label>
                 <input
                   ref={fileInputRef}
@@ -180,7 +213,7 @@ export default function ApplyModal({
                 <button
                   type="button"
                   onClick={triggerFileInput}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm border border-dashed border-background-300 rounded-lg hover:border-primary-300 hover:bg-primary-50/50 transition-colors cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm border border-dashed border-background-300 rounded-lg hover:border-primary-300 hover:bg-primary-50/50 transition-colors cursor-pointer min-h-[44px]"
                 >
                   <i className="ri-upload-cloud-2-line text-lg text-primary-500"></i>
                   <span className="text-foreground-600">
@@ -211,12 +244,36 @@ export default function ApplyModal({
                   {formData.coverLetter.length}/500
                 </p>
               </div>
+
+              {showQuestion && applicantQuestion ? (
+                <div>
+                  <label className="block text-sm font-medium text-foreground-700 mb-1.5">
+                    {t("job.applyModal.applicantQuestion")}
+                  </label>
+                  <div className="px-4 py-3 text-sm text-foreground-800 bg-background-100/70 border border-background-200/70 rounded-lg leading-relaxed">
+                    {looksLikeHtml(applicantQuestion) ? (
+                      <div
+                        className="prose prose-sm max-w-none dark:prose-invert"
+                        dangerouslySetInnerHTML={{ __html: applicantQuestion }}
+                      />
+                    ) : (
+                      <p className="whitespace-pre-wrap">{applicantQuestion}</p>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
               <button
                 type="submit"
-                className="w-full py-3 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
+                disabled={submitting}
+                className="w-full py-3 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60 min-h-[44px]"
               >
-                <i className="ri-send-plane-fill mr-2"></i>
-                {t("job.applyModal.submit")}
+                <i
+                  className={`${submitting ? "ri-loader-4-line animate-spin" : "ri-send-plane-fill"} mr-2`}
+                ></i>
+                {submitting
+                  ? t("job.applyModal.submitting")
+                  : t("job.applyModal.submit")}
               </button>
             </form>
           </>

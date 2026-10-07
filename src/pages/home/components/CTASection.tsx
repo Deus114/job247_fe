@@ -9,7 +9,7 @@ export default function CTASection() {
   if (isAuthenticated) return null;
 
   return (
-    <section className="relative py-20 md:py-24 overflow-hidden">
+    <section className="relative py-12 md:py-14 overflow-hidden">
       <div className="absolute inset-0">
         <img
           src="https://readdy.ai/api/search-image?query=Warm%20inspiring%20abstract%20background%20with%20soft%20orange%20and%20cream%20gradients%2C%20flowing%20organic%20shapes%2C%20modern%20corporate%20design%2C%20clean%20minimalist%20style%2C%20professional%20yet%20approachable&width=1920&height=600&seq=cta-bg-2026&orientation=landscape"

@@ -1,8 +1,12 @@
-export { default as JobCard } from "./components/JobCard";
+export { default as ApplyModal } from "./components/ApplyModal";
+export { default as CategoryGrid } from "./components/CategoryGrid";
+export { default as FeaturedJobs } from "./components/FeaturedJobs";
 export { default as FilterModal } from "./components/FilterModal";
 export type { FilterState } from "./components/FilterModal";
-export { default as ApplyModal } from "./components/ApplyModal";
-export { default as FeaturedJobs } from "./components/FeaturedJobs";
-export { default as CategoryGrid } from "./components/CategoryGrid";
+export { default as JobCard } from "./components/JobCard";
+export { default as JobPreviewPanel } from "./components/JobPreviewPanel";
+export { default as JobSalary } from "./components/JobSalary";
+export { default as LatestJobs } from "./components/LatestJobs";
+export { default as SavedJobCard } from "./components/SavedJobCard";
 export { useJobs } from "./hooks/useJobs";
 export { useSavedJobs } from "./hooks/useSavedJobs";

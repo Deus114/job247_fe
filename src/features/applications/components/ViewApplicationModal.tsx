@@ -1,5 +1,6 @@
-import { useTranslation } from "react-i18next";
+import { formatDateTime } from "@/lib/formatDate";
 import type { Application } from "@/types/application";
+import { useTranslation } from "react-i18next";
 
 interface ViewApplicationModalProps {
   application: Application;
@@ -12,6 +13,8 @@ const statusColor: Record<string, string> = {
   reviewing: "bg-accent-100 text-accent-700",
   accepted: "bg-green-100 text-green-700",
   rejected: "bg-red-100 text-red-700",
+  SUBMITTED: "bg-secondary-100 text-secondary-700",
+  VIEWED: "bg-accent-100 text-accent-700",
 };
 
 export default function ViewApplicationModal({
@@ -59,7 +62,17 @@ export default function ViewApplicationModal({
           className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap mb-6 ${statusColor[application.status] || "bg-background-100 text-foreground-600"}`}
         >
           <span
-            className={`w-1.5 h-1.5 rounded-full ${application.status === "pending" ? "bg-secondary-500" : application.status === "reviewing" ? "bg-accent-500" : application.status === "accepted" ? "bg-green-500" : "bg-red-500"}`}
+            className={`w-1.5 h-1.5 rounded-full ${
+              application.status === "pending" ||
+              application.status === "SUBMITTED"
+                ? "bg-secondary-500"
+                : application.status === "reviewing" ||
+                    application.status === "VIEWED"
+                  ? "bg-accent-500"
+                  : application.status === "accepted"
+                    ? "bg-green-500"
+                    : "bg-red-500"
+            }`}
           ></span>
           {t(`applications.statuses.${application.status}`, application.status)}
         </span>
@@ -79,16 +92,24 @@ export default function ViewApplicationModal({
                 {t("applications.appliedDate")}
               </p>
               <p className="text-sm font-medium text-foreground-900">
-                {new Date(application.appliedAt).toLocaleDateString("vi-VN", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {formatDateTime(application.appliedAt)}
               </p>
             </div>
           </div>
+
+          {application.viewedAt ? (
+            <div className="p-3 rounded-lg bg-background-100/70">
+              <p className="text-xs text-foreground-500 mb-0.5">
+                {t("dashboard.applicationsTable.viewedAt")}
+              </p>
+              <p className="text-sm font-medium text-foreground-900">
+                {formatDateTime(application.viewedAt)}
+                {application.viewedByUserName
+                  ? ` · ${application.viewedByUserName}`
+                  : ""}
+              </p>
+            </div>
+          ) : null}
 
           <div className="p-3 rounded-lg bg-background-100/70">
             <p className="text-xs text-foreground-500 mb-0.5">
@@ -114,16 +135,27 @@ export default function ViewApplicationModal({
             <p className="text-xs text-foreground-500 mb-0.5">
               {t("applications.viewModal.cv")}
             </p>
-            {application.cvFileName ? (
-              <div className="flex items-center gap-2">
-                <i className="ri-file-text-line text-primary-500"></i>
-                <span className="text-sm font-medium text-foreground-900">
-                  {application.cvFileName}
-                </span>
+            {application.cvUrl || application.cvFileName ? (
+              <div className="flex items-center gap-2 min-w-0">
+                <i className="ri-file-text-line text-primary-500 flex-shrink-0"></i>
+                {application.cvUrl ? (
+                  <a
+                    href={application.cvUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-medium text-primary-600 hover:underline truncate"
+                  >
+                    {application.cvFileName || t("applications.viewModal.cv")}
+                  </a>
+                ) : (
+                  <span className="text-sm font-medium text-foreground-900 truncate">
+                    {application.cvFileName}
+                  </span>
+                )}
               </div>
             ) : (
               <p className="text-sm text-foreground-400 italic">
-                {t("applications.noCv", "Không có CV đính kèm")}
+                {t("applications.noCv")}
               </p>
             )}
           </div>

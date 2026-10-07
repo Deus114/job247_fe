@@ -97,7 +97,9 @@ export function normalizeEmployerJob(raw: unknown): EmployerJob | null {
 
   return {
     id,
+    slug: String(r.slug ?? "").trim(),
     companyId: Number(r.companyId) || 0,
+    companySlug: String(r.companySlug ?? "").trim(),
     companyName: String(r.companyName ?? ""),
     companyLogo: String(r.companyLogo ?? ""),
     companyAddress: String(r.companyAddress ?? ""),
@@ -127,6 +129,7 @@ export function normalizeEmployerJob(raw: unknown): EmployerJob | null {
     applicantQuestion: String(r.applicantQuestion ?? ""),
     hot: r.hot === true,
     applied: r.applied === true,
+    saved: r.saved === true,
     applicationCount: Math.max(0, Math.trunc(Number(r.applicationCount) || 0)),
     status: normalizeJobStatus(r.status),
     rejectionReason: String(r.rejectionReason ?? ""),

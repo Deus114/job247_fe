@@ -40,6 +40,9 @@ const AdminDashboardPage = lazy(
 const AdminJobsPage = lazy(
   () => import("@/features/admin/components/JobsPage"),
 );
+const AdminApplicationsPage = lazy(
+  () => import("@/features/admin/components/ApplicationsPage"),
+);
 const AdminCompaniesPage = lazy(
   () => import("@/features/admin/components/CompaniesPage"),
 );
@@ -95,6 +98,24 @@ function RedirectCompanyEdit() {
   return <RedirectEmployerPath to={`/employer/companies/${id}/edit`} />;
 }
 
+/** Old `/jobs/:id` → `/jobs/viec-lam/:id` (BE looks up by id). */
+function RedirectLegacyJobDetail() {
+  const { id } = useParams();
+  if (!id || !/^\d+$/.test(id)) {
+    return <Navigate to="/jobs" replace />;
+  }
+  return <Navigate to={`/jobs/viec-lam/${id}`} replace />;
+}
+
+/** Old `/companies/:id` → `/companies/cong-ty/:id`. */
+function RedirectLegacyCompanyDetail() {
+  const { id } = useParams();
+  if (!id || !/^\d+$/.test(id)) {
+    return <Navigate to="/companies" replace />;
+  }
+  return <Navigate to={`/companies/cong-ty/${id}`} replace />;
+}
+
 const routes: RouteObject[] = [
   // App routes
   {
@@ -117,12 +138,16 @@ const routes: RouteObject[] = [
         ),
       },
       {
-        path: "/jobs/:id",
+        path: "/jobs/:slug/:id",
         element: (
           <LazyPage>
             <JobDetailPage />
           </LazyPage>
         ),
+      },
+      {
+        path: "/jobs/:id",
+        element: <RedirectLegacyJobDetail />,
       },
       {
         path: "/post-job",
@@ -195,12 +220,16 @@ const routes: RouteObject[] = [
         element: <RedirectCompanyEdit />,
       },
       {
-        path: "/companies/:id",
+        path: "/companies/:slug/:id",
         element: (
           <LazyPage>
             <CompanyDetailPage />
           </LazyPage>
         ),
+      },
+      {
+        path: "/companies/:id",
+        element: <RedirectLegacyCompanyDetail />,
       },
       {
         path: "/companies",
@@ -375,6 +404,14 @@ const routes: RouteObject[] = [
         element: (
           <LazyPage>
             <AdminJobsPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "applications",
+        element: (
+          <LazyPage>
+            <AdminApplicationsPage />
           </LazyPage>
         ),
       },

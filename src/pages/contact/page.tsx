@@ -1,6 +1,6 @@
+import { useAppSelector } from "@/store/hooks";
 import { useState, type SubmitEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { useAppSelector } from "@/store/hooks";
 
 export default function ContactPage() {
   const { t } = useTranslation();
@@ -61,48 +61,41 @@ export default function ContactPage() {
   ];
 
   return (
-    <div className="min-h-screen pt-[70px]">
-      <div className="bg-background-100 border-b border-background-200/70">
-        <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12">
-          <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground-950">
-            {t("contact.title")}
-          </h1>
+    <div className="min-h-screen pt-[70px] bg-background-50">
+      <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-5 md:py-8">
+        <div className="mb-5 md:mb-6">
+          <h2 className="text-lg font-heading font-semibold text-foreground-950">
+            {t("contact.contactInfo")}
+          </h2>
           <p className="text-sm text-foreground-600 mt-1">
             {t("contact.subtitle")}
           </p>
         </div>
-      </div>
 
-      <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 md:gap-12">
-          <div className="lg:col-span-2">
-            <div className="space-y-5">
-              <h3 className="text-lg font-heading font-semibold text-foreground-950 mb-6">
-                {t("contact.contactInfo")}
-              </h3>
-              {contactInfos.map((info) => (
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 md:gap-8 items-start">
+          <div className="lg:col-span-2 space-y-4">
+            {contactInfos.map((info) => (
+              <div
+                key={info.label}
+                className="flex items-start gap-4 p-4 rounded-xl bg-background-50 border border-background-200/70 shadow-sm shadow-background-950/5"
+              >
                 <div
-                  key={info.label}
-                  className="flex items-start gap-4 p-4 rounded-xl bg-background-50 border border-background-200/70"
+                  className={`w-10 h-10 rounded-lg ${info.colorClass} flex items-center justify-center flex-shrink-0`}
                 >
-                  <div
-                    className={`w-10 h-10 rounded-lg ${info.colorClass} flex items-center justify-center flex-shrink-0`}
-                  >
-                    <i className={info.icon}></i>
-                  </div>
-                  <div>
-                    <p className="text-xs text-foreground-500 mb-0.5">
-                      {info.label}
-                    </p>
-                    <p className="text-sm font-medium text-foreground-950">
-                      {info.value}
-                    </p>
-                  </div>
+                  <i className={info.icon}></i>
                 </div>
-              ))}
-            </div>
+                <div>
+                  <p className="text-xs text-foreground-500 mb-0.5">
+                    {info.label}
+                  </p>
+                  <p className="text-sm font-medium text-foreground-950">
+                    {info.value}
+                  </p>
+                </div>
+              </div>
+            ))}
 
-            <div className="mt-8 p-5 bg-background-50 border border-background-200/70 rounded-xl">
+            <div className="p-5 bg-background-50 border border-background-200/70 rounded-xl">
               <h4 className="font-heading text-sm font-semibold text-foreground-950 mb-3">
                 {t("contact.connectWithUs")}
               </h4>
@@ -152,7 +145,7 @@ export default function ContactPage() {
           </div>
 
           <div className="lg:col-span-3">
-            <div className="bg-background-50 border border-background-200/70 rounded-2xl p-6 md:p-8">
+            <div className="bg-background-50 border border-background-200/70 rounded-2xl p-6 md:p-8 shadow-sm shadow-background-950/5">
               <h3 className="text-lg font-heading font-semibold text-foreground-950 mb-6">
                 {t("contact.sendMessageTitle")}
               </h3>
@@ -290,7 +283,7 @@ export default function ContactPage() {
           </div>
         </div>
 
-        <div className="mt-12 rounded-2xl overflow-hidden h-[400px] border border-background-200/70">
+        <div className="mt-8 rounded-2xl overflow-hidden h-[360px] md:h-[400px] border border-background-200/70 shadow-sm shadow-background-950/5">
           <iframe
             src={mapSrc}
             width="100%"

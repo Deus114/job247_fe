@@ -1,17 +1,55 @@
-import { useState, useEffect, useMemo, type SubmitEvent } from "react";
-import { useSearchParams } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import {
-  JobCard,
-  FilterModal,
-  type FilterState,
-  useJobs,
-} from "@/features/jobs";
+  fetchPublicEducationLevels,
+  fetchPublicIndustryGroups,
+  fetchPublicJobs,
+  fetchPublicProvinces,
+} from "@/api";
+import Pagination from "@/components/ui/Pagination";
 import SkeletonCard from "@/components/ui/SkeletonCard";
+import {
+  EMPLOYMENT_TYPE_VALUES,
+  employmentTypeLabelKey,
+} from "@/constants/employerJob";
+import { useAuth } from "@/features/auth";
+import {
+  FilterModal,
+  JobCard,
+  JobPreviewPanel,
+  useJobs,
+  type FilterState,
+} from "@/features/jobs";
+import {
+  expandIndustryGroupIds,
+  resolveIndustrySelection,
+} from "@/lib/industryFilter";
+import type {
+  PublicEducationLevel,
+  PublicIndustryGroup,
+  PublicProvince,
+} from "@/types/catalog";
 import type { Job } from "@/types/job";
-import CustomSelect from "@/components/ui/CustomSelect";
+import { useEffect, useMemo, useState, type SubmitEvent } from "react";
+import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 
 const JOBS_PER_PAGE = 9;
+
+type SortKey = "newest" | "oldest" | "salary_desc" | "salary_asc";
+
+const SORT_QUERY: Record<SortKey, string> = {
+  newest: "createdAt,DESC",
+  oldest: "createdAt,ASC",
+  salary_desc: "salaryMax,DESC",
+  salary_asc: "salaryMin,ASC",
+};
+
+function parseIdList(raw: string | null): number[] {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map(Number)
+    .filter((n) => Number.isFinite(n) && n > 0);
+}
 
 function parseSalaryRange(salary: string): [number, number] | null {
   const nums = salary.match(/\d+/g);
@@ -21,137 +59,236 @@ function parseSalaryRange(salary: string): [number, number] | null {
   return [values[0], values[1]];
 }
 
-function getSalaryAvg(job: Job): number {
-  const parsed = parseSalaryRange(job.salary);
-  if (!parsed) return 0;
-  return (parsed[0] + parsed[1]) / 2;
-}
-
 export default function JobsPage() {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const {
-    jobs: jobsFromStore,
-    loading,
-    categories: rawCategories,
-    educationLevels: rawEducationLevels,
-    locations,
-  } = useJobs();
-  const categories = (rawCategories || [])
-    .filter((c: { name: string; isActive?: boolean }) => c.isActive !== false)
-    .map((c: { name: string }) => c.name);
-  const educationLevels = (rawEducationLevels || [])
-    .filter((e: { name: string; isActive?: boolean }) => e.isActive !== false)
-    .map((e: { name: string }) => e.name);
+  const { isAuthenticated } = useAuth();
+  const { locations: storeLocations } = useJobs();
 
-  const companyNames = useMemo(() => {
-    const set = new Set(
-      jobsFromStore
-        .filter(
-          (j) =>
-            j.status === "approved" && !j.deletedAt && j.isActive !== false,
-        )
-        .map((j) => j.company),
-    );
-    return Array.from(set).sort();
-  }, [jobsFromStore]);
-
-  const jobTypes = useMemo(() => {
-    const set = new Set(
-      jobsFromStore
-        .filter(
-          (j) =>
-            j.status === "approved" && !j.deletedAt && j.isActive !== false,
-        )
-        .map((j) => j.type),
-    );
-    return Array.from(set);
-  }, [jobsFromStore]);
+  const [industryGroups, setIndustryGroups] = useState<PublicIndustryGroup[]>(
+    [],
+  );
+  const [provinces, setProvinces] = useState<PublicProvince[]>([]);
+  const [educationLevels, setEducationLevels] = useState<
+    PublicEducationLevel[]
+  >([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
 
   const [keyword, setKeyword] = useState(searchParams.get("keyword") || "");
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [appliedKeyword, setAppliedKeyword] = useState(
+    searchParams.get("keyword") || "",
+  );
+  const [selectedIndustryIds, setSelectedIndustryIds] = useState<string[]>([]);
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
-  const [selectedEducations, setSelectedEducations] = useState<string[]>([]);
+  const [selectedEducationIds, setSelectedEducationIds] = useState<string[]>(
+    [],
+  );
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
   const [salaryMin, setSalaryMin] = useState("");
   const [salaryMax, setSalaryMax] = useState("");
-  const [sortBy, setSortBy] = useState<
-    "newest" | "oldest" | "salary_desc" | "salary_asc"
-  >("newest");
-  const [currentPage, setCurrentPage] = useState(() => {
-    const page = Number(searchParams.get("page") || "1");
-    return Number.isFinite(page) && page > 0 ? page : 1;
-  });
+  const [sortBy, setSortBy] = useState<SortKey>("newest");
+  const [currentPage, setCurrentPage] = useState(1);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [urlProvinceIds, setUrlProvinceIds] = useState<number[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
-  // Read URL params on mount / when search changes
+  const locationOptions = useMemo(() => {
+    if (provinces.length > 0) return provinces.map((p) => p.name);
+    return storeLocations;
+  }, [provinces, storeLocations]);
+
+  const employmentTypeOptions = useMemo(
+    () =>
+      EMPLOYMENT_TYPE_VALUES.map((value) => t(employmentTypeLabelKey(value))),
+    [t],
+  );
+
+  const industryById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const group of industryGroups) {
+      for (const industry of group.industries) {
+        map.set(String(industry.id), industry.name);
+      }
+    }
+    return map;
+  }, [industryGroups]);
+
+  const educationById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of educationLevels) {
+      map.set(String(item.id), item.name);
+    }
+    return map;
+  }, [educationLevels]);
+
   useEffect(() => {
-    const cat = searchParams.get("categories") || searchParams.get("category");
+    let cancelled = false;
+    void fetchPublicIndustryGroups({ page: 1, size: 100 })
+      .then((res) => {
+        if (!cancelled) setIndustryGroups(res.data);
+      })
+      .catch(() => {
+        if (!cancelled) setIndustryGroups([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchPublicProvinces({ page: 1, size: 100, sort: "sortOrder,ASC" })
+      .then((res) => {
+        if (!cancelled) setProvinces(res.data);
+      })
+      .catch(() => {
+        if (!cancelled) setProvinces([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchPublicEducationLevels({
+      page: 1,
+      size: 100,
+      sort: "sortOrder,ASC",
+    })
+      .then((res) => {
+        if (!cancelled) setEducationLevels(res.data);
+      })
+      .catch(() => {
+        if (!cancelled) setEducationLevels([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Hydrate filters from URL (after industry groups load for group expansion).
+  useEffect(() => {
     const loc = searchParams.get("locations");
-    const edu = searchParams.get("educations");
     const typesParam = searchParams.get("types");
-    const companiesParam = searchParams.get("companies");
     const kw = searchParams.get("keyword");
     const sMin = searchParams.get("salaryMin") || "";
     const sMax = searchParams.get("salaryMax") || "";
-    const sort = searchParams.get("sort") as typeof sortBy;
+    const sort = searchParams.get("sort") as SortKey | null;
     const page = Number(searchParams.get("page") || "1");
+    const groupIds = parseIdList(searchParams.get("industryGroupIds"));
+    const industryIds = parseIdList(searchParams.get("industryIds"));
+    const provinceIds = parseIdList(searchParams.get("provinceIds"));
+    const educationIds = parseIdList(searchParams.get("educationLevelIds"));
 
-    if (cat) setSelectedCategories(cat.split(",").filter(Boolean));
-    if (loc) setSelectedLocations(loc.split(",").filter(Boolean));
-    if (edu) setSelectedEducations(edu.split(",").filter(Boolean));
-    if (typesParam) setSelectedTypes(typesParam.split(",").filter(Boolean));
-    if (companiesParam)
-      setSelectedCompanies(companiesParam.split(",").filter(Boolean));
-    if (kw) setKeyword(kw);
-    if (sMin) setSalaryMin(sMin);
-    if (sMax) setSalaryMax(sMax);
-    if (
-      sort &&
-      ["newest", "oldest", "salary_desc", "salary_asc"].includes(sort)
-    )
-      setSortBy(sort);
-    if (Number.isFinite(page) && page > 0) setCurrentPage(page);
-  }, [searchParams]);
-
-  const filteredJobs = useMemo(() => {
-    let result = jobsFromStore.filter(
-      (j) => j.status === "approved" && !j.deletedAt && j.isActive !== false,
+    const expandedFromGroups = expandIndustryGroupIds(industryGroups, groupIds);
+    const mergedIndustryIds = Array.from(
+      new Set([...industryIds, ...expandedFromGroups].map(String)),
     );
 
-    if (keyword.trim()) {
-      const kw = keyword.toLowerCase().trim();
-      result = result.filter(
-        (j) =>
-          j.title.toLowerCase().includes(kw) ||
-          j.company.toLowerCase().includes(kw) ||
-          j.category.toLowerCase().includes(kw),
-      );
-    }
+    setSelectedIndustryIds(mergedIndustryIds);
+    setSelectedLocations(loc ? loc.split(",").filter(Boolean) : []);
+    setSelectedEducationIds(educationIds.map(String));
+    setSelectedTypes(typesParam ? typesParam.split(",").filter(Boolean) : []);
+    setKeyword(kw || "");
+    setAppliedKeyword(kw || "");
+    setSalaryMin(sMin);
+    setSalaryMax(sMax);
+    if (sort && sort in SORT_QUERY) setSortBy(sort);
+    else setSortBy("newest");
+    setCurrentPage(Number.isFinite(page) && page > 0 ? page : 1);
+    setUrlProvinceIds(provinceIds);
+  }, [searchParams, industryGroups]);
 
-    if (selectedCompanies.length > 0) {
-      result = result.filter((j) => selectedCompanies.includes(j.company));
-    }
-    if (selectedCategories.length > 0) {
-      result = result.filter((j) => selectedCategories.includes(j.category));
-    }
-    if (selectedLocations.length > 0) {
-      result = result.filter((j) => selectedLocations.includes(j.location));
-    }
-    if (selectedEducations.length > 0) {
-      result = result.filter((j) => {
-        const jobEdus = j.educationLevel.split(", ").map((e) => e.trim());
-        return selectedEducations.some((sel) => jobEdus.includes(sel));
-      });
-    }
-    if (selectedTypes.length > 0) {
-      result = result.filter((j) => {
-        const jobTypes = j.type.split(", ").map((t) => t.trim());
-        return selectedTypes.some((sel) => jobTypes.includes(sel));
-      });
-    }
+  const resolvedIndustry = useMemo(
+    () => resolveIndustrySelection(industryGroups, selectedIndustryIds),
+    [industryGroups, selectedIndustryIds],
+  );
 
+  const provinceIds = useMemo(() => {
+    const fromNames = provinces
+      .filter((p) => selectedLocations.includes(p.name))
+      .map((p) => p.id);
+    return Array.from(new Set([...urlProvinceIds, ...fromNames]));
+  }, [provinces, selectedLocations, urlProvinceIds]);
+
+  const educationLevelIds = useMemo(
+    () =>
+      selectedEducationIds
+        .map(Number)
+        .filter((n) => Number.isFinite(n) && n > 0),
+    [selectedEducationIds],
+  );
+
+  const employmentTypes = useMemo(() => {
+    return EMPLOYMENT_TYPE_VALUES.filter((value) =>
+      selectedTypes.includes(t(employmentTypeLabelKey(value))),
+    );
+  }, [selectedTypes, t]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    void fetchPublicJobs({
+      keyword: appliedKeyword.trim() || undefined,
+      industryGroupIds:
+        resolvedIndustry.industryGroupIds.length > 0
+          ? resolvedIndustry.industryGroupIds
+          : undefined,
+      industryIds:
+        resolvedIndustry.industryIds.length > 0
+          ? resolvedIndustry.industryIds
+          : undefined,
+      provinceIds: provinceIds.length > 0 ? provinceIds : undefined,
+      educationLevelIds:
+        educationLevelIds.length > 0 ? educationLevelIds : undefined,
+      employmentTypes:
+        employmentTypes.length > 0 ? [...employmentTypes] : undefined,
+      page: currentPage,
+      size: JOBS_PER_PAGE,
+      sort: SORT_QUERY[sortBy],
+    })
+      .then((res) => {
+        if (cancelled) return;
+        setJobs(res.data);
+        setTotalItems(res.pagination.total);
+        setTotalPages(
+          Math.max(
+            1,
+            res.pagination.last_page ||
+              Math.ceil(res.pagination.total / JOBS_PER_PAGE) ||
+              1,
+          ),
+        );
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setJobs([]);
+        setTotalItems(0);
+        setTotalPages(1);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    appliedKeyword,
+    resolvedIndustry,
+    provinceIds,
+    educationLevelIds,
+    employmentTypes,
+    currentPage,
+    sortBy,
+    isAuthenticated,
+  ]);
+
+  const displayedJobs = useMemo(() => {
+    let result = jobs;
     if (salaryMin || salaryMax) {
       const min = salaryMin ? Number(salaryMin) : 0;
       const max = salaryMax ? Number(salaryMax) : Infinity;
@@ -162,217 +299,190 @@ export default function JobsPage() {
         return jobMax >= min && jobMin <= max;
       });
     }
-
-    switch (sortBy) {
-      case "newest":
-        result.sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        );
-        break;
-      case "oldest":
-        result.sort(
-          (a, b) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-        );
-        break;
-      case "salary_desc":
-        result.sort((a, b) => getSalaryAvg(b) - getSalaryAvg(a));
-        break;
-      case "salary_asc":
-        result.sort((a, b) => getSalaryAvg(a) - getSalaryAvg(b));
-        break;
-    }
-
     return result;
-  }, [
-    jobsFromStore,
-    keyword,
-    selectedCategories,
-    selectedLocations,
-    selectedEducations,
-    selectedTypes,
-    selectedCompanies,
-    salaryMin,
-    salaryMax,
-    sortBy,
-  ]);
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredJobs.length / JOBS_PER_PAGE),
-  );
+  }, [jobs, salaryMin, salaryMax]);
 
   useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
+    if (displayedJobs.length === 0) {
+      setSelectedJobId(null);
+      return;
     }
-  }, [currentPage, totalPages]);
-  const paginatedJobs = filteredJobs.slice(
-    (currentPage - 1) * JOBS_PER_PAGE,
-    currentPage * JOBS_PER_PAGE,
+    setSelectedJobId((prev) =>
+      prev && displayedJobs.some((j) => j.id === prev)
+        ? prev
+        : displayedJobs[0].id,
+    );
+  }, [displayedJobs]);
+
+  const selectedJob = useMemo(
+    () => displayedJobs.find((j) => j.id === selectedJobId) ?? null,
+    [displayedJobs, selectedJobId],
   );
 
   const activeFilterCount =
-    selectedCategories.length +
+    selectedIndustryIds.length +
     selectedLocations.length +
-    selectedEducations.length +
+    selectedEducationIds.length +
     selectedTypes.length +
-    selectedCompanies.length +
-    (salaryMin || salaryMax ? 1 : 0);
+    urlProvinceIds.length +
+    (salaryMin || salaryMax ? 1 : 0) +
+    (appliedKeyword ? 1 : 0);
 
-  const hasFilter = activeFilterCount > 0 || keyword.trim().length > 0;
+  const hasFilter = activeFilterCount > 0;
 
-  const syncUrl = (
-    kw: string,
-    cats: string[],
-    locs: string[],
-    edus: string[],
-    typesArr: string[],
-    companiesArr: string[],
-    sMin: string,
-    sMax: string,
-    sort: typeof sortBy,
-    page: number,
-  ) => {
+  const syncUrl = (next: {
+    kw?: string;
+    industryIds?: string[];
+    locs?: string[];
+    educationIds?: string[];
+    typesArr?: string[];
+    sMin?: string;
+    sMax?: string;
+    sort?: SortKey;
+    page?: number;
+    provIds?: number[];
+  }) => {
+    const kw = next.kw ?? keyword;
+    const industryIds = next.industryIds ?? selectedIndustryIds;
+    const locs = next.locs ?? selectedLocations;
+    const educationIds = next.educationIds ?? selectedEducationIds;
+    const typesArr = next.typesArr ?? selectedTypes;
+    const sMin = next.sMin ?? salaryMin;
+    const sMax = next.sMax ?? salaryMax;
+    const sort = next.sort ?? sortBy;
+    const page = next.page ?? currentPage;
+    const provIds = next.provIds ?? urlProvinceIds;
+
+    const resolved = resolveIndustrySelection(industryGroups, industryIds);
+
     const params = new URLSearchParams();
     if (kw.trim()) params.set("keyword", kw.trim());
-    if (cats.length) params.set("categories", cats.join(","));
+    if (resolved.industryGroupIds.length) {
+      params.set("industryGroupIds", resolved.industryGroupIds.join(","));
+    }
+    if (resolved.industryIds.length) {
+      params.set("industryIds", resolved.industryIds.join(","));
+    }
     if (locs.length) params.set("locations", locs.join(","));
-    if (edus.length) params.set("educations", edus.join(","));
+    if (educationIds.length) {
+      params.set("educationLevelIds", educationIds.join(","));
+    }
     if (typesArr.length) params.set("types", typesArr.join(","));
-    if (companiesArr.length) params.set("companies", companiesArr.join(","));
     if (sMin) params.set("salaryMin", sMin);
     if (sMax) params.set("salaryMax", sMax);
     if (sort !== "newest") params.set("sort", sort);
     if (page > 1) params.set("page", String(page));
+    if (provIds.length) params.set("provinceIds", provIds.join(","));
     setSearchParams(params);
   };
 
   const handleSearch = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setAppliedKeyword(keyword.trim());
     setCurrentPage(1);
-    syncUrl(
-      keyword,
-      selectedCategories,
-      selectedLocations,
-      selectedEducations,
-      selectedTypes,
-      selectedCompanies,
-      salaryMin,
-      salaryMax,
-      sortBy,
-      1,
-    );
+    syncUrl({ kw: keyword.trim(), page: 1 });
   };
 
   const handleApplyFilters = (filters: FilterState) => {
-    setSelectedCategories(filters.categories);
+    setSelectedIndustryIds(filters.industryIds);
     setSelectedLocations(filters.locations);
-    setSelectedEducations(filters.educations);
+    setSelectedEducationIds(filters.educationIds);
     setSelectedTypes(filters.types);
-    setSelectedCompanies(filters.companies);
     setSalaryMin(filters.salaryMin);
     setSalaryMax(filters.salaryMax);
+    setUrlProvinceIds([]);
     setCurrentPage(1);
-    syncUrl(
-      keyword,
-      filters.categories,
-      filters.locations,
-      filters.educations,
-      filters.types,
-      filters.companies,
-      filters.salaryMin,
-      filters.salaryMax,
-      sortBy,
-      1,
-    );
+    syncUrl({
+      industryIds: filters.industryIds,
+      locs: filters.locations,
+      educationIds: filters.educationIds,
+      typesArr: filters.types,
+      sMin: filters.salaryMin,
+      sMax: filters.salaryMax,
+      page: 1,
+      provIds: [],
+    });
   };
 
   const handleClearFilter = () => {
     setKeyword("");
-    setSelectedCategories([]);
+    setAppliedKeyword("");
+    setSelectedIndustryIds([]);
     setSelectedLocations([]);
-    setSelectedEducations([]);
+    setSelectedEducationIds([]);
     setSelectedTypes([]);
-    setSelectedCompanies([]);
     setSalaryMin("");
     setSalaryMax("");
     setSortBy("newest");
     setCurrentPage(1);
+    setUrlProvinceIds([]);
     setSearchParams({});
   };
 
   const removeFilter = (
     key:
-      | "categories"
+      | "industry"
       | "locations"
       | "educations"
       | "types"
-      | "companies"
-      | "salary",
+      | "salary"
+      | "provinceIds",
     value?: string,
   ) => {
-    let newCats = selectedCategories;
+    let newIndustryIds = selectedIndustryIds;
     let newLocs = selectedLocations;
-    let newEdus = selectedEducations;
+    let newEducationIds = selectedEducationIds;
     let newTypes = selectedTypes;
-    let newCompanies = selectedCompanies;
     let newMin = salaryMin;
     let newMax = salaryMax;
+    let newProvIds = urlProvinceIds;
 
-    if (key === "categories" && value)
-      newCats = newCats.filter((v) => v !== value);
+    if (key === "industry" && value) {
+      newIndustryIds = newIndustryIds.filter((v) => v !== value);
+    }
     if (key === "locations" && value)
       newLocs = newLocs.filter((v) => v !== value);
     if (key === "educations" && value)
-      newEdus = newEdus.filter((v) => v !== value);
+      newEducationIds = newEducationIds.filter((v) => v !== value);
     if (key === "types" && value)
       newTypes = newTypes.filter((v) => v !== value);
-    if (key === "companies" && value)
-      newCompanies = newCompanies.filter((v) => v !== value);
     if (key === "salary") {
       newMin = "";
       newMax = "";
     }
+    if (key === "provinceIds") newProvIds = [];
 
-    setSelectedCategories(newCats);
+    setSelectedIndustryIds(newIndustryIds);
     setSelectedLocations(newLocs);
-    setSelectedEducations(newEdus);
+    setSelectedEducationIds(newEducationIds);
     setSelectedTypes(newTypes);
-    setSelectedCompanies(newCompanies);
     setSalaryMin(newMin);
     setSalaryMax(newMax);
+    setUrlProvinceIds(newProvIds);
     setCurrentPage(1);
-    syncUrl(
-      keyword,
-      newCats,
-      newLocs,
-      newEdus,
-      newTypes,
-      newCompanies,
-      newMin,
-      newMax,
-      sortBy,
-      1,
-    );
+    syncUrl({
+      industryIds: newIndustryIds,
+      locs: newLocs,
+      educationIds: newEducationIds,
+      typesArr: newTypes,
+      sMin: newMin,
+      sMax: newMax,
+      page: 1,
+      provIds: newProvIds,
+    });
   };
 
-  const handleSortChange = (val: typeof sortBy) => {
+  const handleSortChange = (val: SortKey) => {
     setSortBy(val);
     setCurrentPage(1);
-    syncUrl(
-      keyword,
-      selectedCategories,
-      selectedLocations,
-      selectedEducations,
-      selectedTypes,
-      selectedCompanies,
-      salaryMin,
-      salaryMax,
-      val,
-      1,
-    );
+    syncUrl({ sort: val, page: 1 });
+  };
+
+  const goToPage = (page: number) => {
+    const next = Math.min(Math.max(1, page), totalPages);
+    setCurrentPage(next);
+    syncUrl({ page: next });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const sortOptions = [
@@ -382,87 +492,82 @@ export default function JobsPage() {
     { value: "salary_asc", label: t("job.sortSalaryAsc") },
   ];
 
-  return (
-    <div className="min-h-screen pt-[70px]">
-      {/* Header + Search */}
-      <div className="bg-background-100 border-b border-background-200/70">
-        <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-6 md:py-8">
-          <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground-950">
-            {t("nav.jobs")}
-          </h1>
-          <p className="text-sm text-foreground-600 mt-1">
-            {loading
-              ? t("common.loading")
-              : `${filteredJobs.length} ${t("job.results")}`}
-          </p>
+  const provinceFilterLabels = useMemo(() => {
+    if (urlProvinceIds.length === 0) return [];
+    return urlProvinceIds.map((id) => {
+      const found = provinces.find((p) => p.id === id);
+      return found?.name || `#${id}`;
+    });
+  }, [provinces, urlProvinceIds]);
 
+  return (
+    <div className="min-h-screen pt-[70px] bg-background-100/60">
+      <div className="bg-primary-50/80 border-b border-primary-100">
+        <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-4 md:py-5">
           <form
             onSubmit={handleSearch}
-            className="mt-5 flex flex-col sm:flex-row gap-3"
+            className="flex flex-col sm:flex-row sm:items-center gap-2 p-2 sm:p-2.5 bg-background-50 border border-background-200 rounded-xl shadow-sm"
           >
-            <div className="flex-1 relative">
-              <i className="ri-search-line absolute left-4 top-1/2 -translate-y-1/2 text-foreground-400 text-lg"></i>
+            <div className="flex-1 relative min-w-0">
+              <i className="ri-search-line absolute left-3.5 top-1/2 -translate-y-1/2 text-primary-400 text-lg"></i>
               <input
                 type="text"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 placeholder={t("hero.searchPlaceholder")}
-                className="w-full pl-11 pr-4 py-3 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-xl focus:outline-none focus:border-primary-300 transition-colors"
+                className="w-full pl-10 pr-3 py-2.5 text-sm text-foreground-900 bg-transparent border-0 outline-none focus:ring-0 min-h-[44px]"
               />
             </div>
-            <button
-              type="submit"
-              className="px-6 py-3 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors whitespace-nowrap cursor-pointer flex items-center gap-2 justify-center"
-            >
-              <i className="ri-search-line"></i> {t("job.search")}
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setFilterModalOpen(true)}
+                className="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-lg text-sm font-medium text-primary-600 bg-primary-100 hover:bg-primary-200/70 transition-colors cursor-pointer whitespace-nowrap min-h-[44px]"
+              >
+                <i className="ri-equalizer-line"></i>
+                <span className="hidden sm:inline">{t("job.filter")}</span>
+                {activeFilterCount > 0 ? (
+                  <span className="w-5 h-5 rounded-full bg-primary-500 text-white text-[11px] flex items-center justify-center font-semibold">
+                    {activeFilterCount}
+                  </span>
+                ) : null}
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-lg text-sm font-semibold hover:bg-primary-600 transition-colors whitespace-nowrap cursor-pointer flex items-center gap-2 justify-center min-h-[44px]"
+              >
+                {t("job.search")}
+              </button>
+            </div>
           </form>
-        </div>
-      </div>
 
-      {/* Filters + Results */}
-      <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-6">
-        {/* Toolbar */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
-          <div className="flex items-center gap-3 flex-wrap">
-            {/* Filter button */}
-            <button
-              onClick={() => setFilterModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 border border-background-200/70 rounded-xl text-sm text-foreground-700 hover:bg-background-100 hover:border-primary-300 transition-all cursor-pointer whitespace-nowrap"
-            >
-              <i className="ri-equalizer-line"></i> Bộ lọc
-              {activeFilterCount > 0 && (
-                <span className="ml-1 w-5 h-5 rounded-full bg-primary-500 text-white text-[11px] flex items-center justify-center font-semibold">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-
-            {/* Active filter tags */}
-            <div className="flex flex-wrap gap-2">
-              {selectedCompanies.map((company) => (
+          {(hasFilter || activeFilterCount > 0) && (
+            <div className="flex flex-wrap items-center gap-2 mt-3">
+              {selectedIndustryIds.map((id) => (
                 <span
-                  key={`comp-${company}`}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-50 text-primary-600 text-xs font-medium rounded-full whitespace-nowrap border border-primary-200/50"
+                  key={`ind-${id}`}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-background-50 border border-primary-200 text-primary-700 text-xs font-medium rounded-full whitespace-nowrap"
                 >
-                  <i className="ri-building-line text-[10px]"></i> {company}
+                  {industryById.get(id) || `#${id}`}
                   <button
-                    onClick={() => removeFilter("companies", company)}
+                    type="button"
+                    onClick={() => removeFilter("industry", id)}
                     className="cursor-pointer hover:text-primary-900 w-4 h-4 flex items-center justify-center"
                   >
                     <i className="ri-close-line"></i>
                   </button>
                 </span>
               ))}
-              {selectedCategories.map((cat) => (
+              {provinceFilterLabels.map((label) => (
                 <span
-                  key={`cat-${cat}`}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-100 text-primary-700 text-xs font-medium rounded-full whitespace-nowrap"
+                  key={`prov-${label}`}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-background-50 border border-accent-200 text-accent-700 text-xs font-medium rounded-full whitespace-nowrap"
                 >
-                  {cat}
+                  {label}
                   <button
-                    onClick={() => removeFilter("categories", cat)}
-                    className="cursor-pointer hover:text-primary-900 w-4 h-4 flex items-center justify-center"
+                    type="button"
+                    onClick={() => removeFilter("provinceIds")}
+                    className="cursor-pointer hover:text-accent-900 w-4 h-4 flex items-center justify-center"
                   >
                     <i className="ri-close-line"></i>
                   </button>
@@ -471,10 +576,11 @@ export default function JobsPage() {
               {selectedLocations.map((loc) => (
                 <span
                   key={`loc-${loc}`}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-accent-100 text-accent-700 text-xs font-medium rounded-full whitespace-nowrap"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-background-50 border border-accent-200 text-accent-700 text-xs font-medium rounded-full whitespace-nowrap"
                 >
                   {loc}
                   <button
+                    type="button"
                     onClick={() => removeFilter("locations", loc)}
                     className="cursor-pointer hover:text-accent-900 w-4 h-4 flex items-center justify-center"
                   >
@@ -482,14 +588,15 @@ export default function JobsPage() {
                   </button>
                 </span>
               ))}
-              {selectedEducations.map((edu) => (
+              {selectedEducationIds.map((id) => (
                 <span
-                  key={`edu-${edu}`}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-secondary-100 text-secondary-700 text-xs font-medium rounded-full whitespace-nowrap"
+                  key={`edu-${id}`}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-background-50 border border-secondary-200 text-secondary-700 text-xs font-medium rounded-full whitespace-nowrap"
                 >
-                  {edu}
+                  {educationById.get(id) || `#${id}`}
                   <button
-                    onClick={() => removeFilter("educations", edu)}
+                    type="button"
+                    onClick={() => removeFilter("educations", id)}
                     className="cursor-pointer hover:text-secondary-900 w-4 h-4 flex items-center justify-center"
                   >
                     <i className="ri-close-line"></i>
@@ -499,10 +606,11 @@ export default function JobsPage() {
               {selectedTypes.map((tp) => (
                 <span
                   key={`type-${tp}`}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-50 text-primary-600 text-xs font-medium rounded-full whitespace-nowrap border border-primary-200/50"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-background-50 border border-primary-200 text-primary-600 text-xs font-medium rounded-full whitespace-nowrap"
                 >
                   {tp}
                   <button
+                    type="button"
                     onClick={() => removeFilter("types", tp)}
                     className="cursor-pointer hover:text-primary-900 w-4 h-4 flex items-center justify-center"
                   >
@@ -511,9 +619,11 @@ export default function JobsPage() {
                 </span>
               ))}
               {(salaryMin || salaryMax) && (
-                <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-accent-50 text-accent-600 text-xs font-medium rounded-full whitespace-nowrap border border-accent-200/50">
-                  {salaryMin || "0"} - {salaryMax || "∞"} triệu
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-background-50 border border-accent-200 text-accent-600 text-xs font-medium rounded-full whitespace-nowrap">
+                  {salaryMin || "0"} - {salaryMax || "∞"}{" "}
+                  {t("job.salaryMillion")}
                   <button
+                    type="button"
                     onClick={() => removeFilter("salary")}
                     className="cursor-pointer hover:text-accent-900 w-4 h-4 flex items-center justify-center"
                   >
@@ -521,47 +631,74 @@ export default function JobsPage() {
                   </button>
                 </span>
               )}
-              {hasFilter && (
+              {hasFilter ? (
                 <button
+                  type="button"
                   onClick={handleClearFilter}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-foreground-500 hover:text-primary-500 transition-colors cursor-pointer whitespace-nowrap"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-foreground-500 hover:text-primary-500 transition-colors cursor-pointer whitespace-nowrap"
                 >
-                  <i className="ri-refresh-line"></i> Xóa bộ lọc
+                  <i className="ri-refresh-line"></i> {t("job.clearFilter")}
                 </button>
-              )}
+              ) : null}
             </div>
-          </div>
-
-          {/* Sort dropdown - custom */}
-          <CustomSelect
-            value={sortBy}
-            options={sortOptions}
-            onChange={(val) => handleSortChange(val as typeof sortBy)}
-            className="w-full sm:w-[180px]"
-          />
+          )}
         </div>
+      </div>
 
-        {/* Results */}
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {Array.from({ length: JOBS_PER_PAGE }).map((_, i) => (
-              <SkeletonCard key={i} />
+      <div className="w-full max-w-[1440px] mx-auto px-4 md:px-8 py-4 md:py-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-foreground-500 mr-1">
+              {t("job.sortBy")}:
+            </span>
+            {sortOptions.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => handleSortChange(opt.value as SortKey)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer whitespace-nowrap min-h-[36px] ${
+                  sortBy === opt.value
+                    ? "bg-primary-500 border-primary-500 text-background-50 dark:text-foreground-950"
+                    : "bg-background-50 border-background-200 text-foreground-600 hover:border-primary-300 hover:text-primary-600"
+                }`}
+              >
+                {opt.label}
+              </button>
             ))}
           </div>
-        ) : filteredJobs.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="w-20 h-20 mx-auto rounded-full bg-background-100 flex items-center justify-center mb-5">
-              <i className="ri-file-search-line text-3xl text-foreground-400"></i>
+          <p className="text-sm font-medium text-foreground-700">
+            {loading
+              ? t("common.loading")
+              : `${totalItems} ${t("job.results")}`}
+          </p>
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <div className="lg:col-span-5 space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
+            </div>
+            <div className="hidden lg:block lg:col-span-7">
+              <SkeletonCard />
+            </div>
+          </div>
+        ) : displayedJobs.length === 0 ? (
+          <div className="text-center py-16 bg-background-50 border border-background-200 rounded-xl">
+            <div className="w-16 h-16 mx-auto rounded-full bg-background-100 flex items-center justify-center mb-4">
+              <i className="ri-file-search-line text-2xl text-foreground-400"></i>
             </div>
             <h3 className="text-lg font-heading font-semibold text-foreground-950 mb-2">
               {t("job.noResults")}
             </h3>
-            <p className="text-sm text-foreground-500 mb-6">
-              Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm
+            <p className="text-sm text-foreground-500 mb-5">
+              {t("job.tryChangeFilter")}
             </p>
             <button
+              type="button"
               onClick={handleClearFilter}
-              className="px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
+              className="px-5 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-lg text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap min-h-[44px]"
             >
               {t("job.clearFilter")}
             </button>
@@ -569,110 +706,54 @@ export default function JobsPage() {
         ) : (
           <>
             <div
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
+              className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start"
               data-product-shop=""
             >
-              {paginatedJobs.map((job) => (
-                <JobCard key={job.id} job={job} />
-              ))}
+              <div className="lg:col-span-5 space-y-3">
+                {displayedJobs.map((job) => (
+                  <JobCard
+                    key={job.id}
+                    job={job}
+                    compact
+                    selected={job.id === selectedJobId}
+                    onSelect={() => setSelectedJobId(job.id)}
+                  />
+                ))}
+              </div>
+              <div className="lg:col-span-7">
+                {selectedJob ? <JobPreviewPanel job={selectedJob} /> : null}
+              </div>
             </div>
 
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-10">
-                <button
-                  onClick={() => {
-                    setCurrentPage((p) => Math.max(1, p - 1));
-                    syncUrl(
-                      keyword,
-                      selectedCategories,
-                      selectedLocations,
-                      selectedEducations,
-                      selectedTypes,
-                      selectedCompanies,
-                      salaryMin,
-                      salaryMax,
-                      sortBy,
-                      Math.max(1, currentPage - 1),
-                    );
-                  }}
-                  disabled={currentPage === 1}
-                  className="w-9 h-9 flex items-center justify-center rounded-lg border border-background-200/70 text-foreground-600 hover:bg-background-100 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <i className="ri-arrow-left-s-line"></i>
-                </button>
-
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                  (page) => (
-                    <button
-                      key={page}
-                      onClick={() => {
-                        setCurrentPage(page);
-                        syncUrl(
-                          keyword,
-                          selectedCategories,
-                          selectedLocations,
-                          selectedEducations,
-                          selectedTypes,
-                          selectedCompanies,
-                          salaryMin,
-                          salaryMax,
-                          sortBy,
-                          page,
-                        );
-                      }}
-                      className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                        currentPage === page
-                          ? "bg-primary-500 text-background-50 dark:text-foreground-950"
-                          : "text-foreground-600 hover:bg-background-100 border border-background-200/70"
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ),
-                )}
-
-                <button
-                  onClick={() => {
-                    setCurrentPage((p) => Math.min(totalPages, p + 1));
-                    syncUrl(
-                      keyword,
-                      selectedCategories,
-                      selectedLocations,
-                      selectedEducations,
-                      selectedTypes,
-                      selectedCompanies,
-                      salaryMin,
-                      salaryMax,
-                      sortBy,
-                      Math.min(totalPages, currentPage + 1),
-                    );
-                  }}
-                  disabled={currentPage === totalPages}
-                  className="w-9 h-9 flex items-center justify-center rounded-lg border border-background-200/70 text-foreground-600 hover:bg-background-100 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <i className="ri-arrow-right-s-line"></i>
-                </button>
+            {totalItems > 0 ? (
+              <div className="mt-6 bg-background-50 border border-background-200 rounded-xl overflow-hidden">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  pageSize={JOBS_PER_PAGE}
+                  totalItems={totalItems}
+                  onPageChange={goToPage}
+                  hidePageSize
+                  className="border-t-0"
+                />
               </div>
-            )}
+            ) : null}
           </>
         )}
       </div>
 
-      {/* Filter Modal */}
       <FilterModal
         isOpen={filterModalOpen}
         onClose={() => setFilterModalOpen(false)}
-        categories={categories}
-        locations={locations}
+        industryGroups={industryGroups}
+        locations={locationOptions}
         educationLevels={educationLevels}
-        types={jobTypes}
-        companies={companyNames}
+        types={employmentTypeOptions}
         filters={{
-          categories: selectedCategories,
+          industryIds: selectedIndustryIds,
           locations: selectedLocations,
-          educations: selectedEducations,
+          educationIds: selectedEducationIds,
           types: selectedTypes,
-          companies: selectedCompanies,
           salaryMin,
           salaryMax,
         }}

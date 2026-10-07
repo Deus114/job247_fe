@@ -1,7 +1,5 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { readJson } from "@/lib/storage";
-import { env } from "@/config/env";
-import { mockApplications } from "@/mocks/applications";
 import type { Application } from "@/types/application";
 
 export type { Application } from "@/types/application";
@@ -12,15 +10,13 @@ interface ApplicationsState {
 
 function loadInitialApplications(): Application[] {
   const stored = readJson<ApplicationsState>("redux_applications");
-  if (Array.isArray(stored?.items) && stored.items.length > 0) {
-    const seen = new Set<string>();
-    return stored.items.filter((app) => {
-      if (!app?.id || seen.has(app.id)) return false;
-      seen.add(app.id);
-      return true;
-    });
-  }
-  return env.useMock ? mockApplications : [];
+  if (!Array.isArray(stored?.items) || stored.items.length === 0) return [];
+  const seen = new Set<string>();
+  return stored.items.filter((app) => {
+    if (!app?.id || seen.has(app.id)) return false;
+    seen.add(app.id);
+    return true;
+  });
 }
 
 const initialState: ApplicationsState = {

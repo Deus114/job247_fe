@@ -1,17 +1,17 @@
+import { AdminAuthError, isAdminApiSuccess } from "@/api/adminAuth";
 import axios from "@/api/axios.customize";
-import { isAxiosError } from "axios";
 import { env } from "@/config/env";
-import { isAdminApiSuccess, AdminAuthError } from "@/api/adminAuth";
 import type { ApiResponse } from "@/types/adminAuth";
 import type {
+  ApiPagination,
   IndustryGroup,
   IndustryGroupListParams,
   IndustryGroupWritePayload,
+  PaginatedList,
   PublicIndustry,
   PublicIndustryGroup,
-  PaginatedList,
-  ApiPagination,
 } from "@/types/catalog";
+import { isAxiosError } from "axios";
 
 function throwIndustryGroupError(fallbackKey: string, error: unknown): never {
   if (error instanceof AdminAuthError) throw error;
@@ -363,6 +363,10 @@ function normalizePublicIndustryGroup(
     sortOrder: Number(r.sortOrder) || 0,
     image: String(r.image ?? ""),
     industries,
+    jobCount: (() => {
+      const n = Number(r.jobCount ?? r.job_count ?? r.totalJobs);
+      return Number.isFinite(n) && n >= 0 ? n : undefined;
+    })(),
   };
 }
 

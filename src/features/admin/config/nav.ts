@@ -1,6 +1,7 @@
 export type AdminRouteKey =
   | "dashboard"
   | "jobs"
+  | "applications"
   | "companies"
   | "job-seekers"
   | "employers"
@@ -48,6 +49,12 @@ export const adminNavGroups: AdminNavGroup[] = [
         label: "adminNav.jobs",
         icon: "ri-briefcase-line",
         path: "/admin/jobs",
+      },
+      {
+        key: "applications",
+        label: "adminNav.applications",
+        icon: "ri-file-user-line",
+        path: "/admin/applications",
       },
       {
         key: "companies",

@@ -1,57 +1,68 @@
-import { useState, useMemo } from "react";
-import { Link, Navigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { useAuth } from "@/features/auth";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import {
   useApplications,
   ViewApplicationModal,
-  EditApplicationModal,
-  ConfirmCancelModal,
 } from "@/features/applications";
-import { useJobs } from "@/features/jobs";
+import { useAuth } from "@/features/auth";
+import { formatDate } from "@/lib/formatDate";
+import { jobPath } from "@/lib/paths";
+import { toast } from "@/lib/toast";
 import type { Application } from "@/types/application";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Link, Navigate } from "react-router-dom";
 
 const statusColor: Record<string, string> = {
   pending: "bg-secondary-100 text-secondary-700",
   reviewing: "bg-accent-100 text-accent-700",
+  interviewing: "bg-blue-100 text-blue-700",
   accepted: "bg-green-100 text-green-700",
   rejected: "bg-red-100 text-red-700",
 };
 
+const statusDot: Record<string, string> = {
+  pending: "bg-secondary-500",
+  reviewing: "bg-accent-500",
+  interviewing: "bg-blue-500",
+  accepted: "bg-green-500",
+  rejected: "bg-red-500",
+};
+
 export default function MyApplicationsPage() {
   const { t } = useTranslation();
-  const { user } = useAuth();
-  const { applications, removeApplication } = useApplications();
-  const { jobs: allJobs } = useJobs();
-
+  const { user, isAuthenticated } = useAuth();
+  const { applications, loadApplications, resolveError } = useApplications();
   const [viewApp, setViewApp] = useState<Application | null>(null);
-  const [editApp, setEditApp] = useState<Application | null>(null);
-  const [cancelApp, setCancelApp] = useState<Application | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const jobsMap = useMemo(
-    () => new Map(allJobs.map((j) => [j.id, j])),
-    [allJobs],
-  );
-
-  const myApplications = useMemo(() => {
-    if (!user) return [];
-    return applications.filter(
-      (app) =>
-        app.userId === user.id ||
-        (!app.userId && app.email.toLowerCase() === user.email.toLowerCase()),
-    );
-  }, [applications, user]);
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    void loadApplications({ page: 1, size: 50 })
+      .catch((error) => {
+        if (!cancelled) toast.error(resolveError(error));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, loadApplications, resolveError]);
 
   if (user?.role === "employer") {
     return <Navigate to="/" replace />;
   }
 
-  const handleCancelConfirm = () => {
-    if (cancelApp) {
-      removeApplication(cancelApp.id);
-      setCancelApp(null);
-    }
-  };
+  if (!isAuthenticated) {
+    return (
+      <Navigate to="/login" state={{ from: "/my-applications" }} replace />
+    );
+  }
 
   return (
     <div className="min-h-screen pt-[70px]">
@@ -61,14 +72,15 @@ export default function MyApplicationsPage() {
             {t("applications.title")}
           </h1>
           <p className="text-sm text-foreground-600">
-            {t(
-              "applications.desc",
-              "Theo dõi trạng thái, xem và chỉnh sửa các đơn ứng tuyển của bạn",
-            )}
+            {t("applications.desc")}
           </p>
         </div>
 
-        {myApplications.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <LoadingSpinner />
+          </div>
+        ) : applications.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-20 h-20 mx-auto rounded-full bg-background-100 flex items-center justify-center mb-5">
               <i className="ri-send-plane-line text-3xl text-foreground-400"></i>
@@ -81,7 +93,7 @@ export default function MyApplicationsPage() {
             </p>
             <Link
               to="/jobs"
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap min-h-[44px]"
             >
               <i className="ri-search-line"></i> {t("applications.browseJobs")}
             </Link>
@@ -93,7 +105,7 @@ export default function MyApplicationsPage() {
                 <thead>
                   <tr className="border-b border-background-200/70 bg-background-100/50">
                     <th className="px-5 py-3.5 text-xs font-semibold text-foreground-600 uppercase tracking-wider">
-                      {t("job.jobTitle", "Công việc")}
+                      {t("job.jobTitle")}
                     </th>
                     <th className="px-5 py-3.5 text-xs font-semibold text-foreground-600 uppercase tracking-wider hidden md:table-cell">
                       {t("applications.appliedDate")}
@@ -107,96 +119,78 @@ export default function MyApplicationsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-background-200/70">
-                  {myApplications.map((app) => {
-                    const job = jobsMap.get(app.jobId);
-                    return (
-                      <tr
-                        key={app.id}
-                        className="hover:bg-background-100/50 transition-colors"
-                      >
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-background-100 border border-background-200/70 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                              {app.companyLogo ? (
-                                <img
-                                  src={app.companyLogo}
-                                  alt={app.companyName}
-                                  className="w-8 h-8 object-contain"
-                                />
-                              ) : (
-                                <i className="ri-building-line text-foreground-400"></i>
-                              )}
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold text-foreground-900">
-                                {app.jobTitle}
-                              </p>
-                              <p className="text-xs text-foreground-500">
-                                {app.companyName}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4 hidden md:table-cell">
-                          <span className="text-sm text-foreground-600">
-                            {new Date(app.appliedAt).toLocaleDateString(
-                              "vi-VN",
+                  {applications.map((app) => (
+                    <tr
+                      key={app.id}
+                      className="hover:bg-background-100/50 transition-colors"
+                    >
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-lg bg-background-100 border border-background-200/70 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            {app.companyLogo ? (
+                              <img
+                                src={app.companyLogo}
+                                alt={app.companyName}
+                                className="w-8 h-8 object-contain"
+                              />
+                            ) : (
+                              <i className="ri-building-line text-foreground-400"></i>
                             )}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4">
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-foreground-900 truncate">
+                              {app.jobTitle}
+                            </p>
+                            <p className="text-xs text-foreground-500 truncate">
+                              {app.companyName}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 hidden md:table-cell">
+                        <span className="text-sm text-foreground-600">
+                          {formatDate(app.appliedAt)}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full whitespace-nowrap ${statusColor[app.status] || "bg-background-100 text-foreground-600"}`}
+                        >
                           <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full whitespace-nowrap ${statusColor[app.status] || "bg-background-100 text-foreground-600"}`}
+                            className={`w-1.5 h-1.5 rounded-full ${statusDot[app.status] || "bg-foreground-400"}`}
+                          ></span>
+                          {t(
+                            `applications.statuses.${app.status}`,
+                            app.status,
+                          )}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setViewApp(app)}
+                            className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-background-100 text-foreground-500 hover:text-primary-500 transition-colors cursor-pointer"
+                            title={t("applications.view")}
                           >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${app.status === "pending" ? "bg-secondary-500" : app.status === "reviewing" ? "bg-accent-500" : app.status === "accepted" ? "bg-green-500" : "bg-red-500"}`}
-                            ></span>
-                            {t(
-                              `applications.statuses.${app.status}`,
-                              app.status,
-                            )}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center justify-end gap-1">
-                            <button
-                              onClick={() => setViewApp(app)}
-                              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-background-100 text-foreground-500 hover:text-primary-500 transition-colors cursor-pointer"
-                              title={t("applications.view")}
+                            <i className="ri-eye-line text-lg"></i>
+                          </button>
+                          {app.jobId ? (
+                            <Link
+                              to={jobPath({
+                                id: app.jobId,
+                                title: app.jobTitle,
+                              })}
+                              className="w-10 h-10 hidden md:flex items-center justify-center rounded-lg hover:bg-background-100 text-foreground-400 hover:text-foreground-600 transition-colors"
+                              title={t("job.viewDetail")}
                             >
-                              <i className="ri-eye-line text-lg"></i>
-                            </button>
-                            <button
-                              onClick={() => setEditApp(app)}
-                              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-background-100 text-foreground-500 hover:text-accent-500 transition-colors cursor-pointer"
-                              title={t("applications.edit")}
-                            >
-                              <i className="ri-edit-line text-lg"></i>
-                            </button>
-                            <button
-                              onClick={() => setCancelApp(app)}
-                              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-foreground-500 hover:text-red-500 transition-colors cursor-pointer"
-                              title={t("applications.cancel")}
-                            >
-                              <i className="ri-close-circle-line text-lg"></i>
-                            </button>
-                            {job && (
-                              <Link
-                                to={`/jobs/${job.id}`}
-                                className="w-8 h-8 hidden md:flex items-center justify-center rounded-lg hover:bg-background-100 text-foreground-400 hover:text-foreground-600 transition-colors cursor-pointer"
-                                title={t(
-                                  "job.viewDetail",
-                                  "Xem tin tuyển dụng",
-                                )}
-                              >
-                                <i className="ri-external-link-line text-base"></i>
-                              </Link>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                              <i className="ri-external-link-line text-base"></i>
+                            </Link>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -204,25 +198,13 @@ export default function MyApplicationsPage() {
         )}
       </div>
 
-      <ViewApplicationModal
-        application={viewApp!}
-        isOpen={viewApp !== null}
-        onClose={() => setViewApp(null)}
-      />
-
-      <EditApplicationModal
-        application={editApp!}
-        isOpen={editApp !== null}
-        onClose={() => setEditApp(null)}
-      />
-
-      <ConfirmCancelModal
-        jobTitle={cancelApp?.jobTitle || ""}
-        companyName={cancelApp?.companyName || ""}
-        isOpen={cancelApp !== null}
-        onClose={() => setCancelApp(null)}
-        onConfirm={handleCancelConfirm}
-      />
+      {viewApp ? (
+        <ViewApplicationModal
+          application={viewApp}
+          isOpen
+          onClose={() => setViewApp(null)}
+        />
+      ) : null}
     </div>
   );
 }

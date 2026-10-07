@@ -7,6 +7,7 @@ import {
   resolveAdminAuthErrorMessage,
 } from "@/api";
 import CustomSelect from "@/components/ui/CustomSelect";
+import HtmlContentEditor from "@/components/ui/HtmlContentEditor";
 import ImageUploadField from "@/components/ui/ImageUploadField";
 import MultiSelect from "@/components/ui/MultiSelect";
 import { useAuth } from "@/features/auth";
@@ -36,6 +37,15 @@ function remoteImageUrl(value: string): string | undefined {
   if (!url || url.startsWith("blob:") || url.startsWith("data:"))
     return undefined;
   return url;
+}
+
+function hasHtmlText(html: string): boolean {
+  return (
+    html
+      .replace(/<[^>]*>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .trim().length > 0
+  );
 }
 
 export default function CreateCompanyPage() {
@@ -174,11 +184,8 @@ export default function CreateCompanyPage() {
     if (!formData.email.trim()) newErrors.email = t("validation.required");
     if (!formData.phone.trim()) newErrors.phone = t("validation.required");
     if (!formData.taxCode.trim()) newErrors.taxCode = t("validation.required");
-    if (!formData.description.trim()) {
+    if (!hasHtmlText(formData.description)) {
       newErrors.description = t("company.validation.descRequired");
-    }
-    if (formData.description.length > 500) {
-      newErrors.description = t("validation.maxLength", { max: 500 });
     }
     if (formData.website && !/^https?:\/\/.+/.test(formData.website)) {
       newErrors.website = t("validation.urlInvalid");
@@ -565,32 +572,19 @@ export default function CreateCompanyPage() {
             </div>
 
             <div>
-              <h3 className="text-base font-heading font-semibold text-foreground-950 mb-4 flex items-center gap-2">
-                <i className="ri-file-text-line text-primary-500"></i>{" "}
-                {t("company.description")} *
-              </h3>
-              <textarea
-                name="description"
+              <HtmlContentEditor
+                label={`${t("company.description")} *`}
                 value={formData.description}
-                onChange={handleChange}
-                rows={5}
-                className={`w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border rounded-lg focus:outline-none focus:border-primary-300 transition-colors resize-none ${safeErrors.description ? "border-red-400" : "border-background-200/70"}`}
-                placeholder={t(
-                  "company.descPlaceholder",
-                  "Mô tả về công ty, lĩnh vực hoạt động, văn hóa, thành tựu...",
-                )}
-                maxLength={500}
-              ></textarea>
-              <div className="flex items-center justify-between mt-1">
-                {safeErrors.description && (
-                  <p className="text-xs text-red-500">
-                    {safeErrors.description}
-                  </p>
-                )}
-                <p className="text-xs text-foreground-400 ml-auto">
-                  {formData.description.length}/500
+                onChange={(html) =>
+                  setFormData((prev) => ({ ...prev, description: html }))
+                }
+                hint={t("company.descPlaceholder")}
+              />
+              {safeErrors.description ? (
+                <p className="text-xs text-red-500 mt-1">
+                  {safeErrors.description}
                 </p>
-              </div>
+              ) : null}
             </div>
 
             <div className="bg-background-100/80 border border-background-200/60 rounded-xl p-4">

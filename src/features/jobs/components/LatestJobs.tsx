@@ -8,27 +8,26 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-export default function FeaturedJobs() {
+export default function LatestJobs() {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
-  const [featuredJobs, setFeaturedJobs] = useState<Job[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     void fetchPublicJobs({
-      hot: true,
       page: 1,
       size: 6,
       sort: "createdAt,DESC",
     })
       .then((res) => {
         if (cancelled) return;
-        setFeaturedJobs(res.data);
+        setJobs(res.data);
       })
       .catch(() => {
-        if (!cancelled) setFeaturedJobs([]);
+        if (!cancelled) setJobs([]);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -44,14 +43,14 @@ export default function FeaturedJobs() {
         <div className="flex items-end justify-between mb-6">
           <div>
             <h2 className="text-2xl md:text-3xl font-heading font-bold text-foreground-950">
-              {t("home.featuredJobs")}
+              {t("home.latestJobs")}
             </h2>
             <p className="text-sm text-foreground-600 mt-2">
-              {t("home.featuredJobsDesc")}
+              {t("home.latestJobsDesc")}
             </p>
           </div>
           <Link
-            to="/jobs"
+            to="/jobs?sort=newest"
             className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-primary-500 hover:text-primary-600 transition-colors whitespace-nowrap cursor-pointer"
           >
             {t("home.viewAll")} <i className="ri-arrow-right-line"></i>
@@ -64,7 +63,7 @@ export default function FeaturedJobs() {
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {featuredJobs.map((job) => (
+            {jobs.map((job) => (
               <Link
                 key={job.id}
                 to={jobPath(job)}
@@ -144,7 +143,7 @@ export default function FeaturedJobs() {
           </div>
         )}
 
-        {!loading && featuredJobs.length === 0 && (
+        {!loading && jobs.length === 0 && (
           <p className="text-center text-sm text-foreground-500 py-10">
             {t("common.noData")}
           </p>
@@ -152,7 +151,7 @@ export default function FeaturedJobs() {
 
         <div className="mt-8 text-center sm:hidden">
           <Link
-            to="/jobs"
+            to="/jobs?sort=newest"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-500"
           >
             {t("home.viewAll")} <i className="ri-arrow-right-line"></i>

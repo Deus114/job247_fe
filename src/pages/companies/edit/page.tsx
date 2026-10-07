@@ -7,6 +7,7 @@ import {
   updateEmployerCompany,
 } from "@/api";
 import CustomSelect from "@/components/ui/CustomSelect";
+import HtmlContentEditor from "@/components/ui/HtmlContentEditor";
 import ImageUploadField from "@/components/ui/ImageUploadField";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import MultiSelect from "@/components/ui/MultiSelect";
@@ -19,6 +20,15 @@ import type { EmployerCompany } from "@/types/company";
 import { useEffect, useMemo, useState, type SubmitEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
+
+function hasHtmlText(html: string): boolean {
+  return (
+    html
+      .replace(/<[^>]*>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .trim().length > 0
+  );
+}
 
 const emptyForm = {
   name: "",
@@ -206,11 +216,8 @@ export default function EditCompanyPage() {
     if (!formData.email.trim()) newErrors.email = t("validation.required");
     if (!formData.phone.trim()) newErrors.phone = t("validation.required");
     if (!formData.taxCode.trim()) newErrors.taxCode = t("validation.required");
-    if (!formData.description.trim()) {
+    if (!hasHtmlText(formData.description)) {
       newErrors.description = t("company.validation.descRequired");
-    }
-    if (formData.description.length > 500) {
-      newErrors.description = t("validation.maxLength", { max: 500 });
     }
     if (formData.website && !/^https?:\/\/.+/.test(formData.website)) {
       newErrors.website = t("validation.urlInvalid");
@@ -584,28 +591,19 @@ export default function EditCompanyPage() {
             </div>
 
             <div>
-              <h3 className="text-base font-heading font-semibold text-foreground-950 mb-4 flex items-center gap-2">
-                <i className="ri-file-text-line text-primary-500"></i>{" "}
-                {t("company.description")} *
-              </h3>
-              <textarea
-                name="description"
+              <HtmlContentEditor
+                label={`${t("company.description")} *`}
                 value={formData.description}
-                onChange={handleChange}
-                rows={5}
-                className={`w-full px-4 py-2.5 text-sm text-foreground-900 bg-background-50 border rounded-lg focus:outline-none focus:border-primary-300 transition-colors resize-none ${safeErrors.description ? "border-red-400" : "border-background-200/70"}`}
-                maxLength={500}
-              ></textarea>
-              <div className="flex items-center justify-between mt-1">
-                {safeErrors.description && (
-                  <p className="text-xs text-red-500">
-                    {safeErrors.description}
-                  </p>
-                )}
-                <p className="text-xs text-foreground-400 ml-auto">
-                  {formData.description.length}/500
+                onChange={(html) =>
+                  setFormData((prev) => ({ ...prev, description: html }))
+                }
+                hint={t("company.descPlaceholder")}
+              />
+              {safeErrors.description ? (
+                <p className="text-xs text-red-500 mt-1">
+                  {safeErrors.description}
                 </p>
-              </div>
+              ) : null}
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-2">

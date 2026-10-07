@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 interface SelectOption {
@@ -14,7 +14,6 @@ interface CustomSelectProps {
   className?: string;
   icon?: string;
   compact?: boolean;
-  /** Visible border + fixed height for toolbar/filter rows */
   outlined?: boolean;
   required?: boolean;
 }
@@ -107,14 +106,14 @@ export default function CustomSelect({
                 key={option.value}
                 type="button"
                 onClick={() => handleSelect(option.value)}
-                className={`w-full flex items-center gap-3 ${optPadding} text-sm text-left transition-colors cursor-pointer whitespace-nowrap ${
+                className={`w-full flex items-start gap-3 ${optPadding} text-sm text-left transition-colors cursor-pointer ${
                   isSelected
                     ? "bg-primary-50 text-primary-700 font-medium"
                     : "text-foreground-700 hover:bg-background-100"
                 }`}
               >
                 <div
-                  className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors ${
+                  className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center flex-shrink-0 transition-colors ${
                     isSelected
                       ? "bg-primary-500"
                       : "border border-background-300"
@@ -124,7 +123,9 @@ export default function CustomSelect({
                     <i className="ri-check-line text-[10px] text-white"></i>
                   )}
                 </div>
-                <span className="truncate">{option.label}</span>
+                <span className="flex-1 min-w-0 whitespace-normal break-words leading-snug">
+                  {option.label}
+                </span>
               </button>
             );
           })}

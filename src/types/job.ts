@@ -1,21 +1,29 @@
 export interface Job {
   id: string;
+  slug?: string;
   title: string;
   company: string;
   companyId: string;
+  companySlug?: string;
   companyLogo: string;
   location: string;
+  workLocation?: string;
+  workingTime?: string;
   salary: string;
   category: string;
   educationLevel: string;
   type: string;
   experience: string;
+  experienceYears?: number | null;
   description: string;
   requirements: string[];
   benefits: string[];
+  applicantQuestion?: string;
   deadline: string;
   createdAt: string;
   featured: boolean;
+  applied?: boolean;
+  saved?: boolean;
   status: "pending" | "approved" | "rejected";
   isActive?: boolean;
   deletedAt?: string;
@@ -23,6 +31,7 @@ export interface Job {
 }
 
 export interface CategoryItem {
+  id?: number;
   name: string;
   image?: string;
   isActive?: boolean;
@@ -31,6 +40,7 @@ export interface CategoryItem {
 }
 
 export interface EducationLevelItem {
+  id?: number;
   name: string;
   isActive?: boolean;
   createdAt?: string;
@@ -44,6 +54,22 @@ export interface JobsCatalog {
   locations: string[];
 }
 
+/** GET /jobs query params. */
+export interface PublicJobListParams {
+  keyword?: string;
+  companyId?: number;
+  industryGroupIds?: number[];
+  industryIds?: number[];
+  provinceIds?: number[];
+  educationLevelIds?: number[];
+  employmentTypes?: string[];
+  experienceLevels?: string[];
+  hot?: boolean;
+  page?: number;
+  size?: number;
+  sort?: string;
+}
+
 /** Employer job moderation status */
 export type EmployerJobStatus = "PENDING" | "APPROVED" | "REJECTED";
 
@@ -55,7 +81,9 @@ export interface JobNamedRef {
 
 export interface EmployerJob {
   id: number;
+  slug: string;
   companyId: number;
+  companySlug: string;
   companyName: string;
   companyLogo: string;
   companyAddress: string;
@@ -81,6 +109,7 @@ export interface EmployerJob {
   applicantQuestion: string;
   hot: boolean;
   applied: boolean;
+  saved: boolean;
   applicationCount: number;
   status: EmployerJobStatus;
   rejectionReason: string;
