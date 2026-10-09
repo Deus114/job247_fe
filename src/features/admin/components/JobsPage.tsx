@@ -20,6 +20,7 @@ import {
   employmentTypeLabelKey,
   experienceLevelLabelKey,
 } from "@/constants/employerJob";
+import { notificationFocus } from "@/features/notifications";
 import { formatDate, formatDateTime } from "@/lib/formatDate";
 import { formatMoneyRange } from "@/lib/formatNumber";
 import { toast } from "@/lib/toast";
@@ -32,6 +33,7 @@ import {
   type SubmitEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocation } from "react-router-dom";
 
 type SortField = "title" | "createdAt" | "updatedAt" | "deadline";
 
@@ -55,6 +57,7 @@ function salaryLabel(job: AdminJob, negotiableLabel: string): string {
 
 export default function JobsPage() {
   const { t, i18n } = useTranslation();
+  const location = useLocation();
   const lang = i18n.language;
   const { openId, pos, menuRef, toggle, close } = useTableActionMenu<number>();
 
@@ -246,6 +249,22 @@ export default function JobsPage() {
       /* keep list row */
     }
   };
+
+  const focus = notificationFocus(location.search, location.state);
+  useEffect(() => {
+    if (!focus) return;
+    let cancelled = false;
+    void fetchAdminJobById(focus.id)
+      .then((job) => {
+        if (!cancelled) setDetail(job);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error(t("apiErrors.adminJobLoadFailed"));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [focus?.key, t]);
 
   const openEdit = (job: AdminJob) => {
     setEditTarget(job);
@@ -912,8 +931,16 @@ export default function JobsPage() {
 
             {(
               [
-                ["description", detail.description, t("adminUi.jobs.description")],
-                ["requirements", detail.requirements, t("adminUi.jobs.requirements")],
+                [
+                  "description",
+                  detail.description,
+                  t("adminUi.jobs.description"),
+                ],
+                [
+                  "requirements",
+                  detail.requirements,
+                  t("adminUi.jobs.requirements"),
+                ],
                 ["benefits", detail.benefits, t("adminUi.jobs.benefits")],
                 [
                   "workLocation",

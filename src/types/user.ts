@@ -25,6 +25,8 @@ export interface AuthUser {
   updatedAt?: string;
   /** Present for employers; empty for job seekers / employers without membership. */
   companies?: UserCompanyMembership[];
+  /** When true, this browser may register an FCM device token. */
+  pushEnabled?: boolean;
 }
 
 export interface LoginPayload {
@@ -93,4 +95,6 @@ export interface UpdatePublicMePayload {
   currentPassword?: string;
   newPassword?: string;
   avatarFile?: File | null;
+  /** Omit when the preference is unchanged. */
+  pushEnabled?: boolean;
 }

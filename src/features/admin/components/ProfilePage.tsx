@@ -13,6 +13,7 @@ import { toggleTheme } from "@/store/slices/themeSlice";
 import { formatDateTime } from "@/lib/formatDate";
 import { isStrongPassword } from "@/lib/password";
 import { toast } from "@/lib/toast";
+import { pushErrorMessage, setAdminPushEnabled } from "@/lib/push";
 import CustomSelect from "@/components/ui/CustomSelect";
 
 export default function ProfilePage() {
@@ -26,6 +27,7 @@ export default function ProfilePage() {
   const [loadError, setLoadError] = useState("");
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [avatarSaving, setAvatarSaving] = useState(false);
+  const [pushSaving, setPushSaving] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     current: "",
     newPass: "",
@@ -162,6 +164,22 @@ export default function ProfilePage() {
     }
   };
 
+  const pushOn = admin?.pushEnabled === true;
+
+  const handleTogglePush = async () => {
+    if (pushSaving) return;
+    setPushSaving(true);
+    try {
+      const next = await setAdminPushEnabled(!pushOn);
+      setSessionUser(next);
+      toast.success(t("settings.pushUpdated"));
+    } catch (error) {
+      toast.error(pushErrorMessage(error, t));
+    } finally {
+      setPushSaving(false);
+    }
+  };
+
   const languageOptions = [
     { value: "vi", label: t("adminUi.profile.languageVi") },
     { value: "en", label: t("adminUi.profile.languageEn") },
@@ -293,6 +311,37 @@ export default function ProfilePage() {
             <h3 className="font-heading text-sm font-semibold text-foreground-950 mb-4">
               {t("adminUi.profile.settings")}
             </h3>
+
+            <div className="mb-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground-700">
+                    {t("adminUi.profile.pushNotifications")}
+                  </p>
+                  <p className="text-xs text-foreground-500 mt-0.5">
+                    {t("adminUi.profile.pushDesc")}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={pushOn}
+                  disabled={pushSaving}
+                  onClick={() => void handleTogglePush()}
+                  className={`inline-flex min-h-11 shrink-0 items-center px-4 py-2 rounded-full text-sm font-medium cursor-pointer disabled:opacity-60 ${
+                    pushOn
+                      ? "bg-accent-100 text-accent-700"
+                      : "bg-primary-500 text-background-50 dark:text-foreground-950"
+                  }`}
+                >
+                  {pushSaving
+                    ? t("settings.saving")
+                    : pushOn
+                      ? t("settings.disableNotifications")
+                      : t("settings.enableNotifications")}
+                </button>
+              </div>
+            </div>
 
             <div className="mb-4">
               <label className="block text-sm font-medium text-foreground-700 mb-1.5">

@@ -1,16 +1,15 @@
+import { fetchJobSeekerApplicationById } from "@/api";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import {
-  useApplications,
-  ViewApplicationModal,
-} from "@/features/applications";
+import { useApplications, ViewApplicationModal } from "@/features/applications";
 import { useAuth } from "@/features/auth";
+import { notificationFocus } from "@/features/notifications";
 import { formatDate } from "@/lib/formatDate";
 import { jobPath } from "@/lib/paths";
 import { toast } from "@/lib/toast";
 import type { Application } from "@/types/application";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 
 const statusColor: Record<string, string> = {
   pending: "bg-secondary-100 text-secondary-700",
@@ -30,6 +29,7 @@ const statusDot: Record<string, string> = {
 
 export default function MyApplicationsPage() {
   const { t } = useTranslation();
+  const location = useLocation();
   const { user, isAuthenticated } = useAuth();
   const { applications, loadApplications, resolveError } = useApplications();
   const [viewApp, setViewApp] = useState<Application | null>(null);
@@ -53,6 +53,22 @@ export default function MyApplicationsPage() {
       cancelled = true;
     };
   }, [isAuthenticated, loadApplications, resolveError]);
+
+  const focus = notificationFocus(location.search, location.state);
+  useEffect(() => {
+    if (!focus || !isAuthenticated) return;
+    let cancelled = false;
+    void fetchJobSeekerApplicationById(focus.id)
+      .then((app) => {
+        if (!cancelled) setViewApp(app);
+      })
+      .catch((error) => {
+        if (!cancelled) toast.error(resolveError(error));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [focus?.key, isAuthenticated, resolveError]);
 
   if (user?.role === "employer") {
     return <Navigate to="/" replace />;
@@ -159,10 +175,7 @@ export default function MyApplicationsPage() {
                           <span
                             className={`w-1.5 h-1.5 rounded-full ${statusDot[app.status] || "bg-foreground-400"}`}
                           ></span>
-                          {t(
-                            `applications.statuses.${app.status}`,
-                            app.status,
-                          )}
+                          {t(`applications.statuses.${app.status}`, app.status)}
                         </span>
                       </td>
                       <td className="px-5 py-4">

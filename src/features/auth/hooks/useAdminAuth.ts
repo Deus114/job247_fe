@@ -1,5 +1,6 @@
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { adminLogoutRequest, getAdminAccessToken } from "@/api/adminAuth";
+import { unregisterStoredDeviceToken } from "@/api/deviceTokens";
 import {
   adminLogin,
   adminLogout,
@@ -23,8 +24,11 @@ export function useAdminAuth() {
 
   const logout = useCallback(() => {
     const token = getAdminAccessToken();
-    void adminLogoutRequest(token);
-    dispatch(adminLogout());
+    void (async () => {
+      await unregisterStoredDeviceToken("admin");
+      await adminLogoutRequest(token);
+      dispatch(adminLogout());
+    })();
   }, [dispatch]);
 
   const updateProfile = useCallback(

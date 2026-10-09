@@ -8,6 +8,8 @@ import {
   getAdminRouteKeyFromPath,
 } from "@/features/admin";
 import { useAdminAuth } from "@/features/auth";
+import { NotificationBell } from "@/features/notifications";
+import { useAdminPushSync } from "@/hooks/usePushSync";
 import { useCatalogBootstrap } from "@/features/catalog";
 import { canAccessAdminModule } from "@/types/adminAuth";
 import { useMemo, useState } from "react";
@@ -17,6 +19,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 export default function AdminLayout() {
   const { t } = useTranslation();
   useCatalogBootstrap();
+  useAdminPushSync();
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -104,7 +107,10 @@ export default function AdminLayout() {
             </span>
           </div>
           <div className="hidden lg:block" />
-          <LanguageSwitcher />
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+            <NotificationBell audience="admin" />
+          </div>
         </div>
 
         {pageAllowed ? (

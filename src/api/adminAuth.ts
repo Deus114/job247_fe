@@ -113,6 +113,7 @@ export function normalizeAdminSessionUser(
     active: u.active !== false,
     createdAt: String(u.createdAt ?? ""),
     updatedAt: String(u.updatedAt ?? ""),
+    pushEnabled: u.pushEnabled === true,
   };
 }
 
@@ -439,6 +440,9 @@ export async function updateAdminMe(
   }
   if (payload.avatarFile) {
     body.append("avatar", payload.avatarFile);
+  }
+  if (typeof payload.pushEnabled === "boolean") {
+    body.append("pushEnabled", payload.pushEnabled ? "true" : "false");
   }
 
   if ([...body.keys()].length === 0) {

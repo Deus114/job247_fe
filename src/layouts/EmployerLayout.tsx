@@ -1,5 +1,6 @@
 import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
 import { useAuth, useSyncPublicProfile } from "@/features/auth";
+import { NotificationBell } from "@/features/notifications";
 import { employerNav } from "@/features/employer/config/nav";
 import { toast } from "@/lib/toast";
 import { useState } from "react";
@@ -154,7 +155,10 @@ export default function EmployerLayout() {
             </span>
           </div>
           <div className="hidden lg:block" />
-          <LanguageSwitcher />
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+            <NotificationBell audience="public" />
+          </div>
         </div>
         <Outlet />
       </div>

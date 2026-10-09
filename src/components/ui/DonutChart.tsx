@@ -36,6 +36,7 @@ export default function DonutChart({
           strokeWidth={strokeWidth}
         />
         {data.map((item) => {
+          if (item.value <= 0) return null;
           const itemCircumference = (item.value / total) * circumference;
           const dashArray = `${itemCircumference} ${circumference - itemCircumference}`;
           const currentOffset = offset;

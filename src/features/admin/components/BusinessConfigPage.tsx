@@ -330,6 +330,23 @@ export default function BusinessConfigPage() {
                   className={inputClass}
                 />
               </div>
+              <div className="md:col-span-2">
+                <label className={labelClass}>
+                  {t("adminUi.businessConfig.notificationEmails")}
+                </label>
+                <input
+                  type="text"
+                  value={form.notificationEmails}
+                  onChange={(e) =>
+                    handleChange("notificationEmails", e.target.value)
+                  }
+                  className={`${inputClass} min-h-11`}
+                  placeholder="abc@gmail.com, def@gmail.com"
+                />
+                <p className="text-xs text-foreground-500 mt-1.5">
+                  {t("adminUi.businessConfig.notificationEmailsHint")}
+                </p>
+              </div>
               <div>
                 <label className={labelClass}>
                   {t("adminUi.businessConfig.latitude")}

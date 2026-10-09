@@ -48,4 +48,13 @@ export const env = {
   otpResendCooldown: readNumber("VITE_OTP_RESEND_COOLDOWN", 60),
   isDev: import.meta.env.DEV,
   isProd: import.meta.env.PROD,
+  firebase: {
+    apiKey: readEnv("VITE_FIREBASE_API_KEY"),
+    authDomain: readEnv("VITE_FIREBASE_AUTH_DOMAIN"),
+    projectId: readEnv("VITE_FIREBASE_PROJECT_ID"),
+    storageBucket: readEnv("VITE_FIREBASE_STORAGE_BUCKET"),
+    messagingSenderId: readEnv("VITE_FIREBASE_MESSAGING_SENDER_ID"),
+    appId: readEnv("VITE_FIREBASE_APP_ID"),
+    vapidKey: readEnv("VITE_FIREBASE_VAPID_KEY"),
+  },
 } as const;

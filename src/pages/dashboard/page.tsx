@@ -4,14 +4,18 @@ import {
   fetchEmployerApplicationById,
   fetchEmployerApplications,
   fetchEmployerCompanies,
+  fetchEmployerDashboard,
   fetchEmployerJobById,
   fetchEmployerJobs,
   joinJobRefNames,
   resolveAdminAuthErrorMessage,
   restoreEmployerJob,
 } from "@/api";
+import BarChart from "@/components/ui/BarChart";
 import ColumnVisibilityDropdown from "@/components/ui/ColumnVisibilityDropdown";
 import CustomSelect from "@/components/ui/CustomSelect";
+import DonutChart from "@/components/ui/DonutChart";
+import LineChart from "@/components/ui/LineChart";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import Pagination from "@/components/ui/Pagination";
 import {
@@ -23,13 +27,11 @@ import {
   employmentTypeLabelKey,
   experienceLevelLabelKey,
 } from "@/constants/employerJob";
-import {
-  useApplications,
-  ViewApplicationModal,
-} from "@/features/applications";
+import { useApplications, ViewApplicationModal } from "@/features/applications";
 import { useAuth } from "@/features/auth";
 import { useCompanies } from "@/features/companies";
 import { useJobs } from "@/features/jobs";
+import { notificationFocus } from "@/features/notifications";
 import { usePageShell } from "@/layouts/usePageShell";
 import { formatDate, formatDateTime } from "@/lib/formatDate";
 import { formatMoneyRange } from "@/lib/formatNumber";
@@ -40,6 +42,7 @@ import type {
   EmployerApplicationStatus,
 } from "@/types/application";
 import type { EmployerCompany } from "@/types/company";
+import type { EmployerDashboard } from "@/types/employerDashboard";
 import type { EmployerJob, EmployerJobStatus, Job } from "@/types/job";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -91,6 +94,12 @@ const jobStatusColor: Record<string, string> = {
   rejected: "bg-red-100 text-red-700",
 };
 
+function shortDay(date: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(date.trim());
+  if (!match) return date;
+  return `${match[3]}/${match[2]}`;
+}
+
 const appStatusColor: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-700",
   reviewing: "bg-accent-100 text-accent-700",
@@ -105,7 +114,9 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { cms, className: shell } = usePageShell();
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const { pathname } = location;
+  const focus = notificationFocus(location.search, location.state);
   const section = pathname.endsWith("/applications")
     ? "applications"
     : pathname.endsWith("/jobs")
@@ -178,7 +189,12 @@ export default function DashboardPage() {
   const [appSearch, setAppSearch] = useState("");
   const [appKeyword, setAppKeyword] = useState("");
   const [appStatusFilter, setAppStatusFilter] = useState<
-    "all" | EmployerApplicationStatus | "pending" | "reviewing" | "accepted" | "rejected"
+    | "all"
+    | EmployerApplicationStatus
+    | "pending"
+    | "reviewing"
+    | "accepted"
+    | "rejected"
   >("all");
   const [appJobFilter, setAppJobFilter] = useState("");
   const [appCompanyFilter, setAppCompanyFilter] = useState("");
@@ -202,6 +218,9 @@ export default function DashboardPage() {
   >([]);
   const [viewApp, setViewApp] = useState<Application | null>(null);
   const [viewAppLoading, setViewAppLoading] = useState(false);
+  const [overviewCompanyId, setOverviewCompanyId] = useState("");
+  const [overview, setOverview] = useState<EmployerDashboard | null>(null);
+  const [overviewLoading, setOverviewLoading] = useState(false);
 
   const myCompanies = useMemo(
     () => companies.filter((c) => c.createdBy === user?.id),
@@ -236,6 +255,35 @@ export default function DashboardPage() {
   } = useTableActionMenu<string>();
 
   const useEmployerJobsApi = Boolean(env.apiBaseUrl);
+
+  useEffect(() => {
+    if (section !== "overview" || !useEmployerAppsApi) return;
+    let cancelled = false;
+    setOverview(null);
+    setOverviewLoading(true);
+    const companyId = Number(overviewCompanyId);
+    void fetchEmployerDashboard(
+      Number.isFinite(companyId) && companyId > 0 ? { companyId } : {},
+    )
+      .then((data) => {
+        if (!cancelled) setOverview(data);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setOverview(null);
+        toast.error(
+          error instanceof AdminAuthError
+            ? resolveAdminAuthErrorMessage(error, t)
+            : t("apiErrors.employerDashboardLoadFailed"),
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setOverviewLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [section, useEmployerAppsApi, overviewCompanyId, t]);
 
   useEffect(() => {
     if (!useEmployerJobsApi) return;
@@ -312,7 +360,7 @@ export default function DashboardPage() {
   }, [useEmployerJobsApi]);
 
   useEffect(() => {
-    if (section !== "jobs" && section !== "overview") return;
+    if (section !== "jobs") return;
     void loadEmployerJobs();
   }, [section, loadEmployerJobs]);
 
@@ -413,9 +461,7 @@ export default function DashboardPage() {
     if (!useEmployerAppsApi) return;
     setEmployerAppsLoading(true);
     try {
-      const companyId = appCompanyFilter
-        ? Number(appCompanyFilter)
-        : undefined;
+      const companyId = appCompanyFilter ? Number(appCompanyFilter) : undefined;
       const jobId = appJobFilter ? Number(appJobFilter) : undefined;
       const res = await fetchEmployerApplications({
         keyword: appKeyword || undefined,
@@ -465,7 +511,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!useEmployerAppsApi) return;
-    if (section !== "applications" && section !== "overview") return;
+    if (section !== "applications") return;
     void loadEmployerApps();
   }, [useEmployerAppsApi, section, loadEmployerApps]);
 
@@ -658,13 +704,7 @@ export default function DashboardPage() {
     if (useEmployerAppsApi) return employerApps;
     const start = (appPage - 1) * appPageSize;
     return filteredApps.slice(start, start + appPageSize);
-  }, [
-    useEmployerAppsApi,
-    employerApps,
-    filteredApps,
-    appPage,
-    appPageSize,
-  ]);
+  }, [useEmployerAppsApi, employerApps, filteredApps, appPage, appPageSize]);
 
   const totalAppPages = useEmployerAppsApi
     ? employerAppsTotalPages
@@ -673,6 +713,75 @@ export default function DashboardPage() {
   const totalAppItems = useEmployerAppsApi
     ? employerAppsTotal
     : filteredApps.length;
+
+  useEffect(() => {
+    if (section !== "jobs" || !focus) return;
+    let cancelled = false;
+    setJobDetailLoading(true);
+    void fetchEmployerJobById(focus.id)
+      .then((detail) => {
+        if (!cancelled) setJobDetail(detail);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        toast.error(
+          error instanceof AdminAuthError
+            ? resolveAdminAuthErrorMessage(error, t)
+            : t("apiErrors.employerJobLoadFailed"),
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setJobDetailLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [section, focus?.key, t]);
+
+  useEffect(() => {
+    if (section !== "applications" || !focus) return;
+    let cancelled = false;
+    setViewAppLoading(true);
+    void fetchEmployerApplicationById(focus.id)
+      .then((detail) => {
+        if (!cancelled) setViewApp(detail);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        toast.error(
+          error instanceof AdminAuthError
+            ? resolveAdminAuthErrorMessage(error, t)
+            : t("apiErrors.employerApplicationLoadFailed"),
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setViewAppLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [section, focus?.key, t]);
+
+  const appStatusFilterOptions = useMemo(
+    () =>
+      useEmployerAppsApi
+        ? [
+            { value: "all", label: t("common.all") },
+            {
+              value: "SUBMITTED",
+              label: appStatusLabel.SUBMITTED,
+            },
+            { value: "VIEWED", label: appStatusLabel.VIEWED },
+          ]
+        : [
+            { value: "all", label: t("common.all") },
+            { value: "pending", label: appStatusLabel.pending },
+            { value: "reviewing", label: appStatusLabel.reviewing },
+            { value: "accepted", label: appStatusLabel.accepted },
+            { value: "rejected", label: appStatusLabel.rejected },
+          ],
+    [useEmployerAppsApi, t, appStatusLabel],
+  );
 
   if (user?.role !== "employer") {
     return <Navigate to="/" replace />;
@@ -741,26 +850,43 @@ export default function DashboardPage() {
     if (!useEmployerAppsApi) setAppPage(1);
   };
 
-  const appStatusFilterOptions = useMemo(
-    () =>
-      useEmployerAppsApi
-        ? [
-            { value: "all", label: t("common.all") },
-            {
-              value: "SUBMITTED",
-              label: appStatusLabel.SUBMITTED,
-            },
-            { value: "VIEWED", label: appStatusLabel.VIEWED },
-          ]
-        : [
-            { value: "all", label: t("common.all") },
-            { value: "pending", label: appStatusLabel.pending },
-            { value: "reviewing", label: appStatusLabel.reviewing },
-            { value: "accepted", label: appStatusLabel.accepted },
-            { value: "rejected", label: appStatusLabel.rejected },
-          ],
-    [useEmployerAppsApi, t, appStatusLabel],
-  );
+  const summary = overview?.summary;
+  const totalJobs = useEmployerAppsApi
+    ? (summary?.jobCount ?? 0)
+    : stats.totalJobs;
+  const openJobs = useEmployerAppsApi
+    ? (summary?.openJobCount ?? 0)
+    : stats.activeJobs;
+  const totalApps = useEmployerAppsApi
+    ? (summary?.applicationCount ?? 0)
+    : stats.totalApps;
+  const newApps = useEmployerAppsApi
+    ? (summary?.newApplicationCount ?? 0)
+    : stats.newApps;
+  const jobsByApplications =
+    overview?.applicationsByJob.map((job) => ({
+      label: job.title || String(job.jobId),
+      value: job.count,
+    })) ?? [];
+  const applicationDays = overview?.applicationsByDay ?? [];
+  const dayStep =
+    applicationDays.length > 10 ? Math.ceil(applicationDays.length / 7) : 1;
+  const applicationTrend = applicationDays.map((item, index) => ({
+    label:
+      index % dayStep === 0 || index === applicationDays.length - 1
+        ? shortDay(item.date)
+        : "",
+    value: item.count,
+  }));
+  const submittedCount = overview?.applicationsByStatus.submitted ?? 0;
+  const viewedCount = overview?.applicationsByStatus.viewed ?? 0;
+  const companyOptions = [
+    { value: "", label: t("employerCms.allCompanies") },
+    ...employerAppCompanies.map((company) => ({
+      value: String(company.id),
+      label: company.name,
+    })),
+  ];
 
   return (
     <div className={shell}>
@@ -778,6 +904,15 @@ export default function DashboardPage() {
               ? t("employerCms.overviewSubtitle", { name: user?.fullName })
               : t("dashboard.subtitle")}
           </p>
+          {section === "overview" && useEmployerAppsApi && (
+            <div className="mt-3 w-full sm:max-w-xs">
+              <CustomSelect
+                value={overviewCompanyId}
+                options={companyOptions}
+                onChange={setOverviewCompanyId}
+              />
+            </div>
+          )}
         </div>
 
         {section === "overview" && (
@@ -796,7 +931,7 @@ export default function DashboardPage() {
                   </p>
                 </div>
                 <p className="text-2xl font-heading font-bold text-foreground-950">
-                  {stats.totalJobs}
+                  {totalJobs}
                 </p>
               </Link>
               <div className="bg-background-50 border border-background-200/70 rounded-2xl p-4 sm:p-5">
@@ -809,7 +944,7 @@ export default function DashboardPage() {
                   </p>
                 </div>
                 <p className="text-2xl font-heading font-bold text-foreground-950">
-                  {stats.activeJobs}
+                  {openJobs}
                 </p>
               </div>
               <Link
@@ -825,7 +960,7 @@ export default function DashboardPage() {
                   </p>
                 </div>
                 <p className="text-2xl font-heading font-bold text-foreground-950">
-                  {stats.totalApps}
+                  {totalApps}
                 </p>
               </Link>
               <div className="bg-background-50 border border-background-200/70 rounded-2xl p-4 sm:p-5">
@@ -838,7 +973,7 @@ export default function DashboardPage() {
                   </p>
                 </div>
                 <p className="text-2xl font-heading font-bold text-foreground-950">
-                  {stats.newApps}
+                  {newApps}
                 </p>
               </div>
             </div>
@@ -873,6 +1008,81 @@ export default function DashboardPage() {
               </Link>
             </div>
 
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+              <div className="lg:col-span-2 bg-background-50 border border-background-200/70 rounded-2xl p-4 sm:p-5 min-w-0">
+                <h2 className="text-sm font-semibold text-foreground-950">
+                  {t("employerCms.charts.applicationsByJob")}
+                </h2>
+                <p className="text-xs text-foreground-500 mt-1 mb-4">
+                  {t("employerCms.charts.applicationsByJobHint")}
+                </p>
+                {overviewLoading ? (
+                  <p className="text-sm text-foreground-500">
+                    {t("common.loading")}
+                  </p>
+                ) : jobsByApplications.length > 0 ? (
+                  <BarChart data={jobsByApplications} height={180} />
+                ) : (
+                  <p className="text-sm text-foreground-500">
+                    {t("employerCms.charts.empty")}
+                  </p>
+                )}
+              </div>
+              <div className="bg-background-50 border border-background-200/70 rounded-2xl p-4 sm:p-5 min-w-0 overflow-x-auto">
+                <h2 className="text-sm font-semibold text-foreground-950">
+                  {t("employerCms.charts.applicationStatus")}
+                </h2>
+                <p className="text-xs text-foreground-500 mt-1 mb-4">
+                  {t("employerCms.charts.applicationStatusHint")}
+                </p>
+                {overviewLoading ? (
+                  <p className="text-sm text-foreground-500">
+                    {t("common.loading")}
+                  </p>
+                ) : submittedCount + viewedCount > 0 ? (
+                  <DonutChart
+                    data={[
+                      {
+                        label: appStatusLabel.SUBMITTED,
+                        value: submittedCount,
+                        color: "oklch(var(--secondary-500))",
+                      },
+                      {
+                        label: appStatusLabel.VIEWED,
+                        value: viewedCount,
+                        color: "oklch(var(--accent-500))",
+                      },
+                    ]}
+                    size={148}
+                  />
+                ) : (
+                  <p className="text-sm text-foreground-500">
+                    {t("employerCms.charts.empty")}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-background-50 border border-background-200/70 rounded-2xl p-4 sm:p-5 mb-6 min-w-0">
+              <h2 className="text-sm font-semibold text-foreground-950">
+                {t("employerCms.charts.applicationsTrend")}
+              </h2>
+              <p className="text-xs text-foreground-500 mt-1 mb-4">
+                {t("employerCms.charts.applicationsTrendHint")}
+              </p>
+              {overviewLoading ? (
+                <p className="text-sm text-foreground-500">
+                  {t("common.loading")}
+                </p>
+              ) : applicationTrend.some((point) => point.value > 0) ? (
+                <LineChart data={applicationTrend} height={160} />
+              ) : (
+                <p className="text-sm text-foreground-500">
+                  {t("employerCms.charts.empty")}
+                </p>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="bg-background-50 border border-background-200/70 rounded-2xl p-4 sm:p-5">
                 <div className="flex items-center justify-between mb-3">
@@ -886,7 +1096,46 @@ export default function DashboardPage() {
                     {t("employerCms.viewAll")}
                   </Link>
                 </div>
-                {myJobs.slice(0, 5).length === 0 ? (
+                {useEmployerAppsApi ? (
+                  overviewLoading && !overview ? (
+                    <p className="text-sm text-foreground-500">
+                      {t("common.loading")}
+                    </p>
+                  ) : (overview?.recentJobs.length ?? 0) === 0 ? (
+                    <p className="text-sm text-foreground-500">
+                      {t("dashboard.noJobs")}
+                    </p>
+                  ) : (
+                    <ul className="divide-y divide-background-100">
+                      {overview?.recentJobs.map((job) => {
+                        const status = job.status.trim();
+                        const statusKey = jobStatusColor[status]
+                          ? status
+                          : status.toLowerCase();
+                        return (
+                          <li
+                            key={job.id}
+                            className="py-3 flex items-center justify-between gap-3"
+                          >
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-foreground-900 truncate">
+                                {job.title || "—"}
+                              </p>
+                              <p className="text-xs text-foreground-500 truncate">
+                                {job.companyName || "—"}
+                              </p>
+                            </div>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap ${jobStatusColor[statusKey] || ""}`}
+                            >
+                              {jobStatusLabel[statusKey] || status || "—"}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )
+                ) : myJobs.slice(0, 5).length === 0 ? (
                   <p className="text-sm text-foreground-500">
                     {t("dashboard.noJobs")}
                   </p>
@@ -927,7 +1176,46 @@ export default function DashboardPage() {
                     {t("employerCms.viewAll")}
                   </Link>
                 </div>
-                {myApplications.slice(0, 5).length === 0 ? (
+                {useEmployerAppsApi ? (
+                  overviewLoading && !overview ? (
+                    <p className="text-sm text-foreground-500">
+                      {t("common.loading")}
+                    </p>
+                  ) : (overview?.recentApplications.length ?? 0) === 0 ? (
+                    <p className="text-sm text-foreground-500">
+                      {t("dashboard.noApplications")}
+                    </p>
+                  ) : (
+                    <ul className="divide-y divide-background-100">
+                      {overview?.recentApplications.map((app) => {
+                        const status = app.status.trim();
+                        return (
+                          <li
+                            key={app.id}
+                            className="py-3 flex items-center justify-between gap-3"
+                          >
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-foreground-900 truncate">
+                                {app.applicantName || "—"}
+                              </p>
+                              <p className="text-xs text-foreground-500 truncate">
+                                {app.jobTitle || "—"}
+                              </p>
+                            </div>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap ${appStatusColor[status] || appStatusColor[status.toLowerCase()] || ""}`}
+                            >
+                              {appStatusLabel[status] ||
+                                appStatusLabel[status.toLowerCase()] ||
+                                status ||
+                                "—"}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )
+                ) : myApplications.slice(0, 5).length === 0 ? (
                   <p className="text-sm text-foreground-500">
                     {t("dashboard.noApplications")}
                   </p>
@@ -1866,7 +2154,8 @@ export default function DashboardPage() {
                                     className="inline-flex items-center gap-1 text-xs text-primary-500 font-medium hover:underline"
                                   >
                                     <i className="ri-file-text-line"></i>{" "}
-                                    {app.cvFileName || t("applications.viewModal.cv")}
+                                    {app.cvFileName ||
+                                      t("applications.viewModal.cv")}
                                   </a>
                                 ) : (
                                   <span className="inline-flex items-center gap-1 text-xs text-primary-500 font-medium">

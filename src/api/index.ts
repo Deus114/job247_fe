@@ -69,6 +69,7 @@ export {
   softDeleteAdminCompany,
   updateAdminCompany,
 } from "./adminCompanies";
+export { fetchAdminDashboard } from "./adminDashboard";
 export {
   fetchAdminApplicationById,
   fetchAdminApplications,
@@ -103,11 +104,19 @@ export {
   fetchEmployerApplicationById,
   fetchEmployerApplications,
 } from "./employerApplications";
+export { fetchEmployerDashboard } from "./employerDashboard";
 export {
   fetchSavedJobs,
   saveJobRequest,
   unsaveJobRequest,
 } from "./savedJobs";
+export {
+  deleteNotification,
+  fetchNotifications,
+  fetchUnreadNotificationCount,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from "./notifications";
 export {
   clearAccessToken,
   fetchPublicMe,

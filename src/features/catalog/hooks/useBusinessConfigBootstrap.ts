@@ -1,12 +1,12 @@
-import { useEffect, useRef } from "react";
+import { fetchPublicBusinessConfig } from "@/api";
+import { env } from "@/config/env";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   setBusinessConfig,
   setBusinessConfigFailed,
   setBusinessConfigLoading,
 } from "@/store/slices/businessConfigSlice";
-import { fetchPublicBusinessConfig } from "@/api";
-import { env } from "@/config/env";
+import { useEffect, useRef } from "react";
 
 function applyDocumentMeta(config: {
   metaTitle: string;

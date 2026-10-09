@@ -16,6 +16,13 @@ interface FormError {
   message: string;
 }
 
+const TEST_ACCOUNTS = [
+  {
+    userName: "admin",
+    password: "admin",
+  },
+] as const;
+
 export default function AdminLoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -28,6 +35,12 @@ export default function AdminLoginPage() {
   const [error, setError] = useState<FormError | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const fillTestAccount = (acc: (typeof TEST_ACCOUNTS)[number]) => {
+    setUserName(acc.userName);
+    setPassword(acc.password);
+    setError(null);
+  };
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -112,8 +125,8 @@ export default function AdminLoginPage() {
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center px-5 py-10 lg:px-10 xl:px-16 bg-background-50">
-        <div className="w-full max-w-[420px]">
+      <div className="flex-1 flex items-center justify-center px-5 py-10 lg:px-12 xl:px-20 bg-background-50">
+        <div className="w-full max-w-[520px]">
           <div className="lg:hidden mb-10 text-center">
             <div className="w-16 h-16 rounded-2xl bg-primary-500 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-primary-500/20">
               <i className="ri-shield-check-line text-2xl text-white"></i>
@@ -126,15 +139,15 @@ export default function AdminLoginPage() {
             </p>
           </div>
 
-          <div className="bg-background-50 border border-background-200/70 rounded-2xl p-7 md:p-8 shadow-xl shadow-background-200/20">
-            <div className="mb-6">
-              <div className="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center mb-4">
-                <i className="ri-shield-user-line text-xl text-primary-600"></i>
+          <div className="bg-background-50 border border-background-200/70 rounded-2xl p-8 md:p-10 shadow-xl shadow-background-200/20">
+            <div className="mb-7">
+              <div className="w-14 h-14 rounded-xl bg-primary-100 flex items-center justify-center mb-5">
+                <i className="ri-shield-user-line text-2xl text-primary-600"></i>
               </div>
-              <h2 className="text-xl font-heading font-bold text-foreground-950">
+              <h2 className="text-2xl font-heading font-bold text-foreground-950">
                 {t("adminLogin.title")}
               </h2>
-              <p className="text-sm text-foreground-500 mt-1">
+              <p className="text-sm text-foreground-500 mt-1.5">
                 {t("adminLogin.welcomeDesc")}
               </p>
             </div>
@@ -146,7 +159,7 @@ export default function AdminLoginPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label className="block text-sm font-medium text-foreground-700 mb-1.5">
                   {t("adminLogin.username")}
@@ -154,7 +167,7 @@ export default function AdminLoginPage() {
                 <div className="relative">
                   <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-foreground-400">
                     <div className="w-5 h-5 flex items-center justify-center">
-                      <i className="ri-user-line text-sm"></i>
+                      <i className="ri-user-line text-base"></i>
                     </div>
                   </div>
                   <input
@@ -165,7 +178,7 @@ export default function AdminLoginPage() {
                       setError(null);
                     }}
                     required
-                    className="w-full pl-10 pr-4 py-3 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-xl focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100 transition-all"
+                    className="w-full pl-11 pr-4 py-3.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-xl focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100 transition-all min-h-[48px]"
                     placeholder={t("adminLogin.usernamePlaceholder")}
                     autoComplete="username"
                   />
@@ -179,7 +192,7 @@ export default function AdminLoginPage() {
                 <div className="relative">
                   <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-foreground-400">
                     <div className="w-5 h-5 flex items-center justify-center">
-                      <i className="ri-lock-line text-sm"></i>
+                      <i className="ri-lock-line text-base"></i>
                     </div>
                   </div>
                   <input
@@ -190,24 +203,22 @@ export default function AdminLoginPage() {
                       setError(null);
                     }}
                     required
-                    className="w-full pl-10 pr-10 py-3 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-xl focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100 transition-all"
+                    className="w-full pl-11 pr-11 py-3.5 text-sm text-foreground-900 bg-background-50 border border-background-200/70 rounded-xl focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100 transition-all min-h-[48px]"
                     placeholder={t("adminLogin.passwordPlaceholder")}
                     autoComplete="current-password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-foreground-400 hover:text-foreground-600 transition-colors cursor-pointer"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-foreground-400 hover:text-foreground-600 transition-colors cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
                   >
-                    <div className="w-5 h-5 flex items-center justify-center">
-                      <i
-                        className={
-                          showPassword
-                            ? "ri-eye-off-line text-sm"
-                            : "ri-eye-line text-sm"
-                        }
-                      ></i>
-                    </div>
+                    <i
+                      className={
+                        showPassword
+                          ? "ri-eye-off-line text-base"
+                          : "ri-eye-line text-base"
+                      }
+                    ></i>
                   </button>
                 </div>
               </div>
@@ -215,7 +226,7 @@ export default function AdminLoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-primary-500 text-white rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-primary-500/15 mt-2"
+                className="w-full py-3.5 bg-primary-500 text-white rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-primary-500/15 mt-1 min-h-[48px]"
               >
                 {loading ? (
                   <>
@@ -230,6 +241,35 @@ export default function AdminLoginPage() {
                 )}
               </button>
             </form>
+
+            <div className="mt-6 pt-5 border-t border-background-200/70">
+              <p className="text-xs text-foreground-500 mb-2.5">
+                {t("adminLogin.demoQuickLogin")}
+              </p>
+              <div className="flex flex-col gap-2">
+                {TEST_ACCOUNTS.map((acc) => (
+                  <button
+                    key={acc.userName}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => fillTestAccount(acc)}
+                    className="w-full flex items-center justify-between gap-3 px-4 py-3 min-h-[44px] rounded-lg border border-background-200/70 hover:bg-background-100 transition-colors cursor-pointer disabled:opacity-60"
+                  >
+                    <div className="text-left min-w-0">
+                      <p className="text-sm font-medium text-foreground-950 truncate">
+                        {acc.userName}
+                      </p>
+                      <p className="text-xs text-foreground-500">
+                        {t("adminLogin.password")}: {acc.password}
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 bg-primary-100 text-primary-700">
+                      {t("adminLogin.demoRole")}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div className="mt-5 space-y-3">

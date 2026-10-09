@@ -16,6 +16,7 @@ import {
   useTableActionMenu,
 } from "@/components/ui/TableActionMenu";
 import { companySizeLabelKey } from "@/constants/company";
+import { notificationFocus } from "@/features/notifications";
 import { formatDateTime } from "@/lib/formatDate";
 import { toast } from "@/lib/toast";
 import type { AdminCompany, AdminCompanyStatus } from "@/types/company";
@@ -27,6 +28,7 @@ import {
   type SubmitEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocation } from "react-router-dom";
 
 type SortField = "name" | "createdAt" | "updatedAt";
 
@@ -45,6 +47,7 @@ function statusBadgeClass(status: AdminCompanyStatus): string {
 
 export default function CompaniesPage() {
   const { t, i18n } = useTranslation();
+  const location = useLocation();
   const lang = i18n.language;
   const { openId, pos, menuRef, toggle, close } = useTableActionMenu<number>();
 
@@ -228,6 +231,22 @@ export default function CompaniesPage() {
       /* keep list row */
     }
   };
+
+  const focus = notificationFocus(location.search, location.state);
+  useEffect(() => {
+    if (!focus) return;
+    let cancelled = false;
+    void fetchAdminCompanyById(focus.id)
+      .then((company) => {
+        if (!cancelled) setDetail(company);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error(t("apiErrors.adminCompanyLoadFailed"));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [focus?.key, t]);
 
   const openEdit = (company: AdminCompany) => {
     setEditTarget(company);

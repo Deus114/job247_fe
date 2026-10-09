@@ -10,6 +10,7 @@ import { useNotification } from "@/hooks/useNotification";
 import { usePageShell } from "@/layouts/usePageShell";
 import { formatDate } from "@/lib/formatDate";
 import { isStrongPassword } from "@/lib/password";
+import { pushErrorMessage, setPublicPushEnabled } from "@/lib/push";
 import { toast } from "@/lib/toast";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { changeAppLanguage } from "@/store/slices/languageSlice";
@@ -26,8 +27,7 @@ export default function SettingsPage() {
   const lang = useAppSelector((state) => state.language.lang);
   const { user, login: loginUser, logout: logoutUser } = useAuth();
   const { cms, className: shell } = usePageShell();
-  const { isSupported, isSubscribed, requestPermission, sendTestNotification } =
-    useNotification();
+  const { isSupported } = useNotification();
 
   const [name, setName] = useState(user?.fullName || "");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -43,7 +43,7 @@ export default function SettingsPage() {
   });
   const [passwordMsg, setPasswordMsg] = useState("");
   const [passwordSaving, setPasswordSaving] = useState(false);
-  const [notiTestSent, setNotiTestSent] = useState(false);
+  const [pushSaving, setPushSaving] = useState(false);
   const [activeSection, setActiveSection] = useState<
     "profile" | "password" | "appearance" | "notifications"
   >("profile");
@@ -171,15 +171,19 @@ export default function SettingsPage() {
     }
   };
 
-  const handleEnableNotifications = async () => {
-    await requestPermission();
-  };
+  const pushOn = user?.pushEnabled === true;
 
-  const handleTestNotification = async () => {
-    const ok = await sendTestNotification("Jobs247", t("settings.testBody"));
-    if (ok) {
-      setNotiTestSent(true);
-      setTimeout(() => setNotiTestSent(false), 3000);
+  const handleTogglePush = async () => {
+    if (pushSaving) return;
+    setPushSaving(true);
+    try {
+      const next = await setPublicPushEnabled(!pushOn);
+      loginUser(next);
+      toast.success(t("settings.pushUpdated"));
+    } catch (error) {
+      toast.error(pushErrorMessage(error, t));
+    } finally {
+      setPushSaving(false);
     }
   };
 
@@ -356,9 +360,7 @@ export default function SettingsPage() {
                   </div>
                   <button
                     type="submit"
-                    disabled={
-                      profileLoading || profileSaving || !profileDirty
-                    }
+                    disabled={profileLoading || profileSaving || !profileDirty}
                     className="md:col-span-2 w-fit min-h-[44px] px-8 py-2.5 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-xl text-sm font-semibold hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:bg-primary-500"
                   >
                     {profileSaving ? t("settings.saving") : t("settings.save")}
@@ -568,91 +570,35 @@ export default function SettingsPage() {
                           </p>
                         </div>
                       </div>
-                      {isSubscribed ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent-100 text-accent-700 text-xs font-medium rounded-full whitespace-nowrap">
-                          <i className="ri-check-line"></i>{" "}
-                          {t("settings.enabled")}
-                        </span>
+                      {pushOn ? (
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={true}
+                          disabled={pushSaving}
+                          onClick={() => void handleTogglePush()}
+                          className="inline-flex min-h-11 items-center gap-2 px-4 py-2 bg-accent-100 text-accent-700 text-sm font-medium rounded-full whitespace-nowrap cursor-pointer disabled:opacity-60"
+                        >
+                          <i className="ri-check-line"></i>
+                          {pushSaving
+                            ? t("settings.saving")
+                            : t("settings.disableNotifications")}
+                        </button>
                       ) : (
                         <button
-                          onClick={handleEnableNotifications}
-                          className="px-4 py-2 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-xs font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap"
+                          type="button"
+                          role="switch"
+                          aria-checked={false}
+                          disabled={pushSaving}
+                          onClick={() => void handleTogglePush()}
+                          className="inline-flex min-h-11 items-center px-4 py-2 bg-primary-500 text-background-50 dark:text-foreground-950 rounded-full text-sm font-medium hover:bg-primary-600 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60"
                         >
-                          {t("settings.enableNotifications")}
+                          {pushSaving
+                            ? t("settings.saving")
+                            : t("settings.enableNotifications")}
                         </button>
                       )}
                     </div>
-
-                    {isSubscribed && (
-                      <>
-                        <div className="space-y-3">
-                          <p className="text-sm font-medium text-foreground-700">
-                            {t("settings.notificationTypes")}
-                          </p>
-                          <label className="flex items-center justify-between p-4 rounded-xl bg-background-100 border border-background-200/70 cursor-pointer">
-                            <div>
-                              <p className="text-sm text-foreground-950">
-                                {t("settings.matchingJobs")}
-                              </p>
-                              <p className="text-xs text-foreground-500 mt-0.5">
-                                {t("settings.matchingJobsDesc")}
-                              </p>
-                            </div>
-                            <input
-                              type="checkbox"
-                              defaultChecked
-                              className="w-5 h-5 rounded border-background-300 text-primary-500 focus:ring-primary-400 cursor-pointer"
-                            />
-                          </label>
-                          <label className="flex items-center justify-between p-4 rounded-xl bg-background-100 border border-background-200/70 cursor-pointer">
-                            <div>
-                              <p className="text-sm text-foreground-950">
-                                {t("settings.employerUpdates")}
-                              </p>
-                              <p className="text-xs text-foreground-500 mt-0.5">
-                                {t("settings.employerUpdatesDesc")}
-                              </p>
-                            </div>
-                            <input
-                              type="checkbox"
-                              defaultChecked
-                              className="w-5 h-5 rounded border-background-300 text-primary-500 focus:ring-primary-400 cursor-pointer"
-                            />
-                          </label>
-                          <label className="flex items-center justify-between p-4 rounded-xl bg-background-100 border border-background-200/70 cursor-pointer">
-                            <div>
-                              <p className="text-sm text-foreground-950">
-                                {t("settings.careerNews")}
-                              </p>
-                              <p className="text-xs text-foreground-500 mt-0.5">
-                                {t("settings.careerNewsDesc")}
-                              </p>
-                            </div>
-                            <input
-                              type="checkbox"
-                              className="w-5 h-5 rounded border-background-300 text-primary-500 focus:ring-primary-400 cursor-pointer"
-                            />
-                          </label>
-                        </div>
-
-                        <div className="pt-4 border-t border-background-200/70">
-                          {notiTestSent ? (
-                            <div className="p-3 rounded-lg bg-accent-50 border border-accent-200 text-sm text-accent-600 flex items-center gap-2">
-                              <i className="ri-check-line"></i>{" "}
-                              {t("settings.testSent")}
-                            </div>
-                          ) : (
-                            <button
-                              onClick={handleTestNotification}
-                              className="flex items-center gap-2 px-5 py-2.5 border border-background-200/70 text-sm text-foreground-600 rounded-xl hover:bg-background-100 transition-colors cursor-pointer whitespace-nowrap"
-                            >
-                              <i className="ri-send-plane-line"></i>{" "}
-                              {t("settings.sendTest")}
-                            </button>
-                          )}
-                        </div>
-                      </>
-                    )}
                   </div>
                 )}
               </div>

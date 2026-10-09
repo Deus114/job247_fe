@@ -39,6 +39,12 @@ export interface BusinessConfig {
   smtpFromName: string;
   smtpAuth: boolean;
   smtpStartTls: boolean;
+  /** Comma-separated emails notified when a new account registers. Admin only. */
+  notificationEmails: string;
+  /** Public homepage banner counts from GET /business-config. */
+  jobCount: number;
+  companyCount: number;
+  jobSeekerCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -72,6 +78,9 @@ export interface PublicBusinessConfigApi {
   metaTitle: string | null;
   metaDescription: string | null;
   metaKeywords: string | null;
+  jobCount: number | null;
+  companyCount: number | null;
+  jobSeekerCount: number | null;
 }
 
 export interface AdminBusinessConfigApi extends PublicBusinessConfigApi {
@@ -84,6 +93,7 @@ export interface AdminBusinessConfigApi extends PublicBusinessConfigApi {
   smtpFromName: string | null;
   smtpAuth: boolean | null;
   smtpStartTls: boolean | null;
+  notificationEmails: string | null;
   createdAt: string | null;
   updatedAt: string | null;
 }
@@ -138,6 +148,10 @@ export function createEmptyBusinessConfig(): BusinessConfig {
     smtpFromName: "",
     smtpAuth: true,
     smtpStartTls: true,
+    notificationEmails: "",
+    jobCount: 0,
+    companyCount: 0,
+    jobSeekerCount: 0,
     createdAt: "",
     updatedAt: "",
   };
@@ -176,6 +190,9 @@ export function mapPublicBusinessConfigApiToForm(
     socialYoutube: str(data.youtubeUrl),
     privacyPolicyHtml: str(data.privacyPolicy),
     termsOfServiceHtml: str(data.termsOfService),
+    jobCount: numOrZero(data.jobCount),
+    companyCount: numOrZero(data.companyCount),
+    jobSeekerCount: numOrZero(data.jobSeekerCount),
   };
 }
 
@@ -194,6 +211,7 @@ export function mapAdminBusinessConfigApiToForm(
     smtpFromName: str(data.smtpFromName),
     smtpAuth: data.smtpAuth ?? true,
     smtpStartTls: data.smtpStartTls ?? true,
+    notificationEmails: str(data.notificationEmails),
     createdAt: str(data.createdAt),
     updatedAt: str(data.updatedAt),
   };
@@ -246,6 +264,7 @@ const TEXT_FIELD_MAP: Array<{
   { formKey: "smtpPassword", apiKey: "smtpPassword" },
   { formKey: "smtpFromEmail", apiKey: "smtpFromEmail" },
   { formKey: "smtpFromName", apiKey: "smtpFromName" },
+  { formKey: "notificationEmails", apiKey: "notificationEmails" },
 ];
 
 const IMAGE_FIELD_MAP: Array<{

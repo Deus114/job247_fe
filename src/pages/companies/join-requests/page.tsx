@@ -8,6 +8,7 @@ import {
 } from "@/api";
 import CustomSelect from "@/components/ui/CustomSelect";
 import Pagination from "@/components/ui/Pagination";
+import { notificationFocus } from "@/features/notifications";
 import { usePageShell } from "@/layouts/usePageShell";
 import { formatDateTime } from "@/lib/formatDate";
 import { toast } from "@/lib/toast";
@@ -18,7 +19,7 @@ import type {
 } from "@/types/company";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 type TabKey = "incoming" | "mine";
 
@@ -37,6 +38,7 @@ function statusClass(status: CompanyJoinRequestStatus): string {
 
 export default function JoinRequestsPage() {
   const { t, i18n } = useTranslation();
+  const location = useLocation();
   const { className: shell } = usePageShell();
   const [tab, setTab] = useState<TabKey>("incoming");
   const [items, setItems] = useState<CompanyJoinRequest[]>([]);
@@ -51,6 +53,22 @@ export default function JoinRequestsPage() {
   const [pageSize, setPageSize] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const focus = notificationFocus(location.search, location.state);
+
+  useEffect(() => {
+    if (!focus) return;
+    setTab("incoming");
+    setCurrentPage(1);
+    setStatusFilter("");
+    setCompanyFilter("");
+  }, [focus?.key]);
+
+  useEffect(() => {
+    if (!focus || loading) return;
+    document
+      .getElementById(`join-request-${focus.id}`)
+      ?.scrollIntoView({ block: "center" });
+  }, [focus?.key, items, loading]);
 
   const statusOptions = useMemo(
     () =>
@@ -292,7 +310,10 @@ export default function JoinRequestsPage() {
                   isIncoming ? (
                     <tr
                       key={item.id}
-                      className="border-b border-background-100 hover:bg-background-50"
+                      id={`join-request-${item.id}`}
+                      className={`border-b border-background-100 hover:bg-background-50 ${
+                        focus?.id === item.id ? "bg-primary-50" : ""
+                      }`}
                     >
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3 min-w-0">
@@ -389,7 +410,10 @@ export default function JoinRequestsPage() {
                   ) : (
                     <tr
                       key={item.id}
-                      className="border-b border-background-100 hover:bg-background-50"
+                      id={`join-request-${item.id}`}
+                      className={`border-b border-background-100 hover:bg-background-50 ${
+                        focus?.id === item.id ? "bg-primary-50" : ""
+                      }`}
                     >
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3 min-w-0">

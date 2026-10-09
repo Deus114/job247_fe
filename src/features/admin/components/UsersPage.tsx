@@ -260,7 +260,7 @@ export default function UsersPage() {
       resetAvatar(fresh.avatar || "");
     } catch {
       setEditing(user);
-      setForm({
+    setForm({
         username: user.username,
         password: "",
         currentPassword: "",
@@ -492,7 +492,7 @@ export default function UsersPage() {
 
         <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
           <div className="relative flex-1 w-full sm:max-w-xs">
-            <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-foreground-400 text-sm"></i>
+              <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-foreground-400 text-sm"></i>
             <input
               type="text"
               value={search}
@@ -632,10 +632,10 @@ export default function UsersPage() {
                     {visibleColumns.includes("role") && (
                       <td className="px-5 py-3 whitespace-nowrap text-foreground-700">
                         {user.role?.name || "—"}
-                      </td>
+                  </td>
                     )}
                     {visibleColumns.includes("active") && (
-                      <td className="px-5 py-3 whitespace-nowrap">
+                  <td className="px-5 py-3 whitespace-nowrap">
                         {viewMode === "active" ? (
                           <button
                             type="button"
@@ -649,8 +649,8 @@ export default function UsersPage() {
                             {user.active
                               ? t("adminUi.jobs.on")
                               : t("adminUi.jobs.off")}
-                          </button>
-                        ) : (
+                      </button>
+                    ) : (
                           <span className="text-xs text-foreground-400">—</span>
                         )}
                       </td>
@@ -658,12 +658,12 @@ export default function UsersPage() {
                     {visibleColumns.includes("createdAt") && (
                       <td className="px-5 py-3 text-foreground-600 whitespace-nowrap text-xs">
                         {formatDateTime(user.createdAt, lang)}
-                      </td>
-                    )}
+                  </td>
+                  )}
                     {visibleColumns.includes("actions") && (
                       <td className="px-5 py-3 text-right">
                         {confirmSoftDelete === user.id && viewMode === "active" ? (
-                          <div className="flex items-center gap-2 justify-end">
+                      <div className="flex items-center gap-2 justify-end">
                             <button
                               type="button"
                               onClick={() => void runSoftDelete(user.id)}
@@ -678,10 +678,10 @@ export default function UsersPage() {
                             >
                               {t("adminUi.actions.cancel")}
                             </button>
-                          </div>
+                      </div>
                         ) : confirmPermanentDelete === user.id &&
                           viewMode === "trash" ? (
-                          <div className="flex items-center gap-2 justify-end">
+                      <div className="flex items-center gap-2 justify-end">
                             <button
                               type="button"
                               onClick={() => void runPermanentDelete(user.id)}
@@ -695,7 +695,7 @@ export default function UsersPage() {
                               className="px-2.5 py-1 border border-background-300 rounded-lg text-xs cursor-pointer min-h-[36px]"
                             >
                               {t("adminUi.actions.cancel")}
-                            </button>
+                                </button>
                           </div>
                         ) : (
                           <button
@@ -708,7 +708,7 @@ export default function UsersPage() {
                         )}
                       </td>
                     )}
-                  </tr>
+                </tr>
                 ))
               )}
             </tbody>
@@ -785,13 +785,13 @@ export default function UsersPage() {
                 <dd className="text-foreground-800">
                   {detail.active ? t("adminUi.jobs.on") : t("adminUi.jobs.off")}
                 </dd>
-              </div>
+            </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-foreground-500">{t("adminUi.columns.createdAt")}</dt>
                 <dd className="text-foreground-800">
                   {formatDateTime(detail.createdAt, lang)}
                 </dd>
-              </div>
+            </div>
             </dl>
             <div className="flex gap-3 mt-6">
               <button
@@ -840,7 +840,7 @@ export default function UsersPage() {
               </button>
             </div>
             <div className="space-y-4">
-              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4">
                 <AdminAvatar
                   src={avatarPreview}
                   name={form.name || form.username || "A"}
@@ -855,7 +855,7 @@ export default function UsersPage() {
                     onChange={handleAvatarChange}
                   />
                 </label>
-              </div>
+                    </div>
               <label className="block">
                 <span className="text-sm font-medium text-foreground-700">
                   {t("adminUi.users.username")}
@@ -941,7 +941,7 @@ export default function UsersPage() {
                   <p className="mt-1.5 text-xs text-foreground-500">
                     {t("validation.passwordHint")}
                   </p>
-                </label>
+                    </label>
               )}
               <div>
                 <span className="block text-sm font-medium text-foreground-700 mb-1.5">

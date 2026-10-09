@@ -65,6 +65,40 @@ async function syncPublicSession(session: {
   }
 }
 
+/** Paths that require a public (job-seeker/employer) session. */
+function isProtectedPublicPath(pathname: string): boolean {
+  const base = (env.basePath || "/").replace(/\/$/, "");
+  let path = pathname || "/";
+  if (base && base !== "/" && path.startsWith(base)) {
+    path = path.slice(base.length) || "/";
+  }
+  if (!path.startsWith("/")) path = `/${path}`;
+
+  return (
+    path === "/settings" ||
+    path.startsWith("/settings/") ||
+    path === "/saved-jobs" ||
+    path.startsWith("/saved-jobs/") ||
+    path === "/my-applications" ||
+    path.startsWith("/my-applications/") ||
+    path === "/dashboard" ||
+    path.startsWith("/dashboard/") ||
+    path === "/employer" ||
+    path.startsWith("/employer/") ||
+    path === "/post-job" ||
+    path.startsWith("/post-job/") ||
+    path === "/companies/manage" ||
+    path.startsWith("/companies/manage/") ||
+    path === "/companies/create" ||
+    path.startsWith("/companies/create/") ||
+    path.startsWith("/companies/edit/")
+  );
+}
+
+/**
+ * Clear public session after failed refresh.
+ * Only hard-redirect to /login on protected routes — public pages stay browseable as guest.
+ */
 async function forcePublicLogoutAndRedirect() {
   clearPublicTokens();
   try {
@@ -80,7 +114,8 @@ async function forcePublicLogoutAndRedirect() {
   if (
     path === "/login" ||
     path.startsWith("/login/") ||
-    path.includes("/admin")
+    path.includes("/admin") ||
+    !isProtectedPublicPath(path)
   ) {
     return;
   }

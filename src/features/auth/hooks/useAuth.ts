@@ -1,6 +1,8 @@
 import { fetchPublicMe, logoutRequest } from "@/api";
+import { unregisterStoredDeviceToken } from "@/api/deviceTokens";
 import { getPublicAccessToken } from "@/api/publicAuthTokens";
 import { env } from "@/config/env";
+import { usePublicPushSync } from "@/hooks/usePushSync";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { login, logout, updateProfile } from "@/store/slices/authSlice";
 import type { AuthUser } from "@/types";
@@ -17,6 +19,8 @@ export function invalidatePublicProfileSync() {
 export function useSyncPublicProfile() {
   const dispatch = useAppDispatch();
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+
+  usePublicPushSync();
 
   useEffect(() => {
     if (!isAuthenticated || !env.apiBaseUrl) return;
@@ -46,6 +50,7 @@ export function useAuth() {
   );
 
   const logoutUser = useCallback(async () => {
+    await unregisterStoredDeviceToken("public");
     const message = await logoutRequest();
     syncedAccessToken = null;
     dispatch(logout());

@@ -71,6 +71,8 @@ export interface AdminSessionUser {
   active: boolean;
   createdAt: string;
   updatedAt: string;
+  /** When true, this browser may register an FCM device token. */
+  pushEnabled?: boolean;
 }
 
 export interface AdminAccountListParams {
@@ -127,6 +129,8 @@ export interface UpdateAdminMePayload {
   currentPassword?: string;
   newPassword?: string;
   avatarFile?: File;
+  /** Omit when the preference is unchanged. */
+  pushEnabled?: boolean;
 }
 
 export interface ApiResponse<T> {

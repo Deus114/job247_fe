@@ -10,7 +10,11 @@ if ("serviceWorker" in navigator) {
     // Avoid stale chunk mismatches in local development.
     if (import.meta.env.DEV) {
       void navigator.serviceWorker.getRegistrations().then((regs) => {
-        regs.forEach((reg) => void reg.unregister());
+        regs.forEach((reg) => {
+          const script = reg.active?.scriptURL || reg.installing?.scriptURL || "";
+          if (script.includes("firebase-messaging-sw.js")) return;
+          void reg.unregister();
+        });
       });
       if ("caches" in window) {
         void caches.keys().then((keys) => {

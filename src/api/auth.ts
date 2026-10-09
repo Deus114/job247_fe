@@ -236,6 +236,7 @@ export function normalizePublicSessionUser(raw: unknown): AuthUser | null {
     createdAt: String(user.createdAt ?? ""),
     updatedAt: String(user.updatedAt ?? ""),
     companies: normalizeUserCompanies(user.companies),
+    pushEnabled: user.pushEnabled === true,
   };
 }
 
@@ -413,6 +414,9 @@ export async function updatePublicMe(
   }
   if (payload.avatarFile) {
     body.append("avatar", payload.avatarFile);
+  }
+  if (typeof payload.pushEnabled === "boolean") {
+    body.append("pushEnabled", payload.pushEnabled ? "true" : "false");
   }
   if ([...body.keys()].length === 0) {
     throw new AdminAuthError("apiErrors.publicMeNothingToUpdate");

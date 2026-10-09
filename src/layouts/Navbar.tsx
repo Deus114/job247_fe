@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { toggleTheme } from "@/store/slices/themeSlice";
 import { changeAppLanguage } from "@/store/slices/languageSlice";
 import { useAuth } from "@/features/auth";
+import { NotificationBell } from "@/features/notifications";
 import { toast } from "@/lib/toast";
 
 /** Routes where the navbar sits over a dark hero and needs light text until scrolled. */
@@ -162,7 +163,8 @@ export default function Navbar() {
             })}
           </div>
 
-          <div className="hidden lg:flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <div className="hidden lg:flex items-center gap-2">
             <div ref={langRef} className="relative">
               <button
                 onClick={() => setLangOpen(!langOpen)}
@@ -349,7 +351,14 @@ export default function Navbar() {
                 </Link>
               </>
             )}
-          </div>
+            </div>
+
+          {isAuthenticated && (
+            <NotificationBell
+              audience="public"
+              tone={overDarkHero ? "onDark" : "default"}
+            />
+          )}
 
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
@@ -363,6 +372,7 @@ export default function Navbar() {
               className={`text-xl ${mobileOpen ? "ri-close-line" : "ri-menu-line"}`}
             ></i>
           </button>
+          </div>
         </div>
       </div>
 

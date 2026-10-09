@@ -1,5 +1,6 @@
 import { fetchPublicProvinces } from "@/api";
 import CustomSelect from "@/components/ui/CustomSelect";
+import { formatNumber } from "@/lib/formatNumber";
 import { useAppSelector } from "@/store/hooks";
 import { useEffect, useState, type SubmitEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -8,9 +9,14 @@ import { useNavigate } from "react-router-dom";
 export default function Hero() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { homeBannerUrl, tagline, name } = useAppSelector(
-    (state) => state.businessConfig.config,
-  );
+  const {
+    homeBannerUrl,
+    tagline,
+    name,
+    jobCount,
+    companyCount,
+    jobSeekerCount,
+  } = useAppSelector((state) => state.businessConfig.config);
   const storeLocations = useAppSelector((state) => state.jobs.locations);
   const [keyword, setKeyword] = useState("");
   const [provinceId, setProvinceId] = useState("");
@@ -116,7 +122,7 @@ export default function Hero() {
           <div className="flex flex-wrap gap-6 md:gap-10 mt-6">
             <div>
               <p className="text-xl md:text-2xl font-heading font-bold text-white">
-                12,500+
+                {formatNumber(jobCount, "0")}+
               </p>
               <p className="text-xs md:text-sm text-white/70">
                 {t("hero.statsJobs")}
@@ -124,7 +130,7 @@ export default function Hero() {
             </div>
             <div>
               <p className="text-xl md:text-2xl font-heading font-bold text-white">
-                3,200+
+                {formatNumber(companyCount, "0")}+
               </p>
               <p className="text-xs md:text-sm text-white/70">
                 {t("hero.statsCompanies")}
@@ -132,7 +138,7 @@ export default function Hero() {
             </div>
             <div>
               <p className="text-xl md:text-2xl font-heading font-bold text-white">
-                8,900+
+                {formatNumber(jobSeekerCount, "0")}+
               </p>
               <p className="text-xs md:text-sm text-white/70">
                 {t("hero.statsCandidates")}
