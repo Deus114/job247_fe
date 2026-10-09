@@ -67,8 +67,8 @@ export default function EducationPage() {
   const { openId, pos, menuRef, toggle, close } = useTableActionMenu<number>();
   const [form, setForm] = useState<FormState>(emptyForm());
 
-  const [sortField, setSortField] = useState<SortField>("sortOrder");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [sortField, setSortField] = useState<SortField>("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [visibleColumns, setVisibleColumns] = useState([
     "name",
     "sortOrder",
