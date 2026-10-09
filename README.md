@@ -1,9 +1,7 @@
-# Jobs247 Frontend
+# Jobs247
 
 Deploy: https://jobs247-demo.duckdns.org/
 Admin: https://jobs247-demo.duckdns.org/admin
-
-Frontend ứng dụng tuyển dụng **Jobs247**.
 
 **Stack:** React 19 · Vite · TypeScript · Redux Toolkit · React Router · i18next · Tailwind · Axios · TipTap · Firebase Cloud Messaging
 
