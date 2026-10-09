@@ -51,12 +51,11 @@ function parseIdList(raw: string | null): number[] {
     .filter((n) => Number.isFinite(n) && n > 0);
 }
 
-function parseSalaryRange(salary: string): [number, number] | null {
-  const nums = salary.match(/\d+/g);
-  if (!nums || nums.length === 0) return null;
-  const values = nums.map(Number);
-  if (values.length === 1) return [values[0], values[0]];
-  return [values[0], values[1]];
+function salaryQueryBound(value: string): number | undefined {
+  if (!value.trim()) return undefined;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return undefined;
+  return Math.trunc(n) * 1_000_000;
 }
 
 export default function JobsPage() {
@@ -247,6 +246,8 @@ export default function JobsPage() {
         educationLevelIds.length > 0 ? educationLevelIds : undefined,
       employmentTypes:
         employmentTypes.length > 0 ? [...employmentTypes] : undefined,
+      salaryFrom: salaryQueryBound(salaryMin),
+      salaryTo: salaryQueryBound(salaryMax),
       page: currentPage,
       size: JOBS_PER_PAGE,
       sort: SORT_QUERY[sortBy],
@@ -282,25 +283,14 @@ export default function JobsPage() {
     provinceIds,
     educationLevelIds,
     employmentTypes,
+    salaryMin,
+    salaryMax,
     currentPage,
     sortBy,
     isAuthenticated,
   ]);
 
-  const displayedJobs = useMemo(() => {
-    let result = jobs;
-    if (salaryMin || salaryMax) {
-      const min = salaryMin ? Number(salaryMin) : 0;
-      const max = salaryMax ? Number(salaryMax) : Infinity;
-      result = result.filter((j) => {
-        const parsed = parseSalaryRange(j.salary);
-        if (!parsed) return true;
-        const [jobMin, jobMax] = parsed;
-        return jobMax >= min && jobMin <= max;
-      });
-    }
-    return result;
-  }, [jobs, salaryMin, salaryMax]);
+  const displayedJobs = jobs;
 
   useEffect(() => {
     if (displayedJobs.length === 0) {

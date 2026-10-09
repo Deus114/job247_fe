@@ -187,6 +187,12 @@ function buildListQuery(
   if (typeof params.hot === "boolean") query.hot = params.hot;
   if (params.fromDate?.trim()) query.fromDate = params.fromDate.trim();
   if (params.toDate?.trim()) query.toDate = params.toDate.trim();
+  if (params.salaryFrom != null && Number.isFinite(params.salaryFrom)) {
+    query.salaryFrom = Math.trunc(params.salaryFrom);
+  }
+  if (params.salaryTo != null && Number.isFinite(params.salaryTo)) {
+    query.salaryTo = Math.trunc(params.salaryTo);
+  }
   if (typeof params.deleted === "boolean") query.deleted = params.deleted;
   if (params.sort?.trim()) query.sort = params.sort.trim();
   return query;

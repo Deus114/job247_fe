@@ -65,6 +65,8 @@ export interface PublicJobListParams {
   employmentTypes?: string[];
   experienceLevels?: string[];
   hot?: boolean;
+  salaryFrom?: number;
+  salaryTo?: number;
   page?: number;
   size?: number;
   sort?: string;
@@ -132,6 +134,8 @@ export interface EmployerJobListParams {
   hot?: boolean;
   fromDate?: string;
   toDate?: string;
+  salaryFrom?: number;
+  salaryTo?: number;
   deleted?: boolean;
   page?: number;
   size?: number;

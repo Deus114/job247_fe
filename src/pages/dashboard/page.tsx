@@ -910,6 +910,7 @@ export default function DashboardPage() {
                 value={overviewCompanyId}
                 options={companyOptions}
                 onChange={setOverviewCompanyId}
+                outlined
               />
             </div>
           )}

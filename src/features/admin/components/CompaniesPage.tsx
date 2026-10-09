@@ -859,14 +859,15 @@ export default function CompaniesPage() {
               </div>
             </div>
 
-            {detail.description && (
+            {detail.description.replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " ").trim() && (
               <div className="mb-5">
                 <p className="text-xs text-foreground-500 mb-1">
                   {t("adminUi.jobs.description")}
                 </p>
-                <p className="text-sm text-foreground-700 whitespace-pre-wrap">
-                  {detail.description}
-                </p>
+                <div
+                  className="text-sm text-foreground-700 prose prose-sm max-w-none [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5"
+                  dangerouslySetInnerHTML={{ __html: detail.description }}
+                />
               </div>
             )}
 

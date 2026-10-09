@@ -287,14 +287,18 @@ export default function EmployerCompanyDetailPage() {
         />
       </div>
 
-      {company.description && (
+      {company.description
+        .replace(/<[^>]*>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .trim() && (
         <div className="mb-6 p-4 bg-background-50 border border-background-200/70 rounded-xl">
           <p className="text-xs text-foreground-500 mb-1">
             {t("company.description")}
           </p>
-          <p className="text-sm text-foreground-800 whitespace-pre-wrap">
-            {company.description}
-          </p>
+          <div
+            className="text-sm text-foreground-800 prose prose-sm max-w-none [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5"
+            dangerouslySetInnerHTML={{ __html: company.description }}
+          />
         </div>
       )}
 

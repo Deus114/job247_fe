@@ -268,7 +268,14 @@ export async function fetchPublicCompanyById(
 /** GET /companies/:slug/:id/jobs */
 export async function fetchPublicCompanyJobs(
   id: string | number,
-  params: { page?: number; size?: number; sort?: string; slug?: string } = {},
+  params: {
+    page?: number;
+    size?: number;
+    sort?: string;
+    slug?: string;
+    salaryFrom?: number;
+    salaryTo?: number;
+  } = {},
 ): Promise<PaginatedList<Job>> {
   requireBackend();
   const companyId = Number(id);
@@ -285,6 +292,12 @@ export async function fetchPublicCompanyJobs(
           page: params.page ?? 1,
           size: params.size ?? 20,
           sort: params.sort ?? "createdAt,DESC",
+          ...(params.salaryFrom != null && Number.isFinite(params.salaryFrom)
+            ? { salaryFrom: Math.trunc(params.salaryFrom) }
+            : {}),
+          ...(params.salaryTo != null && Number.isFinite(params.salaryTo)
+            ? { salaryTo: Math.trunc(params.salaryTo) }
+            : {}),
         },
       },
     )) as ApiResponse<{ data?: unknown; pagination?: unknown } | unknown[]>;

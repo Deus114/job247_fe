@@ -1,4 +1,4 @@
-type ToastType = "success" | "error";
+type ToastType = "success" | "error" | "info";
 
 export interface ToastItem {
   id: string;
@@ -31,6 +31,9 @@ export const toast = {
   },
   error(message: string) {
     push("error", message);
+  },
+  info(message: string) {
+    push("info", message, 4500);
   },
 };
 

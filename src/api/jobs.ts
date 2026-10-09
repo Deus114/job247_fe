@@ -158,6 +158,12 @@ function buildJobsQuery(params: PublicJobListParams): Record<string, unknown> {
     query.experienceLevels = params.experienceLevels;
   }
   if (typeof params.hot === "boolean") query.hot = params.hot;
+  if (params.salaryFrom != null && Number.isFinite(params.salaryFrom)) {
+    query.salaryFrom = Math.trunc(params.salaryFrom);
+  }
+  if (params.salaryTo != null && Number.isFinite(params.salaryTo)) {
+    query.salaryTo = Math.trunc(params.salaryTo);
+  }
   if (params.sort?.trim()) query.sort = params.sort.trim();
   return query;
 }

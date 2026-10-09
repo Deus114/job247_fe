@@ -15,9 +15,16 @@ import type { AdminSessionUser } from "@/types/adminAuth";
 import type { AuthUser } from "@/types/user";
 
 const postedThisSession = new Set<DeviceTokenAudience>();
-const foregroundListeners = new Set<() => void>();
 
-export function subscribeForegroundPush(listener: () => void) {
+export interface ForegroundPushMessage {
+  title: string;
+}
+
+const foregroundListeners = new Set<(message: ForegroundPushMessage) => void>();
+
+export function subscribeForegroundPush(
+  listener: (message: ForegroundPushMessage) => void,
+) {
   foregroundListeners.add(listener);
   return () => {
     foregroundListeners.delete(listener);
@@ -87,15 +94,13 @@ async function messagingClient() {
   if (!listening) {
     listening = true;
     messagingMod.onMessage(messaging, (payload) => {
-      const title = payload.notification?.title || "Jobs247";
-      const body = payload.notification?.body || "";
-      if (
-        typeof Notification !== "undefined" &&
-        Notification.permission === "granted"
-      ) {
-        void new Notification(title, { body, icon: "/favicon.svg" });
-      }
-      foregroundListeners.forEach((listener) => listener());
+      const dataTitle = payload.data?.title;
+      const title = (
+        payload.notification?.title ||
+        (typeof dataTitle === "string" ? dataTitle : "")
+      ).trim();
+      const message = { title };
+      foregroundListeners.forEach((listener) => listener(message));
     });
   }
   return { messaging, registration, getToken: messagingMod.getToken };
